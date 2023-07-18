@@ -1,0 +1,16 @@
+app: blackledger
+ts: 20230718035300931
+name: ulid
+depends:
+- sqly:20211105034808482_init
+doc: null
+up: >-
+  CREATE EXTENSION IF NOT EXISTS pgcrypto;
+  CREATE OR REPLACE FUNCTION gen_ulid() RETURNS uuid AS $$
+    SELECT (
+      lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0') 
+      || encode(gen_random_bytes(10), 'hex')
+    )::uuid;
+  $$ LANGUAGE SQL;
+dn: >-
+  DROP FUNCTION gen_ulid();

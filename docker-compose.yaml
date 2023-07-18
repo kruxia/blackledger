@@ -1,0 +1,39 @@
+version: "3.7"
+services:
+
+  app:
+    depends_on:
+      - postgres
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      target: develop
+    volumes:
+      - .:/opt/blackledger
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "True"
+      DATABASE_NAME: blackledger
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
+
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: blackledger
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_PORT: 5432
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - .:/opt/blackledger
+
+volumes:
+  pgdata:
