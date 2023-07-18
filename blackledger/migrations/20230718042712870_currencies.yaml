@@ -1,0 +1,13 @@
+app: blackledger
+ts: 20230718042712870
+name: currencies
+depends:
+- sqly:20211105034808482_init
+doc: null
+up: >-
+  CREATE TABLE currencies (
+    name  varchar   PRIMARY KEY CHECK (name ~ '[A-Z]+'),
+    dec   smallint  NOT NULL CHECK (dec >= 0)
+  );
+dn: >-
+  DROP TABLE currencies;

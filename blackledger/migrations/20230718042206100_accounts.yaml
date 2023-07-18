@@ -1,0 +1,23 @@
+app: blackledger
+ts: 20230718042206100
+name: accounts
+depends:
+- blackledger:20230718035300931_ulid
+- blackledger:20230718041340046_direction
+doc: null
+up: >-
+  CREATE TABLE accounts (
+    id      uuid      primary key default gen_ulid(),
+    parent  uuid      references accounts(id),
+    name    varchar   not null unique,
+    norm    direction
+  );
+  INSERT INTO accounts (name, norm) 
+  VALUES 
+    ('Asset', 'CR'),
+    ('Liability', 'DR'),
+    ('Income', 'DR'),
+    ('Expense', 'CR'),
+    ('Equity', 'DR');  
+dn: >-
+  DROP TABLE accounts;

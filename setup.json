@@ -1,0 +1,23 @@
+{
+  "name": "blackledger",
+  "version": "0.0.1",
+  "description": "Fast, Immutable, Transactional. Pick three.",
+  "url": "https://github.com/seanharrison/blackledger",
+  "author": "Sean Harrison",
+  "author_email": "sah@kruxia.com",
+  "license": "MPL 2.0",
+  "classifiers": [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python :: 3"
+  ],
+  "entry_points": {
+    "console_scripts": []
+  },
+  "package_data": {
+    "": []
+  },
+  "data_files": [],
+  "scripts": []
+}
