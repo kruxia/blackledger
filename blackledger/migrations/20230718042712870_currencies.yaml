@@ -6,7 +6,7 @@ depends:
 doc: null
 up: >-
   CREATE TABLE currencies (
-    name  varchar   PRIMARY KEY CHECK (name ~ '[A-Z]+'),
+    name  varchar   PRIMARY KEY CHECK (name ~ '[a-z]+'),  -- lowercase ascii letters
     dec   smallint  NOT NULL CHECK (dec >= 0)
   );
 dn: >-
