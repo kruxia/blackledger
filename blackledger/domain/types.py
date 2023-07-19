@@ -6,17 +6,15 @@ from uuid import UUID
 import base58
 from ulid import ULID
 
-# TODO: ID is mutable - you can assign to ID.bytes after instantiation
 
-
-class AccountNormal(IntEnum):
-    DR = 1
-    CR = -1
-
-
-class EntryDirection(IntEnum):
-    DR = -1
+class Normal(IntEnum):
     CR = 1
+    DR = -1
+
+
+class Direction(IntEnum):
+    CR = -1
+    DR = 1
 
 
 class Currency(str):
