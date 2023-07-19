@@ -2,3 +2,5 @@
 setup.py.isorted
 blackledger.egg-info/
 blackledger/__pycache__/__init__.cpython-311.pyc
+.coverage
+*.pyc

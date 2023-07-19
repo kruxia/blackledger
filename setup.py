@@ -21,6 +21,7 @@ if __name__ == "__main__":
         include_package_data=True,
         install_requires=[
             "psycopg[binary]~=3.1.9",
+            "pydantic~=2.0.3",
             "sqly[migration] @ git+https://github.com/kruxia/sqly@00f46ee136e9acc286a2b734413a91dd8a6a8102#egg=sqly",  # noqa
         ],
         extras_require={
