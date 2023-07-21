@@ -9,7 +9,7 @@ doc: null
 up: >-
   CREATE TABLE accounts (
     id        uuid      PRIMARY KEY DEFAULT gen_ulid(),
-    parent    uuid      REFERENCES accounts(id),
+    parent_id uuid      REFERENCES accounts(id),
     name      varchar   NOT NULL UNIQUE,
     normal    direction NOT NULL,
     currency  varchar   REFERENCES currencies(name)
