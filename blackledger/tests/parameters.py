@@ -1,11 +1,11 @@
-from blackledger.domain import errors, types
+from blackledger.domain import errors
 
 accounts = {
-    "asset": {"name": "asset", "normal": types.Normal.CR},
-    "liability": {"name": "liability", "normal": types.Normal.DR},
-    "revenue": {"name": "revenue", "normal": types.Normal.DR},
-    "expense": {"name": "expense", "normal": types.Normal.CR},
-    "equity": {"name": "equity", "normal": types.Normal.DR},
+    "asset": {"name": "asset", "normal": "CR", "currency": "USD"},
+    "liability": {"name": "liability", "normal": "DR", "currency": "USD"},
+    "revenue": {"name": "revenue", "normal": "DR", "currency": "USD"},
+    "expense": {"name": "expense", "normal": "CR", "currency": "USD"},
+    "equity": {"name": "equity", "normal": "DR", "currency": "USD"},
 }
 invalid_transaction_entries = [
     # only one entry, not balanced
@@ -15,7 +15,7 @@ invalid_transaction_entries = [
             {
                 "account": accounts["expense"],
                 "amount": {"decimal": "3.50", "currency": "USD"},
-                "direction": types.Direction.CR,
+                "direction": "CR",
             }
         ],
     ),
@@ -26,12 +26,12 @@ invalid_transaction_entries = [
             {
                 "account": accounts["expense"],
                 "amount": {"decimal": "3.50", "currency": "USD"},
-                "direction": types.Direction.CR,
+                "direction": "CR",
             },
             {
                 "account": accounts["liability"],
-                "amount": {"decimal": 3.50, "currency": "USD"},
-                "direction": types.Direction.CR,
+                "amount": {"decimal": "3.50", "currency": "USD"},
+                "direction": "CR",
             },
         ],
     ),
@@ -41,13 +41,13 @@ invalid_transaction_entries = [
         [
             {
                 "account": accounts["expense"],
-                "amount": {"decimal": 3.50, "currency": "CAD"},
-                "direction": types.Direction.CR,
+                "amount": {"decimal": "3.50", "currency": "CAD"},
+                "direction": "CR",
             },
             {
                 "account": accounts["asset"],
-                "amount": {"decimal": 3.50, "currency": "USD"},
-                "direction": types.Direction.DR,
+                "amount": {"decimal": "3.50", "currency": "USD"},
+                "direction": "DR",
             },
         ],
     ),
@@ -57,31 +57,31 @@ valid_transaction_entries = [
     [
         {
             "account": accounts["expense"],
-            "amount": {"decimal": 3.50, "currency": "USD"},
-            "direction": types.Direction.CR,
+            "amount": {"decimal": "3.50", "currency": "USD"},
+            "direction": "CR",
         },
         {
             "account": accounts["asset"],
-            "amount": {"decimal": 3.50, "currency": "USD"},
-            "direction": types.Direction.DR,
+            "amount": {"decimal": "3.50", "currency": "USD"},
+            "direction": "DR",
         },
     ],
     # three balanced entries
     [
         {
             "account": accounts["expense"],
-            "amount": {"decimal": 1.50, "currency": "USD"},
-            "direction": types.Direction.CR,
+            "amount": {"decimal": "1.50", "currency": "USD"},
+            "direction": "CR",
         },
         {
             "account": accounts["expense"],
-            "amount": {"decimal": 2.00, "currency": "USD"},
-            "direction": types.Direction.CR,
+            "amount": {"decimal": "2.00", "currency": "USD"},
+            "direction": "CR",
         },
         {
             "account": accounts["asset"],
-            "amount": {"decimal": 3.50, "currency": "USD"},
-            "direction": types.Direction.DR,
+            "amount": {"decimal": "3.50", "currency": "USD"},
+            "direction": "DR",
         },
     ],
 ]
