@@ -20,9 +20,12 @@ if __name__ == "__main__":
         packages=find_packages(exclude=["contrib", "docs", "tests"]),
         include_package_data=True,
         install_requires=[
+            "base58~=2.1.1",
+            "orjson~=3.9.2",
             "psycopg[binary]~=3.1.9",
             "pydantic~=2.0.3",
             "sqly[migration] @ git+https://github.com/kruxia/sqly@00f46ee136e9acc286a2b734413a91dd8a6a8102#egg=sqly",  # noqa
+            "python-ulid~=1.1.0",
         ],
         extras_require={
             "dev": [
