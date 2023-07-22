@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import ForwardRef, Optional
+from uuid import UUID
 
 import orjson
 from pydantic import BaseModel, Field, field_serializer, model_validator
@@ -25,16 +26,19 @@ class Account(Model):
 
     @model_validator(mode="before")
     def convert_data(cls, data):
+        item = {k: v for k, v in data.items()}
+        if "id" in data and type(data["id"]) == UUID:
+            item["id"] = types.ID.from_uuid(data["id"])
         if "currency" in data and isinstance(data["currency"], str):
-            data["currency"] = types.Currency(data["currency"])
+            item["currency"] = types.Currency(data["currency"])
 
         if (
             not isinstance(data["normal"], types.Normal)
             and data["normal"] in types.Normal.__members__
         ):
-            data["normal"] = types.Normal[data["normal"]]
+            item["normal"] = types.Normal[data["normal"]]
 
-        return data
+        return item
 
     # @field_serializer("id")
     # def serialize_id(self, val: types.ID):
@@ -45,11 +49,21 @@ class Account(Model):
         return val.name
 
 
+Entry = ForwardRef("Entry")
+
+
 class Transaction(Model):
     id: types.ID = Field(default_factory=types.ID)
     ts: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     memo: str = ""
-    entries: list["Entry"] = Field(default_factory=list)
+    entries: list[Entry] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    def convert_data(cls, data):
+        item = {k: v for k, v in data.items()}
+        if "id" in data and type(data["id"]) == UUID:
+            item["id"] = types.ID.from_uuid(data["id"])
+        return item
 
     def balance(self):
         return sum((e.amount.decimal * e.direction) for e in self.entries)

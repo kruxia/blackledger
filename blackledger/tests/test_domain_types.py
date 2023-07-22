@@ -47,10 +47,15 @@ def test_id_immutable():
 
 def test_id_uuid():
     """
-    ID().uuid is a UUID instance
+    - ID().uuid is a UUID instance
+    - ID can be loaded from UUID
     """
     i = types.ID()
-    assert isinstance(i.uuid, UUID)
+    u = i.to_uuid()
+    assert isinstance(u, UUID)
+    i1 = types.ID.from_uuid(u)
+    assert i1 == i
+    assert i1 is not i
 
 
 def test_currency_instantiate_valid():

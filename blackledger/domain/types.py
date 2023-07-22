@@ -52,6 +52,15 @@ class ID(UUID):
         """
         return base58.b58encode(self.bytes).decode()
 
-    @property
-    def uuid(self):
+    @classmethod
+    def from_bytes(cls, value: bytes):
+        return cls(base58.b58encode(value))
+
+    @classmethod
+    def from_uuid(cls, value: str | UUID):
+        if isinstance(value, str):
+            value = UUID(value)
+        return cls(base58.b58encode(value.bytes))
+
+    def to_uuid(self):
         return UUID(self.hex)
