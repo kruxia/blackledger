@@ -1,0 +1,43 @@
+app: blackledger
+ts: 20231110035557748
+name: account
+depends:
+- blackledger:20230718035300931_ulid
+- blackledger:20231110035214790_currency
+doc: >-
+  account: Chart of all accounts. Fields:
+
+  * id = unique primary key account identifier
+  * name = the name of the account, unique within the parent relationship
+  * num = the (optional) account number, unique if provided
+  * normal = the "normal side" (debit = 'DR' or credit = 'CR') for account display
+  * curr = the operating currency (code) for this account
+  * version = the account version, which equals the latest transaction entry id, for
+    optimistic locking / concurrency control. Null means no transaction entries yet.
+
+up: >-
+  CREATE TYPE normal_side AS ENUM ('DR', 'CR');
+  CREATE TABLE account (
+    id        uuid      PRIMARY KEY DEFAULT gen_ulid()  -- unique primary key
+
+    , name      varchar   NOT NULL UNIQUE               -- name of the account
+    , parent_id uuid      REFERENCES account(id)        -- optional parent account
+    , UNIQUE NULLS NOT DISTINCT (parent_id, name)       -- unique name per parent
+
+    , num       integer   UNIQUE                        -- optional unique account num
+
+    , normal    normal_side NOT NULL                    -- normal side (DR or CR)
+    , curr      varchar   REFERENCES currency(code)     -- account operating currency
+
+    , version   uuid                                    -- account version (=last entry)
+  );
+  INSERT INTO account (name, normal)
+  VALUES
+    ('Asset', 'DR'),
+    ('Expense', 'DR'),
+    ('Income', 'CR'),
+    ('Liability', 'CR'),
+    ('Equity', 'CR');
+dn: >-
+  DROP TABLE account;
+  DROP TYPE normal_side;

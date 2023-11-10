@@ -1,0 +1,33 @@
+app: blackledger
+ts: 20231110041521593
+name: entry
+depends:
+- blackledger:20231110035214790_currency
+- blackledger:20231110035557748_account
+- blackledger:20231110041326051_transaction
+doc: >-
+  Transaction entries: one per leg. Fields:
+
+  * id = unique primary key entry identifier
+  * tx = id of the transaction this entry is a part of
+  * acct = id of the account this entry belongs to
+  * curr = currency code of this transaction entry
+  * dr or cr = the debit or credit amount for this transaction entry:
+    * One must be null
+    * The other must be greater than zero
+up: >-
+  CREATE TABLE entry (
+    id      uuid      PRIMARY KEY DEFAULT gen_ulid()
+    , tx    uuid      NOT NULL references transaction(id)
+    , acct  uuid      NOT NULL references account(id)
+    , curr  varchar   NOT NULL references currency(code)
+    , dr    bigint
+    , cr    bigint
+    , CHECK ((cr is null and dr > 0)
+          OR (dr is null and cr > 0))
+  );
+  ALTER TABLE account ADD CONSTRAINT account_version_fkey
+    FOREIGN KEY (version) REFERENCES entry(id);
+dn: >-
+  ALTER TABLE account DROP CONSTRAINT account_version_fkey;
+  DROP TABLE entry;

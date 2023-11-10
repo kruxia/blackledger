@@ -1,0 +1,14 @@
+app: blackledger
+ts: 20231110041326051
+name: transaction
+depends:
+- blackledger:20231110035557748_account
+doc:
+up: >-
+  CREATE TABLE transaction (
+    id        uuid            PRIMARY KEY DEFAULT gen_ulid()
+    , posted  timestamptz(6)  NOT NULL DEFAULT now()
+    , memo    text
+  );
+dn: >-
+  DROP TABLE transaction;

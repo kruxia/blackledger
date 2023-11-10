@@ -3,14 +3,30 @@ ts: 20230718035300931
 name: ulid
 depends:
 - sqly:20211105034808482_init
-doc: null
+doc: >-
+  A ULID is a 128-bit (16-byte) integer that consist of:
+
+  * timestamp: 48 bits (6 bytes)
+  * randomness: 80 bits (10 bytes)
+
+  ULIDs are stored in PostgreSQL as UUIDs, which are also 128-bit integers.
+
+  ULIDs are encoded for presentation as 26-byte strings using Crockford's Base32, but
+  this migration does not include any encoding or decoding logic -- for the purpose of
+  the database, they are UUIDs that sort in approximate time order (the first 48 bits).
+
+  The ULID spec and links to implementations: <https://github.com/ulid/spec>
+
 up: >-
   CREATE EXTENSION IF NOT EXISTS pgcrypto;
   CREATE OR REPLACE FUNCTION gen_ulid() RETURNS uuid AS $$
     SELECT (
-      lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0') 
+      -- timestamp: 6 bytes (=12 hex characters)
+      -- randomness: 10 bytes (=20 hex characters)
+      lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0')
       || encode(gen_random_bytes(10), 'hex')
     )::uuid;
   $$ LANGUAGE SQL;
+
 dn: >-
   DROP FUNCTION gen_ulid();
