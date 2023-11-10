@@ -1,0 +1,19 @@
+app: blackledger
+ts: 20231110035214790
+name: currency
+depends:
+- sqly:20211105034808482_init
+doc: >-
+  All currencies that are known to this blackledger installation
+
+  * code = the short code for the currency
+  * dec = the number of decimals used with this currency (default = 2)
+up: >-
+  CREATE TABLE currency (
+    code    varchar   PRIMARY KEY
+              CHECK (code ~ '[A-Z][A-Z0-9\.\-_]*[A-Z0-9]')
+    , dec   smallint  NOT NULL DEFAULT 2
+              CHECK (dec >= 0)
+  );
+dn: >-
+  DROP TABLE currency;

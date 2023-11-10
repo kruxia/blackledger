@@ -1,7 +1,7 @@
 version: "3.7"
 services:
 
-  app:
+  blackledger:
     depends_on:
       - postgres
     build:
@@ -20,10 +20,10 @@ services:
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
-
+      DATABASE_DIALECT: psycopg
 
   postgres:
-    image: postgres:15
+    image: postgres:16
     environment:
       POSTGRES_DB: blackledger
       POSTGRES_USER: postgres
