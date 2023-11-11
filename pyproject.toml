@@ -1,0 +1,34 @@
+[project]
+description = "Fast, Immutable, Transactional: Pick three."
+name = "blackledger"
+version = "0.0.1"
+authors = [{name = "Sean Harrison", email = "sah@kruxia.com"}]
+license = {text = "MPL 2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "base58~=2.1.1",
+    "orjson~=3.9.2",
+    "psycopg[binary,pool]~=3.1.9",
+    "pydantic~=2.0.3",
+    "sqly[migration] @ git+https://github.com/kruxia/sqly@00f46ee136e9acc286a2b734413a91dd8a6a8102#egg=sqly",
+    "python-ulid~=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["black~=23.3.0", "ipython~=8.12.0", "isort~=5.12.0", "twine~=4.0.2"]
+test = ["black~=23.3.0", "flake8~=6.0.0", "pytest~=7.3.1", "pytest-cov~=4.0.0"]
+
+[build-system]
+requires = ["setuptools>=45"]           #, "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["blackledger"]
+
+# [tool.setuptools_scm]
+# write_to = "blackledger/__version__.py"
