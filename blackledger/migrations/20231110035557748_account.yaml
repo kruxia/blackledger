@@ -15,7 +15,8 @@ doc: >-
   * version = the account version, which equals the latest transaction entry id, for
     optimistic locking / concurrency control. Null means no transaction entries yet.
 
-up: >-
+up:
+- |-
   CREATE TYPE normal_side AS ENUM ('DR', 'CR');
   CREATE TABLE account (
     id        uuid      PRIMARY KEY DEFAULT gen_ulid()  -- unique primary key
@@ -38,6 +39,7 @@ up: >-
     ('Income', 'CR'),
     ('Liability', 'CR'),
     ('Equity', 'CR');
-dn: >-
+dn:
+- |-
   DROP TABLE account;
   DROP TYPE normal_side;

@@ -15,7 +15,8 @@ doc: >-
   * dr or cr = the debit or credit amount for this transaction entry:
     * One must be null
     * The other must be greater than zero
-up: >-
+up:
+- |-
   CREATE TABLE entry (
     id      uuid      PRIMARY KEY DEFAULT gen_ulid()
     , tx    uuid      NOT NULL references transaction(id)
@@ -28,6 +29,7 @@ up: >-
   );
   ALTER TABLE account ADD CONSTRAINT account_version_fkey
     FOREIGN KEY (version) REFERENCES entry(id);
-dn: >-
+dn:
+- |-
   ALTER TABLE account DROP CONSTRAINT account_version_fkey;
   DROP TABLE entry;
