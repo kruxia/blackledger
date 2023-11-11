@@ -17,7 +17,8 @@ doc: >-
 
   The ULID spec and links to implementations: <https://github.com/ulid/spec>
 
-up: >-
+up:
+- |-
   CREATE EXTENSION IF NOT EXISTS pgcrypto;
   CREATE OR REPLACE FUNCTION gen_ulid() RETURNS uuid AS $$
     SELECT (
@@ -28,5 +29,5 @@ up: >-
     )::uuid;
   $$ LANGUAGE SQL;
 
-dn: >-
-  DROP FUNCTION gen_ulid();
+dn:
+- DROP FUNCTION gen_ulid();

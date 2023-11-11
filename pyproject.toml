@@ -16,6 +16,7 @@ dependencies = [
     "psycopg[binary,pool]~=3.1.9",
     "pydantic~=2.0.3",
     "sqly[migration] @ git+https://github.com/kruxia/sqly@00f46ee136e9acc286a2b734413a91dd8a6a8102#egg=sqly",
+    "sqly[migration] @ git+https://github.com/kruxia/sqly@main#egg=sqly",
     "python-ulid~=1.1.0",
 ]
 

@@ -8,12 +8,14 @@ doc: >-
 
   * code = the short code for the currency
   * dec = the number of decimals used with this currency (default = 2)
-up: >-
+up:
+- |-
   CREATE TABLE currency (
     code    varchar   PRIMARY KEY
               CHECK (code ~ '[A-Z][A-Z0-9\.\-_]*[A-Z0-9]')
     , dec   smallint  NOT NULL DEFAULT 2
               CHECK (dec >= 0)
   );
-dn: >-
+dn:
+- |-
   DROP TABLE currency;
