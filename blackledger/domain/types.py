@@ -18,7 +18,7 @@ class Direction(IntEnum):
 
 
 class Currency(str):
-    PATTERN = r"^[A-Z]+$"
+    PATTERN = r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$"
     REGEX = re.compile(PATTERN)
 
     def __init__(self, value):
@@ -32,8 +32,8 @@ class Currency(str):
 
 class ID(UUID):
     """
-    ID is a 128-bit ULID internally, represented as a base58-encoded string.
-    Nevertheless it can easily be output as UUID or bytes using ULID methods.
+    ID is generated from ULID, stored as a 128-bit UUID internally, and represented as a
+    base58-encoded string. It can easily be output as UUID or bytes using ULID methods.
     """
 
     def __init__(self, value: Optional[str] = None):

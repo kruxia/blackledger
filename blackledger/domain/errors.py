@@ -1,14 +1,17 @@
 class Error(Exception):
-    ...
+    msg = "An error occurred."
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*([self.msg] + list(args)), **kwargs)
 
 
 class NotEnoughEntries(Error):
-    args = ["transaction must have at least 2 entries"]
+    msg = "Transaction must have at least 2 entries."
 
 
 class UnmatchedCurrencies(Error):
-    args = ["transaction entries must all use the same currency"]
+    msg = "Transaction entries must all use the same currency."
 
 
 class OutOfBalance(Error):
-    args = ["transaction entries must have balance==0"]
+    msg = "Transaction entries must have balance==0."
