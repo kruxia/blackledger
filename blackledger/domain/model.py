@@ -119,4 +119,12 @@ class Transaction(Model):
 
     @model_validator(mode="after")
     def balanced_entries(self):
-        assert sum(e.amount() for e in self.entries) == 0, "transaction is unbalanced"
+        """
+        For each used currency, the sum of entries in the transaction must be 0.
+        """
+        sums = {}
+        for e in self.entries:
+            sums[e.curr] = sums.setdefault(e.curr, Decimal("0")) + e.amount()
+        assert all(
+            v == Decimal("0") for v in sums.values()
+        ), "transaction is unbalanced"
