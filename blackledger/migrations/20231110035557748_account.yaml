@@ -23,8 +23,8 @@ up:
 
     , name      varchar   NOT NULL UNIQUE               -- name of the account
     , parent_id uuid      REFERENCES account(id)        -- optional parent account
-    , UNIQUE NULLS NOT DISTINCT (parent_id, name)       -- unique name per parent
-
+    , UNIQUE NULLS NOT DISTINCT (parent_id, name)       -- unique name per parent (null
+                                                        --   parents are all the same)
     , num       integer   UNIQUE                        -- optional unique account num
 
     , normal    normal_side NOT NULL                    -- normal side (DR or CR)
