@@ -14,13 +14,14 @@ dependencies = [
     "base58~=2.1.1",
     "orjson~=3.9.2",
     "psycopg[binary,pool]~=3.1.9",
-    "pydantic~=2.0.3",
-    "sqly[migration] @ git+https://github.com/kruxia/sqly@00f46ee136e9acc286a2b734413a91dd8a6a8102#egg=sqly",
     "sqly[migration] @ git+https://github.com/kruxia/sqly@main#egg=sqly",
+    "pydantic~=2.4.2",
+    "pydantic-settings~=2.0.3",
     "python-ulid~=1.1.0",
 ]
 
 [project.optional-dependencies]
+http = ["fastapi~=0.104.1"]
 dev = ["black~=23.3.0", "ipython~=8.12.0", "isort~=5.12.0", "twine~=4.0.2"]
 test = ["black~=23.3.0", "flake8~=6.0.0", "pytest~=7.3.1", "pytest-cov~=4.0.0"]
 

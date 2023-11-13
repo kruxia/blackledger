@@ -4,6 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 import base58
+from pydantic import constr
 from ulid import ULID
 
 
@@ -12,22 +13,9 @@ class Normal(IntEnum):
     DR = -1
 
 
-class Direction(IntEnum):
-    CR = -1
-    DR = 1
-
-
-class Currency(str):
-    PATTERN = r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$"
-    REGEX = re.compile(PATTERN)
-
-    def __init__(self, value):
-        if not re.match(self.REGEX, value):
-            raise ValueError(f"{self.__class__.__name__} must match {self.PATTERN}")
-        super().__init__()
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self})"
+CurrencyCode = constr(
+    pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$",
+)
 
 
 class ID(UUID):

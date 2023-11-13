@@ -17,12 +17,16 @@ class Model(BaseModel):
         return orjson.dumps(self.dict())
 
 
+class Currency(Model):
+    code: types.CurrencyCode
+
+
 class Account(Model):
     id: types.ID = Field(default_factory=types.ID)
     name: str
     normal: types.Normal
     parent: Optional["Account"] = None
-    currency: Optional[types.Currency] = None
+    currency: Optional[types.CurrencyCode] = None
 
     @model_validator(mode="before")
     def convert_data(cls, data):
@@ -30,7 +34,7 @@ class Account(Model):
         if "id" in data and type(data["id"]) == UUID:
             item["id"] = types.ID.from_uuid(data["id"])
         if "currency" in data and isinstance(data["currency"], str):
-            item["currency"] = types.Currency(data["currency"])
+            item["currency"] = types.CurrencyCode(data["currency"])
 
         if (
             not isinstance(data["normal"], types.Normal)
@@ -78,12 +82,12 @@ class Transaction(Model):
 
 class Amount(Model):
     decimal: Decimal
-    currency: types.Currency
+    currency: types.CurrencyCode
 
     @model_validator(mode="before")
     def initialize_currency(cls, data):
-        if not isinstance(data["currency"], types.Currency):
-            data["currency"] = types.Currency(data["currency"])
+        if not isinstance(data["currency"], types.CurrencyCode):
+            data["currency"] = types.CurrencyCode(data["currency"])
 
         return data
 
@@ -95,7 +99,6 @@ class Amount(Model):
 class Entry(Model):
     account: Account
     amount: Amount
-    direction: types.Direction
     # -- later --
     # rate: Optional[Amount]  # -- exchange rate
     # basis: Optional[Amount]  # -- cost basis
@@ -108,7 +111,3 @@ class Entry(Model):
         ):
             data["direction"] = types.Direction[data["direction"]]
         return data
-
-    @field_serializer("direction")
-    def serialize_direction(self, val: types.Normal):
-        return val.name
