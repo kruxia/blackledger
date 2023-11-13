@@ -62,8 +62,8 @@ def test_currency_instantiate_valid():
     """
     Valid currencies are uppercase ASCII letters.
     """
-    c = types.Currency("USD")
-    assert isinstance(c, types.Currency)
+    c = types.CurrencyCode("USD")
+    assert isinstance(c, types.CurrencyCode)
     assert str(c) == "USD"
 
 
@@ -73,10 +73,10 @@ def test_currency_instantiate_invalid(c):
     Currencies that are not only uppercase ASCII letters will not instantiate.
     """
     with pytest.raises(ValueError):
-        types.Currency(c)
+        types.CurrencyCode(c)
 
 
 def test_currency_repr():
-    c = types.Currency("USD")
+    c = types.CurrencyCode("USD")
     assert c.__class__.__name__ in repr(c)
     assert str(c) in repr(c)

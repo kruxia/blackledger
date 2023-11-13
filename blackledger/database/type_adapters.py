@@ -27,11 +27,3 @@ class NormalDumper(adapt.Dumper):
 
 
 adapters.register_dumper(types.Normal, NormalDumper)
-
-
-class DirectionDumper(adapt.Dumper):
-    def dump(self, obj):
-        return obj.name.encode()
-
-
-adapters.register_dumper(types.Direction, DirectionDumper)
