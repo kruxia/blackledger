@@ -1,7 +1,7 @@
 import psycopg_pool
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqly import ASQL, Dialect
+from sqly import ASQL
 
 from blackledger.api.__router__ import api_router
 from blackledger.settings import DatabaseSettings

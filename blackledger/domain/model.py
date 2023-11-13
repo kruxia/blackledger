@@ -1,12 +1,21 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
-from typing import ForwardRef, Optional
-from uuid import UUID
+from typing import Optional
 
 import orjson
-from pydantic import BaseModel, Field, field_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from pydantic.functional_validators import BeforeValidator
+from typing_extensions import Annotated
 
 from . import types
+
+ModelID = Annotated[types.ID, BeforeValidator(types.ID.field_converter)]
 
 
 class Model(BaseModel):
@@ -22,92 +31,92 @@ class Currency(Model):
 
 
 class Account(Model):
-    id: types.ID = Field(default_factory=types.ID)
+    id: Optional[ModelID] = None
     name: str
+    parent_id: Optional[ModelID] = None
+    num: Optional[int] = None
     normal: types.Normal
-    parent: Optional["Account"] = None
-    currency: Optional[types.CurrencyCode] = None
+    curr: Optional[types.CurrencyCode] = None
+    version: Optional[ModelID] = None
 
-    @model_validator(mode="before")
-    def convert_data(cls, data):
-        item = {k: v for k, v in data.items()}
-        if "id" in data and type(data["id"]) == UUID:
-            item["id"] = types.ID.from_uuid(data["id"])
-        if "currency" in data and isinstance(data["currency"], str):
-            item["currency"] = types.CurrencyCode(data["currency"])
-
-        if (
-            not isinstance(data["normal"], types.Normal)
-            and data["normal"] in types.Normal.__members__
-        ):
-            item["normal"] = types.Normal[data["normal"]]
-
-        return item
-
-    # @field_serializer("id")
-    # def serialize_id(self, val: types.ID):
-    #     return str(val)
+    @field_validator("normal", mode="before")
+    def convert_normal(cls, value):
+        if isinstance(value, str):
+            if value not in types.Normal.__members__:
+                raise ValueError(value)
+            value = types.Normal[value]
+        return value
 
     @field_serializer("normal")
     def serialize_normal(self, val: types.Normal):
         return val.name
 
 
-Entry = ForwardRef("Entry")
+class Entry(Model):
+    id: Optional[ModelID] = None
+    tx: Optional[ModelID] = None
+    acct: ModelID
+    acct_version: Optional[ModelID] = None
+    dr: Optional[Decimal] = None
+    cr: Optional[Decimal] = None
+    curr: types.CurrencyCode
+
+    @field_validator("dr", "cr", mode="before")
+    def validate_dr_cr(cls, value):
+        if isinstance(value, float):
+            raise ValueError(
+                "floating point data is not allowed: use a Decimal or string"
+            )
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_amounts(cls, data):
+        assert data.get("dr") or data.get("cr"), "either dr or cr must be defined"
+        assert not (
+            data.get("dr") and data.get("cr")
+        ), "both dr and cr cannot be defined"
+        return data
+
+    @field_validator("cr", "dr", mode="after")
+    def check_amounts_valid(cls, value):
+        assert (
+            value is None or value > 0
+        ), "amount must be greater than zero: accountants hate negatives"
+        return value
+
+    def amount(self):
+        """
+        Return self.dr or self.cr as a positive or negative decimal. Convention:
+
+        * Debits (DR) are positive
+        * Credits (CR) are negative
+        """
+        if self.dr:
+            return self.dr * types.Normal.DR
+        if self.cr:
+            return self.cr * types.Normal.CR
+
+        raise ValueError("Invalid Entry: dr and cr are both undefined")
 
 
 class Transaction(Model):
-    id: types.ID = Field(default_factory=types.ID)
-    ts: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    memo: str = ""
+    id: Optional[ModelID] = None
+    posted: Optional[datetime] = None
+    memo: Optional[str] = None
     entries: list[Entry] = Field(default_factory=list)
 
-    @model_validator(mode="before")
-    def convert_data(cls, data):
-        item = {k: v for k, v in data.items()}
-        if "id" in data and type(data["id"]) == UUID:
-            item["id"] = types.ID.from_uuid(data["id"])
-        return item
+    # @model_validator(mode="before")
+    # @classmethod
+    # def check_entries(cls, data):
+    #     assert (
+    #         data.get("entries") and len(data["entries"]) >= 2
+    #     ), "transactions must have at least two entries"
+    #     if data.get("id") and data.get("entries"):
+    #         for entry in data["entries"]:
+    #             entry.tx = data["id"]
+    #     return data
 
-    def balance(self):
-        return sum((e.amount.decimal * e.direction) for e in self.entries)
-
-    def currency(self):
-        return next(iter(e.amount.currency for e in self.entries), None)
-
-    @field_serializer("id")
-    def serialize_id(self, val: types.ID):
-        return str(val)
-
-
-class Amount(Model):
-    decimal: Decimal
-    currency: types.CurrencyCode
-
-    @model_validator(mode="before")
-    def initialize_currency(cls, data):
-        if not isinstance(data["currency"], types.CurrencyCode):
-            data["currency"] = types.CurrencyCode(data["currency"])
-
-        return data
-
-    @field_serializer("decimal")
-    def serialize_decimal(self, val: Decimal):
-        return str(val)
-
-
-class Entry(Model):
-    account: Account
-    amount: Amount
-    # -- later --
-    # rate: Optional[Amount]  # -- exchange rate
-    # basis: Optional[Amount]  # -- cost basis
-
-    @model_validator(mode="before")
-    def convert_data(cls, data):
-        if (
-            not isinstance(data["direction"], types.Direction)
-            and data["direction"] in types.Direction.__members__
-        ):
-            data["direction"] = types.Direction[data["direction"]]
-        return data
+    @model_validator(mode="after")
+    def balanced_entries(self):
+        assert sum(e.amount() for e in self.entries) == 0, "transaction is unbalanced"

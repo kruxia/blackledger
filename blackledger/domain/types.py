@@ -1,4 +1,3 @@
-import re
 from enum import IntEnum
 from typing import Optional
 from uuid import UUID
@@ -9,8 +8,8 @@ from ulid import ULID
 
 
 class Normal(IntEnum):
-    CR = 1
-    DR = -1
+    DR = 1
+    CR = -1
 
 
 CurrencyCode = constr(
@@ -49,6 +48,14 @@ class ID(UUID):
         if isinstance(value, str):
             value = UUID(value)
         return cls(base58.b58encode(value.bytes))
+
+    @classmethod
+    def field_converter(cls, value):
+        if isinstance(value, str):
+            value = cls(value)
+        if isinstance(value, UUID) and not isinstance(value, cls):
+            value = cls.from_uuid(value)
+        return value
 
     def to_uuid(self):
         return UUID(self.hex)

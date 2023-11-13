@@ -1,5 +1,5 @@
 #!/bin/bash
 
-isort --check ${@:-.}
+isort --profile black --check ${@:-.}
 black --check ${@:-.}
 flake8 ${@:-.}
