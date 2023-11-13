@@ -17,8 +17,7 @@ doc: >-
     * The other must be greater than zero (NOTE: Is an entry with amt=0 ever needed?)
     * NOTE: We're using decimal for amounts even though they are slower for aggregation
       -- see <https://blog.xendit.engineer/benchmarking-pg-numeric-integer-9c593d7af67e>
-      -- "Premature optimization is the root of all evil." We'll test and revisit this
-      design later.
+      -- "Premature optimization is the root of all evil." We'll test and revisit later.
 up:
 - |-
   CREATE TABLE entry (

@@ -28,7 +28,7 @@ def test_account_initialize_currency():
     CurrencyCode.
     """
     account = model.Account(name="bank", normal=types.Normal.CR, currency="USD")
-    assert isinstance(account.currency, CurrencyCode)
+    assert isinstance(account.currency, types.CurrencyCode)
 
 
 def test_amount_initialize_currency():
@@ -37,10 +37,10 @@ def test_amount_initialize_currency():
     CurrencyCode.
     """
     amount = model.Amount(decimal="3.50", currency="USD")
-    assert isinstance(amount.currency, CurrencyCode)
+    assert isinstance(amount.currency, types.CurrencyCode)
 
-    amount = model.Amount(decimal="3.50", currency=CurrencyCode("USD"))
-    assert isinstance(amount.currency, CurrencyCode)
+    amount = model.Amount(decimal="3.50", currency=types.CurrencyCode("USD"))
+    assert isinstance(amount.currency, types.CurrencyCode)
 
 
 @pytest.mark.parametrize("entries", parameters.valid_transaction_entries)
