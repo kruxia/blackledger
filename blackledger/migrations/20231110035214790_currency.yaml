@@ -12,7 +12,7 @@ up:
 - |-
   CREATE TABLE currency (
     code    varchar   PRIMARY KEY
-              CHECK (code ~ '[A-Z][A-Z0-9\.\-_]*[A-Z0-9]')
+              CHECK (code ~ '^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$')
     , dec   smallint  NOT NULL DEFAULT 2
               CHECK (dec >= 0)
   );
