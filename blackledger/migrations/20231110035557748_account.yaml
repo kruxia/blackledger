@@ -29,8 +29,6 @@ up:
     , normal    varchar(2)
                   NOT NULL
                   CHECK (normal in ('DR', 'CR'))
-    , curr      varchar   REFERENCES currency(code)     -- account operating currency
-
     , version   uuid                                    -- account version (=last entry)
   );
   INSERT INTO account (name, normal)
