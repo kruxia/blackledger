@@ -17,7 +17,6 @@ doc: >-
 
 up:
 - |-
-  CREATE TYPE normal_side AS ENUM ('DR', 'CR');
   CREATE TABLE account (
     id        uuid      PRIMARY KEY DEFAULT gen_ulid()  -- unique primary key
 
@@ -27,7 +26,9 @@ up:
                                                         --   parents are all the same)
     , num       integer   UNIQUE                        -- optional unique account num
 
-    , normal    normal_side NOT NULL                    -- normal side (DR or CR)
+    , normal    varchar(2)
+                  NOT NULL
+                  CHECK (normal in ('DR', 'CR'))
     , curr      varchar   REFERENCES currency(code)     -- account operating currency
 
     , version   uuid                                    -- account version (=last entry)
@@ -42,4 +43,3 @@ up:
 dn:
 - |-
   DROP TABLE account;
-  DROP TYPE normal_side;

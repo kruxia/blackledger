@@ -12,9 +12,9 @@ class Normal(IntEnum):
     CR = -1
 
 
-CurrencyCode = constr(
-    pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$",
-)
+Base58String = constr(pattern=r"^[1-9A-HJ-NP-Za-km-z]+$")
+CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
+NameString = constr(pattern=r"^[\w\-\. ]+$")
 
 
 class ID(UUID):

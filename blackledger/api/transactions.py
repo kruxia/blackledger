@@ -32,7 +32,6 @@ async def search_transactions(req: Request):
     # build data with Transaction.id as key
     tx_map = {}
     async for item in results:
-        print(item)
         if item["tx_id"] not in tx_map:
             tx_map[item["tx_id"]] = {
                 "id": item["tx_id"],
@@ -40,9 +39,7 @@ async def search_transactions(req: Request):
                 "memo": item["memo"],
                 "entries": [],
             }
-            print(tx_map[item["tx_id"]])
         entry = model.Entry(**item)
-        print(entry)
         tx_map[item["tx_id"]]["entries"].append(entry)
 
     return list(tx_map.values())
