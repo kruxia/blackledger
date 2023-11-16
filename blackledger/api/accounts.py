@@ -2,7 +2,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Request
 from pydantic import field_serializer, field_validator
-from sqly import Q
 
 from blackledger.domain import model, types
 
@@ -62,19 +61,8 @@ async def edit_accounts(req: Request, item: model.Account):
     """
     sql = req.app.sql
     data = item.dict(exclude_none=True)
-    key = ["id"]
+    query = sql.queries.UPSERT("account", fields=data, key=["id"], returning=True)
     async with req.app.pool.connection() as conn:
-        result = await sql.select_one(
-            conn,
-            f"""
-            INSERT INTO account ({Q.fields(data)})
-            VALUES ({Q.params(data)})
-            ON CONFLICT ({Q.params(key)})
-            DO UPDATE SET {Q.assigns(data)}
-            RETURNING *
-            """,
-            data,
-            Constructor=model.Account,
-        )
+        result = await sql.select_one(conn, query, data, Constructor=model.Account)
 
     return result
