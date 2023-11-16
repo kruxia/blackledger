@@ -36,7 +36,6 @@ class Account(Model):
     parent_id: Optional[ModelID] = None
     num: Optional[int] = None
     normal: types.Normal
-    curr: Optional[types.CurrencyCode] = None
     version: Optional[ModelID] = None
 
     @field_validator("normal", mode="before")
