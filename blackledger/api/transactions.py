@@ -63,7 +63,7 @@ async def search_transactions(req: Request):
     if params.get("offset"):
         query.append(f"OFFSET {params['offset']}")
 
-    print(query)
+    print("\n".join(query))
     print(filters.query_data())
 
     async with req.app.pool.connection() as conn:
