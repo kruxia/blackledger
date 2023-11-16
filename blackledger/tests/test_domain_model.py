@@ -17,8 +17,6 @@ def test_model_de_serialize(entries):
         item_entry["account"] = {
             k: v for k, v in item_entry["account"].items() if k in entry["account"]
         }
-        print(f"{entry=}")
-        print(f"{item_entry=}")
         assert entry == item_entry
 
 
