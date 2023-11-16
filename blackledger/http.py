@@ -1,6 +1,7 @@
 import psycopg_pool
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from psycopg.errors import UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL
 
@@ -24,6 +25,14 @@ async def validation_error_handler(_, exc: ValidationError):
     return JSONResponse(
         status_code=412,
         content=exc.errors(),
+    )
+
+
+@app.exception_handler(UniqueViolation)
+async def unique_violation_error_handler(_, exc: UniqueViolation):
+    return JSONResponse(
+        status_code=409,
+        content={"message": str(exc)},
     )
 
 
