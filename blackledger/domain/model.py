@@ -32,7 +32,7 @@ class Currency(Model):
 
 class Account(Model):
     id: Optional[ModelID] = None
-    name: str
+    name: types.NameString
     parent_id: Optional[ModelID] = None
     num: Optional[int] = None
     normal: types.Normal
