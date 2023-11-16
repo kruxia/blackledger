@@ -1,7 +1,7 @@
 import psycopg_pool
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from psycopg.errors import UniqueViolation, ForeignKeyViolation
+from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL
 
