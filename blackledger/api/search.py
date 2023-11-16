@@ -10,10 +10,9 @@ class SearchFilters(BaseModel):
         return cls(**{k: v for k, v in qargs.items() if not k.startswith("_")})
 
     def select_filters(self):
-        data = self.dict(exclude_none=True)
         return [
             Q.filter(key, op="~*" if isinstance(val, str) else "=")
-            for key, val in data.items()
+            for key, val in self.query_data().items()
         ]
 
     def query_data(self):
