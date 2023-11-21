@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import model_validator
 from sqly import Q
 
@@ -112,6 +112,11 @@ async def post_transaction(req: Request):
                 ),
                 {"id": entry_item.acct},
             )
+            if acct is None:
+                raise HTTPException(
+                    status_code=404, detail=f"Account not found: {entry_item.acct}"
+                )
+
             assert (
                 acct["version"] == entry_item.acct_version
             ), "entry account_version is out of date"
