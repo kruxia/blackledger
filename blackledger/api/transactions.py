@@ -122,9 +122,10 @@ async def post_transaction(req: Request):
             if entry_item.acct in entry_accts_versions:
                 entry_item.acct_version = entry_accts_versions[entry_item.acct]
 
-            assert (
-                acct["version"] == entry_item.acct_version
-            ), "entry account_version is out of date"
+            if acct["version"] != entry_item.acct_version:
+                raise HTTPException(
+                    status_code=409, detail="Entry account_version is out of date"
+                )
 
             entry_item.tx = types.ID.from_uuid(tx["id"])
             entry_data = entry_item.dict(exclude=["acct_version"], exclude_none=True)

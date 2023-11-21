@@ -27,6 +27,7 @@ up:
         ELSIF (OLD.normal <> NEW.normal) THEN
           RAISE EXCEPTION 'Account (%) normal cannot be updated', OLD.id;
         END IF;
+        RETURN NEW;
       END;
   $account_no_update$ LANGUAGE plpgsql;
 
@@ -38,6 +39,7 @@ up:
         IF (OLD.id <> NEW.id) THEN
           RAISE EXCEPTION 'Transaction (%) id cannot be updated', OLD.id;
         END IF;
+        RETURN NEW;
       END;
   $transaction_no_update$ LANGUAGE plpgsql;
 
