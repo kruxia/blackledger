@@ -1,0 +1,53 @@
+app: blackledger
+ts: 20231121030049089
+name: immutable
+depends:
+- blackledger:20231110041521593_entry
+doc: |-
+  The following data are immutable:
+
+  - Entries are immutable and cannot be changed at all
+  - Account id, normal are immutable
+  - Transaction id is immutable
+up:
+- |-
+  CREATE FUNCTION entry_no_update_delete() RETURNS trigger AS $entry_no_update_delete$
+      BEGIN
+        RAISE EXCEPTION 'Entry (%) cannot be updated or deleted', OLD.id;
+      END;
+  $entry_no_update_delete$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER entry_no_update_delete BEFORE UPDATE OR DELETE ON entry
+      FOR EACH ROW EXECUTE FUNCTION entry_no_update_delete();
+
+  CREATE FUNCTION account_no_update() RETURNS trigger AS $account_no_update$
+      BEGIN
+        IF (OLD.id <> NEW.id) THEN
+          RAISE EXCEPTION 'Account (%) id cannot be updated', OLD.id;
+        ELSIF (OLD.normal <> NEW.normal) THEN
+          RAISE EXCEPTION 'Account (%) normal cannot be updated', OLD.id;
+        END IF;
+      END;
+  $account_no_update$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER account_no_update BEFORE UPDATE ON account
+      FOR EACH ROW EXECUTE FUNCTION account_no_update();
+
+  CREATE FUNCTION transaction_no_update() RETURNS trigger AS $transaction_no_update$
+      BEGIN
+        IF (OLD.id <> NEW.id) THEN
+          RAISE EXCEPTION 'Transaction (%) id cannot be updated', OLD.id;
+        END IF;
+      END;
+  $transaction_no_update$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER transaction_no_update BEFORE UPDATE ON transaction
+      FOR EACH ROW EXECUTE FUNCTION transaction_no_update();
+dn:
+- |-
+  DROP TRIGGER entry_no_update_delete on entry;
+  DROP FUNCTION entry_no_update_delete;
+  DROP TRIGGER account_no_update on account;
+  DROP FUNCTION account_no_update;
+  DROP TRIGGER transaction_no_update on transaction;
+  DROP FUNCTION transaction_no_update;
