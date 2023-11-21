@@ -69,15 +69,16 @@ async def search_transactions(req: Request):
     # build data with Transaction.id as key
     tx_map = {}
     async for item in results:
-        if item["tx_id"] not in tx_map:
-            tx_map[item["tx_id"]] = {
-                "id": item["tx_id"],
+        tx_id = types.ID.from_uuid(item["tx_id"])
+        if tx_id not in tx_map:
+            tx_map[tx_id] = {
+                "id": tx_id,
                 "posted": item["posted"],
                 "memo": item["memo"],
                 "entries": [],
             }
         entry = model.Entry(**item)
-        tx_map[item["tx_id"]]["entries"].append(entry)
+        tx_map[tx_id]["entries"].append(entry)
 
     return list(tx_map.values())
 
