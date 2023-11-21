@@ -22,6 +22,20 @@ services:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
       DATABASE_DIALECT: psycopg
 
+  migrate:
+    depends_on:
+      - postgres
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      target: develop
+    entrypoint: ["script/migrate.sh"]
+    volumes:
+      - .:/opt/blackledger
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
+      DATABASE_DIALECT: psycopg
+
   postgres:
     image: postgres:16
     environment:
