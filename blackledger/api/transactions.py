@@ -89,7 +89,7 @@ async def post_transaction(req: Request):
     Post transaction.
     """
     item = model.Transaction(**(await req.json()))
-    # the input item has already been validated -- just post it
+    # the input item has been validated -- just post it
     sql = req.app.sql
     async with req.app.pool.connection() as conn:  # (creates a db tx context)
         # create the transaction
