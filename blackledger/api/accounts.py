@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Request
@@ -106,13 +107,16 @@ async def get_accounts_balances(req: Request):
     balances = {}
     for result in results:
         if result["id"] not in balances:
+            account = model.Account(**result)
+            print(account)
             balances[result["id"]] = {
                 "account": model.Account(**result),
                 "balances": {},
             }
-        balances[result["id"]]["balances"][result["curr"]] = {
-            "dr": result["dr"],
-            "cr": result["cr"],
-        }
+        account = balances[result["id"]]["account"]
+        amt = (
+            (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
+        ) * Decimal(account.normal)
+        balances[result["id"]]["balances"][result["curr"]] = str(amt)
 
     return list(balances.values())
