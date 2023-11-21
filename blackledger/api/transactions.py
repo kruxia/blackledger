@@ -102,6 +102,7 @@ async def post_transaction(req: Request):
 
         # create each entry
         entries = []
+        entry_accts_versions = {}
         for entry_item in item.entries:
             # ensure that each entry's account.version is equal to the latest entry
             # for that account (optimistic locking / concurrency control)
@@ -116,6 +117,10 @@ async def post_transaction(req: Request):
                 raise HTTPException(
                     status_code=404, detail=f"Account not found: {entry_item.acct}"
                 )
+
+            # if we've updated the acct_version in this transaction, use it
+            if entry_item.acct in entry_accts_versions:
+                entry_item.acct_version = entry_accts_versions[entry_item.acct]
 
             assert (
                 acct["version"] == entry_item.acct_version
@@ -139,5 +144,7 @@ async def post_transaction(req: Request):
                 ),
                 {"id": entry.acct, "version": entry.id},
             )
+            # update the local cache for use later in the transaction
+            entry_accts_versions[entry.acct] = entry.id
 
     return model.Transaction(entries=entries, **tx)
