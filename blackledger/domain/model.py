@@ -62,9 +62,10 @@ class Entry(Model):
 
     @field_validator("dr", "cr", mode="before")
     def validate_dr_cr(cls, value):
-        if isinstance(value, float):
+        if isinstance(value, (int, float)):
             raise ValueError(
-                "floating point data is not allowed: use a Decimal or string"
+                "integer and floating point amounts are not allowed: "
+                + "use string or Decimal"
             )
         return value
 
@@ -104,17 +105,6 @@ class Transaction(Model):
     posted: Optional[datetime] = None
     memo: Optional[str] = None
     entries: list[Entry] = Field(default_factory=list)
-
-    # @model_validator(mode="before")
-    # @classmethod
-    # def check_entries(cls, data):
-    #     assert (
-    #         data.get("entries") and len(data["entries"]) >= 2
-    #     ), "transactions must have at least two entries"
-    #     if data.get("id") and data.get("entries"):
-    #         for entry in data["entries"]:
-    #             entry.tx = data["id"]
-    #     return data
 
     @model_validator(mode="after")
     def balanced_entries(self):
