@@ -108,12 +108,10 @@ async def get_accounts_balances(req: Request):
     for result in results:
         if result["id"] not in balances:
             account = model.Account(**result)
-            print(account)
             balances[result["id"]] = {
-                "account": model.Account(**result),
+                "account": account.dict(exclude_none=True),
                 "balances": {},
             }
-        account = balances[result["id"]]["account"]
         amount = (
             (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
         ) * Decimal(account.normal)
