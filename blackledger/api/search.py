@@ -21,7 +21,7 @@ class SearchFilters(BaseModel):
 
 class SearchParams(BaseModel):
     orderby: Optional[constr(pattern=r"^-?\w+(,\-?\w+)*$")] = None
-    limit: Optional[int] = None
+    limit: Optional[int] = 100
     offset: Optional[int] = None
 
     @classmethod
