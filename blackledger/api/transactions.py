@@ -44,7 +44,7 @@ async def search_transactions(req: Request):
         ")",
         # select matching transactions and all associated entries
         "SELECT",
-        "  tx.id tx_id, tx.posted, tx.memo,",
+        "  tx.id tx_id, tx.posted, tx.effective, tx.memo, tx.meta,",
         "  e.*,",
         "  a.version acct_version",
         "FROM transaction tx",
@@ -74,7 +74,9 @@ async def search_transactions(req: Request):
             tx_map[tx_id] = {
                 "id": tx_id,
                 "posted": item["posted"],
+                "effective": item["effective"],
                 "memo": item["memo"],
+                "meta": item["meta"],
                 "entries": [],
             }
         entry = model.Entry(**item)
@@ -88,12 +90,12 @@ async def post_transaction(req: Request):
     """
     Post transaction.
     """
-    item = model.Transaction(**(await req.json()))
+    item = model.TransactionNew(**(await req.json()))
     # the input item has been validated -- just post it
     sql = req.app.sql
     async with req.app.pool.connection() as conn:  # (creates a db tx context)
         # create the transaction
-        tx_data = item.dict(exclude=["entries", "id", "posted"])
+        tx_data = item.dict(exclude=["entries"], exclude_none=True)
         tx = await sql.select_one(
             conn,
             sql.queries.INSERT("transaction", tx_data, returning=True),

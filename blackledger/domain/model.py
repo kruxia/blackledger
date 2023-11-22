@@ -55,7 +55,6 @@ class Entry(Model):
     id: Optional[ModelID] = None
     tx: Optional[ModelID] = None
     acct: ModelID
-    acct_version: Optional[ModelID] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
     curr: types.CurrencyCode
@@ -100,10 +99,16 @@ class Entry(Model):
         raise ValueError("Invalid Entry: dr and cr are both undefined")
 
 
+class EntryNew(Entry):
+    acct_version: Optional[ModelID] = None
+
+
 class Transaction(Model):
     id: Optional[ModelID] = None
     posted: Optional[datetime] = None
+    effective: Optional[datetime] = None
     memo: Optional[str] = None
+    meta: Optional[dict] = None
     entries: list[Entry] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -117,3 +122,7 @@ class Transaction(Model):
         assert all(
             v == Decimal("0") for v in sums.values()
         ), "transaction is unbalanced"
+
+
+class TransactionNew(Transaction):
+    entries: list[EntryNew] = Field(default_factory=list)

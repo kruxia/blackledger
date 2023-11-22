@@ -17,8 +17,9 @@ doc: >-
 
 up:
 - |-
+  CREATE SEQUENCE account_id_seq AS smallint CYCLE;
   CREATE TABLE account (
-    id        uuid      PRIMARY KEY DEFAULT gen_ulid()  -- unique primary key
+    id          uuid      PRIMARY KEY DEFAULT gen_id('account_id_seq')
 
     , name      varchar   NOT NULL UNIQUE               -- name of the account
     , parent_id uuid      REFERENCES account(id)        -- optional parent account
@@ -41,3 +42,4 @@ up:
 dn:
 - |-
   DROP TABLE account;
+  DROP SEQUENCE account_id_seq;

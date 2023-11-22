@@ -19,15 +19,18 @@ doc: >-
 
 up:
 - |-
-  CREATE EXTENSION IF NOT EXISTS pgcrypto;
-  CREATE OR REPLACE FUNCTION gen_ulid() RETURNS uuid AS $$
+  CREATE OR REPLACE FUNCTION gen_id(varchar) RETURNS uuid AS $$
+    -- $1 = sequence name
     SELECT (
-      -- timestamp: 6 bytes (=12 hex characters)
-      -- randomness: 10 bytes (=20 hex characters)
-      lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0')
-      || encode(gen_random_bytes(10), 'hex')
+      -- timestamp to ms resolution: 6 bytes (= 12 hex)
+      lpad(to_hex((extract(epoch from current_timestamp) * 1000)::bigint), 12, '0')
+      -- seq ($1) is smallint sequence (2 bytes = 4 hex)
+      || lpad(to_hex(nextval($1)), 4, '0')
+      -- 8 bytes (16 hex) of randomness
+      || lpad(to_hex((random()*2147483647)::int), 8, '0')
+      || lpad(to_hex((random()*2147483647)::int), 8, '0')
     )::uuid;
   $$ LANGUAGE SQL;
 
 dn:
-- DROP FUNCTION gen_ulid();
+- DROP FUNCTION gen_id(varchar);

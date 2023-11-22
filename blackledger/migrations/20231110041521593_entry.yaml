@@ -20,8 +20,9 @@ doc: >-
       -- "Premature optimization is the root of all evil." We'll test and revisit later.
 up:
 - |-
+  CREATE SEQUENCE entry_id_seq AS smallint CYCLE;
   CREATE TABLE entry (
-    id      uuid      PRIMARY KEY DEFAULT gen_ulid()
+    id      uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
     , tx    uuid      NOT NULL references transaction(id)
     , acct  uuid      NOT NULL references account(id)
     , curr  varchar   NOT NULL references currency(code)
@@ -35,4 +36,6 @@ up:
 dn:
 - |-
   ALTER TABLE account DROP CONSTRAINT account_version_fkey;
+  UPDATE account SET version = null;
   DROP TABLE entry;
+  DROP SEQUENCE entry_id_seq;
