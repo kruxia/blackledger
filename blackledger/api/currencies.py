@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 
 from blackledger.domain import model
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/currencies")
 
