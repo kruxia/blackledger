@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, conint
 from sqly import Q
 
 
@@ -21,7 +21,7 @@ class SearchFilters(BaseModel):
 
 class SearchParams(BaseModel):
     orderby: Optional[constr(pattern=r"^-?\w+(,\-?\w+)*$")] = None
-    limit: Optional[int] = 100
+    limit: Optional[conint(le=100)] = 100
     offset: Optional[int] = None
 
     @classmethod
