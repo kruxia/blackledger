@@ -24,7 +24,8 @@ async def not_implemented_error_handler(_, exc: NotImplementedError):
 async def validation_error_handler(_, exc: ValidationError):
     errors = exc.errors()
     for error in errors:
-        error["ctx"]["error"] = str(error["ctx"]["error"])
+        for key in error.get("ctx", {}):
+            error["ctx"][key] = str(error["ctx"][key])
     return JSONResponse(
         status_code=412,
         content=errors,
