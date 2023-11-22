@@ -12,8 +12,8 @@ router = APIRouter(prefix="/transactions")
 
 
 class TransactionFilters(SearchFilters):
-    tx: Optional[model.ModelID] = None
-    acct: Optional[model.ModelID] = None
+    tx: Optional[model.ID] = None
+    acct: Optional[model.ID] = None
     curr: Optional[types.CurrencyCode] = None
     memo: Optional[str] = None
 
@@ -69,7 +69,7 @@ async def search_transactions(req: Request):
     # build data with Transaction.id as key
     tx_map = {}
     async for item in results:
-        tx_id = types.ID.from_uuid(item["tx_id"])
+        tx_id = item["tx_id"]
         if tx_id not in tx_map:
             tx_map[tx_id] = {
                 "id": tx_id,
@@ -90,7 +90,7 @@ async def post_transaction(req: Request):
     """
     Post transaction.
     """
-    item = model.TransactionNew(**(await req.json()))
+    item = model.NewTransaction(**(await req.json()))
     # the input item has been validated -- just post it
     sql = req.app.sql
     async with req.app.pool.connection() as conn:  # (creates a db tx context)
@@ -129,7 +129,7 @@ async def post_transaction(req: Request):
                     status_code=409, detail="Entry account_version is out of date"
                 )
 
-            entry_item.tx = types.ID.from_uuid(tx["id"])
+            entry_item.tx = tx["id"]
             entry_data = entry_item.dict(exclude=["acct_version"], exclude_none=True)
             entry = await sql.select_one(
                 conn,

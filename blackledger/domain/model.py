@@ -15,7 +15,7 @@ from typing_extensions import Annotated
 
 from . import types
 
-ModelID = Annotated[types.ID, BeforeValidator(types.ID.field_converter)]
+ID = Annotated[types.ID, BeforeValidator(types.ID.field_converter)]
 
 
 class Model(BaseModel):
@@ -31,12 +31,12 @@ class Currency(Model):
 
 
 class Account(Model):
-    id: Optional[ModelID] = None
+    id: Optional[ID] = None
     name: types.NameString
-    parent_id: Optional[ModelID] = None
+    parent_id: Optional[ID] = None
     num: Optional[int] = None
     normal: types.Normal
-    version: Optional[ModelID] = None
+    version: Optional[ID] = None
 
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
@@ -52,9 +52,9 @@ class Account(Model):
 
 
 class Entry(Model):
-    id: Optional[ModelID] = None
-    tx: Optional[ModelID] = None
-    acct: ModelID
+    id: Optional[ID] = None
+    tx: Optional[ID] = None
+    acct: ID
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
     curr: types.CurrencyCode
@@ -99,12 +99,12 @@ class Entry(Model):
         raise ValueError("Invalid Entry: dr and cr are both undefined")
 
 
-class EntryNew(Entry):
-    acct_version: Optional[ModelID] = None
+class NewEntry(Entry):
+    acct_version: Optional[ID] = None
 
 
 class Transaction(Model):
-    id: Optional[ModelID] = None
+    id: Optional[ID] = None
     posted: Optional[datetime] = None
     effective: Optional[datetime] = None
     memo: Optional[str] = None
@@ -124,5 +124,5 @@ class Transaction(Model):
         ), "transaction is unbalanced"
 
 
-class TransactionNew(Transaction):
-    entries: list[EntryNew] = Field(default_factory=list)
+class NewTransaction(Transaction):
+    entries: list[NewEntry] = Field(default_factory=list)
