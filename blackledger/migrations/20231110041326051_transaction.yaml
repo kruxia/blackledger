@@ -6,11 +6,15 @@ depends:
 doc:
 up:
 - |-
+  CREATE SEQUENCE transaction_id_seq AS smallint CYCLE;
   CREATE TABLE transaction (
-    id        uuid            PRIMARY KEY DEFAULT gen_ulid()
-    , posted  timestamptz(6)  NOT NULL DEFAULT now()
-    , memo    text
+    id          uuid            PRIMARY KEY DEFAULT gen_id('transaction_id_seq')
+    , posted    timestamptz(6)  NOT NULL DEFAULT now()
+    , effective timestamptz(6)  NOT NULL DEFAULT now()
+    , memo      text
+    , meta      jsonb
   );
 dn:
 - |-
   DROP TABLE transaction;
+  DROP SEQUENCE transaction_id_seq;
