@@ -114,9 +114,9 @@ async def get_accounts_balances(req: Request):
                 "balances": {},
             }
         account = balances[result["id"]]["account"]
-        amt = (
+        amount = (
             (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
         ) * Decimal(account.normal)
-        balances[result["id"]]["balances"][result["curr"]] = str(amt)
+        balances[result["id"]]["balances"][result["curr"]] = str(amount)
 
     return list(balances.values())
