@@ -71,35 +71,35 @@ async def edit_accounts(req: Request, item: model.Account):
 
 @router.get("/balances")
 async def get_accounts_balances(req: Request):
-    query = """
-        WITH balances AS (
-            SELECT a.id account_id,
-                e.curr, sum(e.dr) dr, sum(e.cr) cr
-            FROM account a
-            JOIN entry e
-                ON a.id = e.acct
-            GROUP BY (a.id, a.name, e.curr)
-        )
-        SELECT account.*,
-            balances.curr, balances.dr, balances.cr
-        FROM account
-        JOIN balances
-            ON account.id = balances.account_id
-    """
+    query = [
+        "WITH balances AS (",
+        "    SELECT a.id account_id,",
+        "        e.curr, sum(e.dr) dr, sum(e.cr) cr",
+        "    FROM account a",
+        "    JOIN entry e",
+        "        ON a.id = e.acct",
+        "    GROUP BY (a.id, a.name, e.curr)",
+        ")",
+        "SELECT account.*,",
+        "    balances.curr, balances.dr, balances.cr",
+        "FROM account",
+        "JOIN balances",
+        "    ON account.id = balances.account_id",
+    ]
     filters = AccountFilters.from_query(req.query_params)
     select_filters = filters.select_filters()
     if select_filters:
-        query += f"""
-        WHERE
-            {" AND ".join(select_filters)}
-        """
+        query += [
+            f"WHERE",
+            "\n    AND ".join(select_filters),
+        ]
     params = SearchParams.from_query(req.query_params).select_params()
     if params.get("orderby"):
-        query += f" ORDER BY {params['orderby']}"
+        query.append(f" ORDER BY {params['orderby']}")
     if params.get("limit"):
-        query += f" LIMIT {params['limit']}"
+        query.append(f" LIMIT {params['limit']}")
     if params.get("offset"):
-        query += f" OFFSET {params['offset']}"
+        query.append(f" OFFSET {params['offset']}")
 
     async with req.app.pool.connection() as conn:
         results = await req.app.sql.select_all(conn, query, filters.query_data())
