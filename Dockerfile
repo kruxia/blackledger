@@ -29,5 +29,5 @@ RUN pip install -e .[http,dev,test]
 
 EXPOSE 8000
 CMD ["bash"]
-CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--reload",  \
-    "--bind", "0.0.0.0:8000", "blackledger.http:app"]
+CMD ["uvicorn", "--reload",  \
+    "--host", "0.0.0.0", "--port", "8000", "blackledger.http:app"]
