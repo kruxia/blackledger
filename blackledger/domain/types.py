@@ -6,15 +6,14 @@ import base58
 from pydantic import constr
 from ulid import ULID
 
+Base58String = constr(pattern=r"^[1-9A-HJ-NP-Za-km-z]+$")
+CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
+NameString = constr(pattern=r"^[\w\-\. ]+$")
+
 
 class Normal(IntEnum):
     DR = 1
     CR = -1
-
-
-Base58String = constr(pattern=r"^[1-9A-HJ-NP-Za-km-z]+$")
-CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
-NameString = constr(pattern=r"^[\w\-\. ]+$")
 
 
 class ID(UUID):

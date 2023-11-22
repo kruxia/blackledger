@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqly import ASQL
 
 from blackledger.api.__router__ import api_router
+from blackledger.db import type_adapters  # noqa - provides psycopg registrations.
 from blackledger.settings import DatabaseSettings
 
 app = FastAPI()

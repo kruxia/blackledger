@@ -13,13 +13,13 @@ router = APIRouter(prefix="/accounts")
 
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
-    id: Optional[model.ModelID] = None
+    id: Optional[model.ID] = None
     name: Optional[types.NameString] = None
-    parent_id: Optional[model.ModelID] = None
+    parent_id: Optional[model.ID] = None
     num: Optional[int] = None
-    normal: Optional[types.Normal] = None  # NOT WORKING
+    normal: Optional[types.Normal] = None
     curr: Optional[types.CurrencyCode] = None
-    version: Optional[model.ModelID] = None
+    version: Optional[model.ID] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -90,7 +90,7 @@ async def get_accounts_balances(req: Request):
     select_filters = filters.select_filters()
     if select_filters:
         query += [
-            f"WHERE",
+            "WHERE",
             "\n    AND ".join(select_filters),
         ]
     params = SearchParams.from_query(req.query_params).select_params()
