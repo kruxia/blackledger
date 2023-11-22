@@ -7,7 +7,7 @@ from sqly import Q
 
 from blackledger.domain import model, types
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/transactions")
 
@@ -20,11 +20,6 @@ class TransactionFilters(SearchFilters):
 
     class Config:
         arbitrary_types_allowed = True
-
-    # @model_validator(mode="after")
-    # def validate_some_filter(self):
-    #     if not self.query_data():
-    #         raise ValueError("at least one transaction filter must be defined")
 
 
 @router.get("")
