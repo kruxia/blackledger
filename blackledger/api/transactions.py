@@ -1,7 +1,8 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import model_validator
+
+# from pydantic import model_validator
 from sqly import Q
 
 from blackledger.domain import model, types
@@ -20,10 +21,10 @@ class TransactionFilters(SearchFilters):
     class Config:
         arbitrary_types_allowed = True
 
-    @model_validator(mode="after")
-    def validate_some_filter(self):
-        if not self.query_data():
-            raise ValueError("at least one transaction filter must be defined")
+    # @model_validator(mode="after")
+    # def validate_some_filter(self):
+    #     if not self.query_data():
+    #         raise ValueError("at least one transaction filter must be defined")
 
 
 @router.get("")
@@ -39,8 +40,13 @@ async def search_transactions(req: Request):
         "  FROM transaction",
         "  JOIN entry",
         "    ON transaction.id = entry.tx",
-        "  WHERE",
-        "\n    AND ".join(filters.select_filters()),
+    ]
+    if filters.query_data():
+        query += [
+            "  WHERE",
+            "\n    AND ".join(filters.select_filters()),
+        ]
+    query += [
         ")",
         # select matching transactions and all associated entries
         "SELECT",
@@ -55,13 +61,13 @@ async def search_transactions(req: Request):
         "JOIN account a",
         "  ON a.id = e.acct",
     ]
-    params = SearchParams.from_query(req.query_params).select_params()
-    if params.get("orderby"):
-        query.append(f"ORDER BY {params['orderby']}")
-    if params.get("limit"):
-        query.append(f"LIMIT {params['limit']}")
-    if params.get("offset"):
-        query.append(f"OFFSET {params['offset']}")
+    select_params = SearchParams.from_query(req.query_params).select_params()
+    if select_params.get("orderby"):
+        query.append(f"ORDER BY {select_params['orderby']}")
+    if select_params.get("limit"):
+        query.append(f"LIMIT {select_params['limit']}")
+    if select_params.get("offset"):
+        query.append(f"OFFSET {select_params['offset']}")
 
     async with req.app.pool.connection() as conn:
         results = req.app.sql.select(conn, query, filters.query_data())
