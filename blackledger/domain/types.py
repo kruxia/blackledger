@@ -1,33 +1,20 @@
-import re
 from enum import IntEnum
 from typing import Optional
 from uuid import UUID
 
 import base58
+from pydantic import constr
 from ulid import ULID
 
 
 class Normal(IntEnum):
-    CR = 1
-    DR = -1
-
-
-class Direction(IntEnum):
-    CR = -1
     DR = 1
+    CR = -1
 
 
-class Currency(str):
-    PATTERN = r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$"
-    REGEX = re.compile(PATTERN)
-
-    def __init__(self, value):
-        if not re.match(self.REGEX, value):
-            raise ValueError(f"{self.__class__.__name__} must match {self.PATTERN}")
-        super().__init__()
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self})"
+Base58String = constr(pattern=r"^[1-9A-HJ-NP-Za-km-z]+$")
+CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
+NameString = constr(pattern=r"^[\w\-\. ]+$")
 
 
 class ID(UUID):
@@ -61,6 +48,14 @@ class ID(UUID):
         if isinstance(value, str):
             value = UUID(value)
         return cls(base58.b58encode(value.bytes))
+
+    @classmethod
+    def field_converter(cls, value):
+        if isinstance(value, str):
+            value = cls(value)
+        if isinstance(value, UUID) and not isinstance(value, cls):
+            value = cls.from_uuid(value)
+        return value
 
     def to_uuid(self):
         return UUID(self.hex)

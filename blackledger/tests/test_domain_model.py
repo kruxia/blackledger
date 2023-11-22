@@ -17,30 +17,28 @@ def test_model_de_serialize(entries):
         item_entry["account"] = {
             k: v for k, v in item_entry["account"].items() if k in entry["account"]
         }
-        print(f"{entry=}")
-        print(f"{item_entry=}")
         assert entry == item_entry
 
 
 def test_account_initialize_currency():
     """
     Initializing an Account with a currency string is automatically converted to a
-    Currency.
+    CurrencyCode.
     """
     account = model.Account(name="bank", normal=types.Normal.CR, currency="USD")
-    assert isinstance(account.currency, types.Currency)
+    assert isinstance(account.currency, types.CurrencyCode)
 
 
 def test_amount_initialize_currency():
     """
     Initializing an Amount with a currency string is automatically converted to a
-    Currency.
+    CurrencyCode.
     """
     amount = model.Amount(decimal="3.50", currency="USD")
-    assert isinstance(amount.currency, types.Currency)
+    assert isinstance(amount.currency, types.CurrencyCode)
 
-    amount = model.Amount(decimal="3.50", currency=types.Currency("USD"))
-    assert isinstance(amount.currency, types.Currency)
+    amount = model.Amount(decimal="3.50", currency=types.CurrencyCode("USD"))
+    assert isinstance(amount.currency, types.CurrencyCode)
 
 
 @pytest.mark.parametrize("entries", parameters.valid_transaction_entries)

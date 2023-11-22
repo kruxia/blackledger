@@ -14,20 +14,28 @@ doc: >-
   * curr = currency code of this transaction entry
   * dr or cr = the debit or credit amount for this transaction entry:
     * One must be null
-    * The other must be greater than zero
-up: >-
+    * The other must be greater than zero (NOTE: Is an entry with amt=0 ever needed?)
+    * NOTE: We're using decimal for amounts even though they are slower for aggregation
+      -- see <https://blog.xendit.engineer/benchmarking-pg-numeric-integer-9c593d7af67e>
+      -- "Premature optimization is the root of all evil." We'll test and revisit later.
+up:
+- |-
+  CREATE SEQUENCE entry_id_seq AS smallint CYCLE;
   CREATE TABLE entry (
-    id      uuid      PRIMARY KEY DEFAULT gen_ulid()
+    id      uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
     , tx    uuid      NOT NULL references transaction(id)
     , acct  uuid      NOT NULL references account(id)
     , curr  varchar   NOT NULL references currency(code)
-    , dr    bigint
-    , cr    bigint
+    , dr    decimal
+    , cr    decimal
     , CHECK ((cr is null and dr > 0)
           OR (dr is null and cr > 0))
   );
   ALTER TABLE account ADD CONSTRAINT account_version_fkey
     FOREIGN KEY (version) REFERENCES entry(id);
-dn: >-
+dn:
+- |-
   ALTER TABLE account DROP CONSTRAINT account_version_fkey;
+  UPDATE account SET version = null;
   DROP TABLE entry;
+  DROP SEQUENCE entry_id_seq;

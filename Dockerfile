@@ -8,27 +8,26 @@ RUN apt update \
     && apt-get install -y git postgresql-client \
     && git config --global --add safe.directory /opt/blackledger
 
-COPY setup.json setup.py README.md ./
+COPY ./pyproject.toml setup.cfg ./
+COPY ./blackledger/ ./blackledger/
 
-# # == deploy ==
+# == deploy ==
 
-# FROM base AS deploy
+FROM base AS deploy
 
-# RUN pip install -e .
-# COPY ./ ./
+RUN pip install -e .[http]
 
-# EXPOSE 8000
-# CMD ["gunicorn", "-w", "4", "--bind", "0.0.0.0:8000", \
-#     "project.wsgi:application"]
+EXPOSE 8000
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", \
+    "--bind", "0.0.0.0:8000", "blackledger.http:app"]
 
 # == develop ==
 
 FROM base AS develop
 
-RUN pip install -e .[dev,test]
-COPY ./ ./
+RUN pip install -e .[http,dev,test]
 
 EXPOSE 8000
 CMD ["bash"]
-# CMD ["gunicorn", "-w", "1", "--bind", "0.0.0.0:8000", "--reload", \
-#     "project.wsgi:application"]
+CMD ["uvicorn", "--reload",  \
+    "--host", "0.0.0.0", "--port", "8000", "blackledger.http:app"]
