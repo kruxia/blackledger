@@ -23,7 +23,10 @@ async def search_currencies(req: Request):
     )
     async with req.app.pool.connection() as conn:
         results = await req.app.sql.select_all(
-            conn, query, filters.dict(exclude_none=True), Constructor=model.Currency
+            conn,
+            query,
+            filters.model_dump(exclude_none=True),
+            Constructor=model.Currency,
         )
 
     return results
@@ -35,7 +38,7 @@ async def edit_currencies(req: Request, item: model.Currency):
     Insert/update currency.
     """
     sql = req.app.sql
-    data = item.dict(exclude_none=True)
+    data = item.model_dump(exclude_none=True)
     query = sql.queries.UPSERT("currency", fields=data, key=["code"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Currency)

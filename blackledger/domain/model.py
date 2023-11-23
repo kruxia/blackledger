@@ -5,6 +5,7 @@ from typing import Optional
 import orjson
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     field_serializer,
     field_validator,
@@ -19,11 +20,10 @@ ID = Annotated[types.ID, BeforeValidator(types.ID.field_converter)]
 
 
 class Model(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def json(self):
-        return orjson.dumps(self.dict())
+        return orjson.dumps(self.model_dump())
 
 
 class Currency(Model):
