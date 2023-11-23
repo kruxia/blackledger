@@ -18,6 +18,7 @@ def base_currencies(dbpool):
     [
         # no query gives all currencies in order inserted
         ("", [{"code": "USD"}, {"code": "CAD"}]),
+        # -- FILTERS --
         # filter to code returns that currency
         ("?code=USD", [{"code": "USD"}]),
         # filter to code returns regex matches
@@ -26,6 +27,14 @@ def base_currencies(dbpool):
         ("?code=^S", []),
         # match is case-insensitive
         ("?code=usd", [{"code": "USD"}]),
+        # -- SEARCH PARAMETERS
+        # _orderby
+        ("?_orderby=code", [{"code": "CAD"}, {"code": "USD"}]),
+        # _limit
+        ("?_orderby=code&_limit=1", [{"code": "CAD"}]),
+        # _offset
+        ("?_orderby=code&_limit=1&_offset=1", [{"code": "USD"}]),
+        ("?_orderby=code&_limit=1&_offset=2", []),
     ],
 )
 def test_get_currencies_ok(client, base_currencies, query, results):
@@ -57,8 +66,7 @@ def test_post_currencies_update_ok(client, base_currencies):
 
 @pytest.mark.parametrize(
     "data",
-    [
-        # input code must be a valid CurrencyCode
+    [  # input must have a valid Currency object
         {},  # code is required
         {"code": ""},  # at least two characters
         {"code": "U"},  # at least two characters
