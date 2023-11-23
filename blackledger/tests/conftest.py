@@ -1,6 +1,7 @@
 import psycopg_pool
 import pytest
 from fastapi.testclient import TestClient
+from sqly import SQL
 
 from blackledger.http import app
 from blackledger.settings import DatabaseSettings
@@ -21,3 +22,9 @@ def dbpool():
         conninfo=settings.url.get_secret_value(), timeout=1.00
     ) as pool:
         yield pool
+
+
+@pytest.fixture(scope="session")
+def sql():
+    settings = DatabaseSettings()
+    return SQL(dialect=settings.dialect)
