@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 import psycopg_pool
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -9,7 +11,24 @@ from blackledger.api.__router__ import api_router
 from blackledger.db import type_adapters  # noqa - provides psycopg registrations.
 from blackledger.settings import DatabaseSettings
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # create the database pool and SQL query engine
+    db = DatabaseSettings()
+    app.sql = ASQL(dialect=db.dialect)
+    app.pool = psycopg_pool.AsyncConnectionPool(
+        conninfo=db.url.get_secret_value(), open=False
+    )
+    await app.pool.open()
+
+    yield
+
+    # close the database pool
+    await app.pool.close()
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(api_router, prefix="/api")
 
 
@@ -40,20 +59,3 @@ async def unique_violation_error_handler(_, exc: Exception):
         status_code=409,
         content={"message": str(exc)},
     )
-
-
-@app.on_event("startup")
-async def app_on_startup():
-    # create the database pool and SQL query engine
-    db = DatabaseSettings()
-    app.sql = ASQL(dialect=db.dialect)
-    app.pool = psycopg_pool.AsyncConnectionPool(
-        conninfo=db.url.get_secret_value(), open=False
-    )
-    await app.pool.open()
-
-
-@app.on_event("shutdown")
-async def app_on_shutdown():
-    # close the database pool
-    await app.pool.close()
