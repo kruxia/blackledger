@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Request
-from pydantic import field_serializer, field_validator
+from pydantic import ConfigDict, field_serializer, field_validator
 
 from blackledger.domain import model, types
 
@@ -21,8 +21,7 @@ class AccountFilters(SearchFilters):
     curr: Optional[types.CurrencyCode] = None
     version: Optional[model.ID] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
@@ -61,7 +60,7 @@ async def edit_accounts(req: Request, item: model.Account):
     Insert/update account.
     """
     sql = req.app.sql
-    data = item.dict(exclude_none=True)
+    data = item.model_dump(exclude_none=True)
     query = sql.queries.UPSERT("account", fields=data, key=["id"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Account)
@@ -78,7 +77,7 @@ async def get_accounts_balances(req: Request):
         "    FROM account a",
         "    JOIN entry e",
         "        ON a.id = e.acct",
-        "    GROUP BY (a.id, a.name, e.curr)",
+        "    GROUP BY (a.id, e.curr)",
         ")",
         "SELECT account.*,",
         "    balances.curr, balances.dr, balances.cr",
@@ -109,7 +108,7 @@ async def get_accounts_balances(req: Request):
         if result["id"] not in balances:
             account = model.Account(**result)
             balances[result["id"]] = {
-                "account": account.dict(exclude_none=True),
+                "account": account.model_dump(exclude_none=True),
                 "balances": {},
             }
         amount = (

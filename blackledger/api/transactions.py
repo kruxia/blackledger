@@ -1,8 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-
-# from pydantic import model_validator
+from pydantic import ConfigDict
 from sqly import Q
 
 from blackledger.domain import model, types
@@ -18,8 +17,7 @@ class TransactionFilters(SearchFilters):
     curr: Optional[types.CurrencyCode] = None
     memo: Optional[str] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @router.get("")
@@ -96,7 +94,7 @@ async def post_transaction(req: Request):
     sql = req.app.sql
     async with req.app.pool.connection() as conn:  # (creates a db tx context)
         # create the transaction
-        tx_data = item.dict(exclude=["entries"], exclude_none=True)
+        tx_data = item.model_dump(exclude=["entries"], exclude_none=True)
         tx = await sql.select_one(
             conn,
             sql.queries.INSERT("transaction", tx_data, returning=True),
@@ -131,7 +129,9 @@ async def post_transaction(req: Request):
                 )
 
             entry_item.tx = tx["id"]
-            entry_data = entry_item.dict(exclude=["acct_version"], exclude_none=True)
+            entry_data = entry_item.model_dump(
+                exclude=["acct_version"], exclude_none=True
+            )
             entry = await sql.select_one(
                 conn,
                 sql.queries.INSERT("entry", entry_data, returning=True),

@@ -16,7 +16,7 @@ class SearchFilters(BaseModel):
         ]
 
     def query_data(self):
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
 
 
 class SearchParams(BaseModel):
@@ -32,7 +32,7 @@ class SearchParams(BaseModel):
         return cls(**{k.lstrip("_"): v for k, v in qargs.items() if k.startswith("_")})
 
     def select_params(self):
-        data = self.dict(exclude_none=True, exclude=["orderby"])
+        data = self.model_dump(exclude_none=True, exclude=["orderby"])
         if self.orderby:
             data["orderby"] = ",".join(
                 [
