@@ -1,3 +1,5 @@
+from typing import Optional
+from pydantic import constr
 from fastapi import APIRouter, Request
 
 from blackledger.domain import model
@@ -8,7 +10,7 @@ router = APIRouter(prefix="/currencies")
 
 
 class CurrencyFilters(SearchFilters):
-    code: str = None
+    code: Optional[constr(pattern=r"^\S+$")] = None
 
 
 @router.get("", response_model=list[model.Currency])

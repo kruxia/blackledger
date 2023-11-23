@@ -1,3 +1,4 @@
+import pytest
 from http import HTTPStatus
 
 import pytest
@@ -7,27 +8,66 @@ import pytest
 def base_currencies(dbpool):
     with dbpool.connection() as conn:
         conn.execute("insert into currency (code) values ('USD'), ('CAD')")
-
     yield
-
     with dbpool.connection() as conn:
         conn.execute("delete from currency")
 
 
-def test_get_currencies(client, base_currencies):
-    response = client.get("/api/currencies")
+@pytest.mark.parametrize(
+    "query,results",
+    [
+        # no query gives all currencies in order inserted
+        ("", [{"code": "USD"}, {"code": "CAD"}]),
+        # filter to code returns that currency
+        ("?code=USD", [{"code": "USD"}]),
+        # filter to code returns regex matches
+        ("?code=U", [{"code": "USD"}]),
+        ("?code=S", [{"code": "USD"}]),
+        ("?code=^S", []),
+        # match is case-insensitive
+        ("?code=usd", [{"code": "USD"}]),
+    ],
+)
+def test_get_currencies_ok(client, base_currencies, query, results):
+    response = client.get(f"/api/currencies{query}")
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == [{"code": "USD"}, {"code": "CAD"}]
+    assert response.json() == results
 
 
-def test_post_currencies_insert(client):
-    response = client.post("/api/currencies", json={"code": "GOOG"})
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"code": "GOOG"},  # all uppercase ok
+        {"code": "G-O_O.G"},  # internal hyphen, period, underscore ok
+        {"code": "G33G1"},  # non-initial number ok
+    ],
+)
+def test_post_currencies_insert_ok(client, data):
+    response = client.post("/api/currencies", json=data)
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {"code": "GOOG"}
+    assert response.json() == data
 
 
-def test_post_currencies_update(client, base_currencies):
+def test_post_currencies_update_ok(client, base_currencies):
     # "USD" already exists, but that's fine
     response = client.post("/api/currencies", json={"code": "USD"})
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {"code": "USD"}
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        # input code must be a valid CurrencyCode
+        {},  # code is required
+        {"code": ""},  # at least two characters
+        {"code": "U"},  # at least two characters
+        {"code": 34},  # not a number
+        {"code": "34S"},  # must start with a letter
+        {"code": "us"},  # must be all uppercase
+        {"code": "US-"},  # must end with a letter or number
+    ],
+)
+def test_post_currencies_422(client, data):
+    response = client.post("/api/currencies", json=data)
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
