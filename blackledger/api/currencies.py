@@ -1,6 +1,7 @@
 from typing import Optional
-from pydantic import constr
+
 from fastapi import APIRouter, Request
+from pydantic import constr
 
 from blackledger.domain import model
 
