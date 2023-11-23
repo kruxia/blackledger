@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Request
-from pydantic import ConfigDict, field_serializer, field_validator
+from pydantic import ConfigDict, constr, field_serializer, field_validator
 
 from blackledger.domain import model, types
 
@@ -14,11 +14,10 @@ router = APIRouter(prefix="/accounts")
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[model.ID] = None
-    name: Optional[types.NameString] = None
+    name: Optional[constr(pattern=r"^\S+$")] = None
     parent_id: Optional[model.ID] = None
-    num: Optional[int] = None
+    number: Optional[int] = None
     normal: Optional[types.Normal] = None
-    curr: Optional[types.CurrencyCode] = None
     version: Optional[model.ID] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -59,8 +58,10 @@ async def edit_accounts(req: Request, item: model.Account):
     """
     Insert/update account.
     """
+    print(f"{item=}")
     sql = req.app.sql
     data = item.model_dump(exclude_none=True)
+    print(f"{data=}")
     query = sql.queries.UPSERT("account", fields=data, key=["id"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Account)

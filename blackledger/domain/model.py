@@ -34,7 +34,7 @@ class Account(Model):
     id: Optional[ID] = None
     name: types.NameString
     parent_id: Optional[ID] = None
-    num: Optional[int] = None
+    number: Optional[int] = None
     normal: types.Normal
     version: Optional[ID] = None
 
@@ -45,6 +45,10 @@ class Account(Model):
                 raise ValueError(value)
             value = types.Normal[value]
         return value
+
+    # @field_serializer("id")
+    # def serialize_id(self, val: ID):
+    #     return str(val)
 
     @field_serializer("normal")
     def serialize_normal(self, val: types.Normal):
