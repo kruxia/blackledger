@@ -9,7 +9,7 @@ doc: >-
 
   * id = unique primary key account identifier
   * name = the name of the account, unique within the parent relationship
-  * num = the (optional) account number, unique if provided
+  * number = the (optional) account number, unique if provided
   * normal = the "normal side" (debit = 'DR' or credit = 'CR') for account display
   * curr = the operating currency (code) for this account
   * version = the account version, which equals the latest transaction entry id, for
@@ -25,20 +25,20 @@ up:
     , parent_id uuid      REFERENCES account(id)        -- optional parent account
     , UNIQUE NULLS NOT DISTINCT (parent_id, name)       -- unique name per parent (null
                                                         --   parents are all the same)
-    , num       integer   UNIQUE                        -- optional unique account num
+    , number    smallint   UNIQUE                       -- optional unique account number
 
     , normal    varchar(2)
                   NOT NULL
                   CHECK (normal in ('DR', 'CR'))
     , version   uuid                                    -- account version (=last entry)
   );
-  INSERT INTO account (name, normal)
+  INSERT INTO account (name, number, normal)
   VALUES
-    ('Asset', 'DR'),
-    ('Expense', 'DR'),
-    ('Income', 'CR'),
-    ('Liability', 'CR'),
-    ('Equity', 'CR');
+    ('Asset', 1000, 'DR'),
+    ('Expense', 5000, 'DR'),
+    ('Liability', 2000, 'CR'),
+    ('Income', 4000, 'CR'),
+    ('Equity', 3000, 'CR');
 dn:
 - |-
   DROP TABLE account;
