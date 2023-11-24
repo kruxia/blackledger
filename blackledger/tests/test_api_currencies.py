@@ -13,7 +13,7 @@ def base_currencies(dbpool):
 
 
 @pytest.mark.parametrize(
-    "query,results",
+    "query, results",
     [
         # no query gives all currencies in order inserted
         ("", [{"code": "USD"}, {"code": "CAD"}]),
@@ -26,7 +26,7 @@ def base_currencies(dbpool):
         ("?code=^S", []),
         # match is case-insensitive
         ("?code=usd", [{"code": "USD"}]),
-        # -- SEARCH PARAMETERS
+        # -- SEARCH PARAMS
         # _orderby
         ("?_orderby=code", [{"code": "CAD"}, {"code": "USD"}]),
         # _limit
@@ -36,7 +36,7 @@ def base_currencies(dbpool):
         ("?_orderby=code&_limit=1&_offset=2", []),
     ],
 )
-def test_get_currencies_ok(client, base_currencies, query, results):
+def test_search_currencies_ok(client, base_currencies, query, results):
     response = client.get(f"/api/currencies{query}")
     assert response.status_code == HTTPStatus.OK
     assert response.json() == results
