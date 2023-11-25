@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 import pytest
 
-from blackledger.domain import model
+from blackledger.domain import model, types
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def base_accounts(dbpool, sql):
 
 
 @pytest.mark.parametrize(
-    "query, names",
+    "query, expected_names",
     [
         ("", ["Asset", "Expense", "Liability", "Income", "Equity"]),
         # -- FILTERS --
@@ -40,19 +40,90 @@ def base_accounts(dbpool, sql):
         ("?_orderby=name&_offset=3&_limit=1", ["Income"]),
     ],
 )
-def test_search_accounts(client, base_accounts, query, names):
+def test_search_accounts(client, base_accounts, query, expected_names):
     response = client.get(f"/api/accounts{query}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     response_names = [a["name"] for a in data]
-    assert response_names == names
+    assert response_names == expected_names
 
 
-@pytest.mark.parametrize("name, updates", [("Asset", {"number": 100})])
-def test_update_accounts_ok(client, base_accounts, name, updates):
+@pytest.mark.parametrize(
+    "name, updates",
+    [
+        # number can be changed
+        ("Asset", {"number": 100}),
+        # number can be int-castable
+        ("Asset", {"number": "100"}),
+        # name can be changed
+        ("Asset", {"name": "Assets"}),
+        # change it back
+        ("Assets", {"name": "Asset"}),
+    ],
+)
+def test_update_account_ok(client, json_dumps, base_accounts, name, updates):
     account = base_accounts[name]
     data = account.model_dump(exclude_none=True) | updates
-    print(f"{data=}")
-    response = client.post("/api/accounts", json=data)
-    print(f"{response.json()=}")
+
+    response = client.post("/api/accounts", data=json_dumps(data))
     assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "name, updates",
+    [
+        # name must be a NameString -- not empty
+        ("Asset", {"name": ""}),
+        # name must be a NameString -- pattern must match
+        ("Asset", {"name": "Foo,Bar"}),
+        # number must be an int or int-castable
+        ("Asset", {"number": "34.5"}),
+        ("Asset", {"number": 34.5}),
+    ],
+)
+def test_update_account_unprocessable(client, json_dumps, base_accounts, name, updates):
+    account = base_accounts[name]
+    data = account.model_dump(exclude_none=True) | updates
+
+    response = client.post("/api/accounts", data=json_dumps(data))
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.parametrize(
+    "name, updates",
+    [
+        # id cannot be changed
+        ("Asset", {"id": types.ID()}),
+        # normal cannot be changed
+        ("Asset", {"normal": "CR"}),
+        # parent_id must exist if given
+        ("Asset", {"parent_id": types.ID()}),
+    ],
+)
+def test_update_account_conflict(client, json_dumps, base_accounts, name, updates):
+    account = base_accounts[name]
+    data = account.model_dump(exclude_none=True) | updates
+
+    response = client.post("/api/accounts", data=json_dumps(data))
+    assert response.status_code == HTTPStatus.CONFLICT
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        # id must be types.ID
+        {"id": "abc", "name": "Foo", "normal": "DR"},
+        {"id": 123, "name": "Foo", "normal": "DR"},
+        # name is required and must be model.NameString
+        {"name": "", "normal": "CR"},
+        {"name": "Foo,Bar", "normal": "CR"},
+        # number must be an int or int-castable
+        {"number": "34.5", "normal": "CR"},
+        {"number": 34.5, "normal": "CR"},
+        # normal must be CR or DR
+        {"name": "Foo", "normal": "FR"},
+    ],
+)
+def test_create_account_invalid(client, json_dumps, base_accounts, item):
+    response = client.post("/api/accounts", data=json_dumps(item))
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
