@@ -1,8 +1,11 @@
+import json
+
 import psycopg_pool
 import pytest
 from fastapi.testclient import TestClient
 from sqly import SQL
 
+from blackledger.domain import types
 from blackledger.http import app
 from blackledger.settings import DatabaseSettings
 
@@ -28,3 +31,14 @@ def dbpool():
 def sql():
     settings = DatabaseSettings()
     return SQL(dialect=settings.dialect)
+
+
+@pytest.fixture(scope="session")
+def json_dumps():
+    class TestJsonEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, (types.ID,)):
+                return str(obj)
+            return super().default(obj)
+
+    return TestJsonEncoder().encode

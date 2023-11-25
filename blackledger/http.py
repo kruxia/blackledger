@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import psycopg_pool
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from psycopg.errors import ForeignKeyViolation, UniqueViolation
+from psycopg.errors import ForeignKeyViolation, RaiseException, UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL
 
@@ -54,6 +54,7 @@ async def validation_error_handler(_, exc: ValidationError):
 
 @app.exception_handler(UniqueViolation)
 @app.exception_handler(ForeignKeyViolation)
+@app.exception_handler(RaiseException)  # immutable fields raise this
 async def unique_violation_error_handler(_, exc: Exception):
     return JSONResponse(
         status_code=409,
