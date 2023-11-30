@@ -3,40 +3,31 @@ from http import HTTPStatus
 import pytest
 
 
-@pytest.fixture
-def base_currencies(dbpool):
-    with dbpool.connection() as conn:
-        conn.execute("insert into currency (code) values ('USD'), ('CAD')")
-    yield
-    with dbpool.connection() as conn:
-        conn.execute("delete from currency")
-
-
 @pytest.mark.parametrize(
     "query, results",
     [
         # no query gives all currencies in order inserted
-        ("", [{"code": "USD"}, {"code": "CAD"}]),
+        ("", [{"code": "USD"}, {"code": "CAD"}, {"code": "MSFT"}]),
         # -- FILTERS --
         # filter to code returns that currency
         ("?code=USD", [{"code": "USD"}]),
         # filter to code returns regex matches
         ("?code=U", [{"code": "USD"}]),
-        ("?code=S", [{"code": "USD"}]),
+        ("?code=S", [{"code": "USD"}, {"code": "MSFT"}]),
         ("?code=^S", []),
         # match is case-insensitive
         ("?code=usd", [{"code": "USD"}]),
         # -- SEARCH PARAMS
         # _orderby
-        ("?_orderby=code", [{"code": "CAD"}, {"code": "USD"}]),
+        ("?_orderby=code", [{"code": "CAD"}, {"code": "MSFT"}, {"code": "USD"}]),
         # _limit
         ("?_orderby=code&_limit=1", [{"code": "CAD"}]),
         # _offset
-        ("?_orderby=code&_limit=1&_offset=1", [{"code": "USD"}]),
-        ("?_orderby=code&_limit=1&_offset=2", []),
+        ("?_orderby=code&_limit=1&_offset=1", [{"code": "MSFT"}]),
+        ("?_orderby=code&_limit=1&_offset=3", []),
     ],
 )
-def test_search_currencies_ok(client, base_currencies, query, results):
+def test_search_currencies_ok(client, query, results):
     response = client.get(f"/api/currencies{query}")
     assert response.status_code == HTTPStatus.OK
     assert response.json() == results
@@ -56,7 +47,7 @@ def test_post_currencies_insert_ok(client, data):
     assert response.json() == data
 
 
-def test_post_currencies_update_ok(client, base_currencies):
+def test_post_currencies_update_ok(client):
     # "USD" already exists, but that's fine
     response = client.post("/api/currencies", json={"code": "USD"})
     assert response.status_code == HTTPStatus.OK
