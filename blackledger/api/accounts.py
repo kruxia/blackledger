@@ -69,7 +69,7 @@ async def edit_accounts(req: Request, item: model.Account):
 
 
 @router.get("/balances")
-async def get_accounts_balances(req: Request):
+async def get_balances(req: Request):
     query = [
         "WITH balances AS (",
         "    SELECT a.id account_id,",
@@ -105,15 +105,15 @@ async def get_accounts_balances(req: Request):
 
     balances = {}
     for result in results:
-        if result["id"] not in balances:
-            account = model.Account(**result)
-            balances[result["id"]] = {
+        account = model.Account(**result)
+        if account.id not in balances:
+            balances[account.id] = {
                 "account": account.model_dump(exclude_none=True),
                 "balances": {},
             }
         amount = (
             (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
-        ) * Decimal(account.normal)
-        balances[result["id"]]["balances"][result["curr"]] = str(amount)
+        ) * account.normal
+        balances[account.id]["balances"][result["curr"]] = str(amount)
 
     return list(balances.values())
