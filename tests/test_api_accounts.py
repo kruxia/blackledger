@@ -2,7 +2,20 @@ from http import HTTPStatus
 
 import pytest
 
-from blackledger.domain import types
+from blackledger.domain import model, types
+
+
+@pytest.fixture(scope="function")
+def base_accounts(dbpool, sql):
+    with dbpool.connection() as conn:
+        # select base parent accounts, map by name
+        accounts = {
+            acct.name: acct
+            for acct in sql.select_all(
+                conn, sql.queries.SELECT("account"), Constructor=model.Account
+            )
+        }
+        return accounts
 
 
 @pytest.mark.parametrize(
@@ -114,22 +127,3 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
 def test_create_account_invalid(client, json_dumps, base_accounts, item):
     response = client.post("/api/accounts", data=json_dumps(item))
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-
-
-def test_get_balances_ok(client, balance_transactions):
-    # balances expected from balance_transactions
-    expected_balances = {
-        "Asset": {"MSFT": "5", "USD": "577"},
-        "Expense": {"CAD": "48"},
-        "Income": {"USD": "2500"},
-        "Equity": {"CAD": "48", "MSFT": "5", "USD": "-1923"},
-    }
-    response = client.get("/api/accounts/balances")
-    response_accounts = {
-        # key is basename
-        item["account"]["name"].split("-")[0]: item
-        for item in response.json()
-    }
-    assert response.status_code == HTTPStatus.OK
-    for name, item in response_accounts.items():
-        assert expected_balances[name] == item["balances"]
