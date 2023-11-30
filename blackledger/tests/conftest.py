@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqly import SQL
 
-from blackledger.domain import types
+from blackledger.domain import model, types
 from blackledger.http import app
 from blackledger.settings import DatabaseSettings
 
@@ -42,3 +42,12 @@ def json_dumps():
             return super().default(obj)
 
     return TestJsonEncoder().encode
+
+
+# == DATA FIXTURES ==
+
+
+@pytest.fixture(scope="session", autouse=True)
+def base_currencies(dbpool):
+    with dbpool.connection() as conn:
+        conn.execute("insert into currency (code) values ('USD'), ('CAD'), ('MSFT')")

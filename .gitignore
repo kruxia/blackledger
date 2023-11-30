@@ -1,7 +1,7 @@
+.coverage
 .envrc
-setup.py.isorted
+*.isorted
+*.pyc
 blackledger.egg-info/
 blackledger/__pycache__/__init__.cpython-311.pyc
-.coverage
-*.pyc
 target/
