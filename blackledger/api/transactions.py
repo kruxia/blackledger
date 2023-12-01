@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_serializer, field_validator
 from sqly import Q
 
 from blackledger.domain import model, types
@@ -12,12 +12,21 @@ router = APIRouter(prefix="/transactions")
 
 
 class TransactionFilters(SearchFilters):
-    tx: Optional[model.ID] = None
-    acct: Optional[model.ID] = None
-    curr: Optional[types.CurrencyCode] = None
+    tx: Optional[list[model.ID]] = None
+    acct: Optional[list[model.ID]] = None
+    curr: Optional[list[types.CurrencyCode]] = None
     memo: Optional[str] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("tx", "acct", "curr", mode="before")
+    def convert_list_fields(cls, val):
+        if isinstance(val, str):
+            return [v.strip() for v in val.split(",")]
+
+    @field_serializer("tx", "acct")
+    def serialize_ids(self, val: types.ID):
+        return [str(i.to_uuid()) for i in val] if val else None
 
 
 @router.get("")
@@ -26,6 +35,8 @@ async def search_transactions(req: Request):
     Search for and list transactions.
     """
     filters = TransactionFilters.from_query(req.query_params)
+    search_params = SearchParams.from_query(req.query_params)
+    select_params = search_params.select_params()
     query = [
         # filter transaction ids based on transaction and entry fields
         "WITH filtered_tr AS (",
@@ -41,20 +52,14 @@ async def search_transactions(req: Request):
         ]
     query += [
         ")",
-        # select matching transactions and all associated entries
+        # select matching transactions (only -- entries are separate)
         "SELECT",
-        "  tx.id tx_id, tx.posted, tx.effective, tx.memo, tx.meta,",
-        "  e.*,",
-        "  a.version acct_version",
+        "  DISTINCT tx.*",
         "FROM transaction tx",
         "JOIN filtered_tr",
         "  ON filtered_tr.id = tx.id",
-        "JOIN entry e",
-        "  ON tx.id = e.tx",
-        "JOIN account a",
-        "  ON a.id = e.acct",
     ]
-    select_params = SearchParams.from_query(req.query_params).select_params()
+
     if select_params.get("orderby"):
         query.append(f"ORDER BY {select_params['orderby']}")
     if select_params.get("limit"):
@@ -63,25 +68,29 @@ async def search_transactions(req: Request):
         query.append(f"OFFSET {select_params['offset']}")
 
     async with req.app.pool.connection() as conn:
-        results = req.app.sql.select(conn, query, filters.query_data())
+        results = await req.app.sql.select_all(
+            conn, query, filters.query_data(), Constructor=model.Transaction
+        )
+        transactions = {tx.id: tx for tx in results}
+        print(f"{transactions=}")
 
-    # build data with Transaction.id as key
-    tx_map = {}
-    async for item in results:
-        tx_id = item["tx_id"]
-        if tx_id not in tx_map:
-            tx_map[tx_id] = {
-                "id": tx_id,
-                "posted": item["posted"],
-                "effective": item["effective"],
-                "memo": item["memo"],
-                "meta": item["meta"],
-                "entries": [],
-            }
-        entry = model.Entry(**item)
-        tx_map[tx_id]["entries"].append(entry)
+    # select corresponding entries
+    entries_query = """
+        SELECT e.* FROM entry e
+        JOIN transaction t ON e.tx = t.id
+        WHERE t.id = ANY(:tx)
+    """
+    entries_query_data = {"tx": [str(tx.to_uuid()) for tx in transactions.keys()]}
 
-    return list(tx_map.values())
+    async with req.app.pool.connection() as conn:
+        entries = await req.app.sql.select_all(
+            conn, entries_query, entries_query_data, Constructor=model.Entry
+        )
+
+    for entry in entries:
+        transactions[entry.tx].entries.append(entry)
+
+    return list(transactions.values())
 
 
 @router.post("")

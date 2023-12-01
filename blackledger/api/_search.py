@@ -7,11 +7,19 @@ from sqly import Q
 class SearchFilters(BaseModel):
     @classmethod
     def from_query(cls, qargs):
-        return cls(**{k: v for k, v in qargs.items() if not k.startswith("_")})
+        vals = {k: v for k, v in qargs.items() if not k.startswith("_")}
+        return cls(**vals)
 
     def select_filters(self):
         return [
-            Q.filter(key, op="~*" if isinstance(val, str) else "=")
+            (
+                Q.ANY(key)
+                if isinstance(val, list)
+                else Q.filter(
+                    key,
+                    op="~*" if isinstance(val, str) else "=",
+                )
+            )
             for key, val in self.query_data().items()
         ]
 
@@ -36,7 +44,7 @@ class SearchParams(BaseModel):
         if self.orderby:
             data["orderby"] = ",".join(
                 [
-                    f"{field.strip('-')} desc" if field.startswith("-") else field
+                    f"{field.lstrip('-')} desc" if field.startswith("-") else field
                     for field in [field.strip() for field in self.orderby.split(",")]
                 ]
             )
