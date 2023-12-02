@@ -1,4 +1,5 @@
 #!/bin/bash
+DEFAULT_PATHS="blackledger tests"
 
-isort --profile black ${@:-.}
-black ${@:-.}
+isort --profile black ${@:-$DEFAULT_PATHS}
+black ${@:-$DEFAULT_PATHS}
