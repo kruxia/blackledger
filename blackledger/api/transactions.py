@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -93,7 +94,7 @@ async def search_transactions(req: Request):
     return list(transactions.values())
 
 
-@router.post("")
+@router.post("", status_code=HTTPStatus.CREATED)
 async def post_transaction(req: Request):
     """
     Post transaction.
