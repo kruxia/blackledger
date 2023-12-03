@@ -49,6 +49,20 @@ def test_search_accounts(client, base_accounts, query, expected_names):
 
 
 @pytest.mark.parametrize(
+    "query, status_code",
+    [
+        ("?normal=FR", HTTPStatus.PRECONDITION_FAILED),
+        ("?version=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
+        ("?name=No spaces allowed", HTTPStatus.PRECONDITION_FAILED),
+    ],
+)
+def test_search_accounts_fail(client, base_accounts, query, status_code):
+    response = client.get(f"/api/accounts{query}")
+    print(response.json())
+    assert response.status_code == status_code
+
+
+@pytest.mark.parametrize(
     "name, updates",
     [
         # number can be changed
@@ -79,6 +93,8 @@ def test_update_account_ok(client, json_dumps, base_accounts, name, updates):
         # number must be an int or int-castable
         ("Asset", {"number": "34.5"}),
         ("Asset", {"number": 34.5}),
+        # normal must be DR or CR
+        ("Asset", {"normal": "FR"}),
     ],
 )
 def test_update_account_unprocessable(client, json_dumps, base_accounts, name, updates):
@@ -86,6 +102,7 @@ def test_update_account_unprocessable(client, json_dumps, base_accounts, name, u
     data = account.model_dump(exclude_none=True) | updates
 
     response = client.post("/api/accounts", data=json_dumps(data))
+    print(response.json())
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 

@@ -129,7 +129,8 @@ async def post_transaction(req: Request):
                     status_code=404, detail=f"Account not found: {entry_item.acct}"
                 )
 
-            # if we've updated the acct_version in this transaction, use it
+            # if we've updated the acct_version in this transaction, use it (we know the
+            # earlier account version was correct because it has been updated.)
             if entry_item.acct in entry_accts_versions:
                 entry_item.acct_version = entry_accts_versions[entry_item.acct]
 
