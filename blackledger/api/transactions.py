@@ -126,7 +126,8 @@ async def post_transaction(req: Request):
             )
             if acct is None:
                 raise HTTPException(
-                    status_code=404, detail=f"Account not found: {entry_item.acct}"
+                    status_code=HTTPStatus.NOT_FOUND,
+                    detail=f"Account not found: {entry_item.acct}",
                 )
 
             # if we've updated the acct_version in this transaction, use it (we know the
@@ -136,7 +137,8 @@ async def post_transaction(req: Request):
 
             if acct["version"] != entry_item.acct_version:
                 raise HTTPException(
-                    status_code=409, detail="Entry account_version is out of date"
+                    status_code=HTTPStatus.CONFLICT,
+                    detail="Entry account_version is out of date",
                 )
 
             entry_item.tx = tx["id"]
