@@ -97,7 +97,7 @@ class Entry(Model):
         """
         if self.dr:
             return self.dr * types.Normal.DR
-        if self.cr:
+        else:
             return self.cr * types.Normal.CR
 
 
