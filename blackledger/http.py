@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 
 import psycopg_pool
 from fastapi import FastAPI
@@ -35,7 +36,7 @@ app.include_router(api_router, prefix="/api")
 @app.exception_handler(NotImplementedError)
 async def not_implemented_error_handler(_, exc: NotImplementedError):
     return JSONResponse(
-        status_code=404,
+        status_code=HTTPStatus.NOT_FOUND,
         content={"message": f"{str(exc)}: Not implemented"},
     )
 
@@ -47,7 +48,7 @@ async def validation_error_handler(_, exc: ValidationError):
         for key in error.get("ctx", {}):
             error["ctx"][key] = str(error["ctx"][key])
     return JSONResponse(
-        status_code=412,
+        status_code=HTTPStatus.PRECONDITION_FAILED,
         content=errors,
     )
 
@@ -57,6 +58,6 @@ async def validation_error_handler(_, exc: ValidationError):
 @app.exception_handler(RaiseException)  # immutable fields raise this
 async def unique_violation_error_handler(_, exc: Exception):
     return JSONResponse(
-        status_code=409,
+        status_code=HTTPStatus.CONFLICT,
         content={"message": str(exc)},
     )
