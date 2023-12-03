@@ -100,8 +100,6 @@ class Entry(Model):
         if self.cr:
             return self.cr * types.Normal.CR
 
-        raise ValueError("Invalid Entry: dr and cr are both undefined")
-
 
 class NewEntry(Entry):
     acct_version: Optional[ID] = None
