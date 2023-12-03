@@ -8,7 +8,7 @@ services:
       context: ./
       dockerfile: ./Dockerfile
       target: develop
-    # # Use the following to test performance when `target: deploy`
+    # # Use the following to test performance
     # command: ["gunicorn", "-w", "16", "-k", "uvicorn.workers.UvicornWorker",
     #     "--bind", "0.0.0.0:8000", "blackledger.http:app"]
     volumes:
