@@ -93,6 +93,36 @@ def test_post_transactions_ok(client, base_currencies, test_accounts, json_dumps
             acct_versions[entry["acct"]] = entry["id"]
 
 
+def test_post_transaction_not_found(
+    client, test_accounts, test_transactions, json_dumps
+):
+    """
+    When posting a transaction to an account that doesn't exist, the
+    response returns 404 NOT FOUND
+    """
+
+    post_tx = {
+        "memo": "tx with unknown debit account",
+        "entries": [
+            {
+                "acct": types.ID(),
+                "dr": "1000",
+                "curr": "USD",
+            },
+            {
+                "acct": test_accounts["Income"].id,
+                "cr": "1000",
+                "curr": "USD",
+            },
+        ],
+    }
+
+    response = client.post("/api/transactions", data=json_dumps(post_tx))
+    response_tx = response.json()
+    print(response.status_code, response_tx)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 @pytest.mark.parametrize(
     "acct_version",
     [
@@ -112,7 +142,7 @@ def test_post_transaction_conflict(
 
     for version in acct_version:
         post_tx = {
-            "memo": "first tx",
+            "memo": "not the first tx",
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
@@ -133,3 +163,104 @@ def test_post_transaction_conflict(
         response_tx = response.json()
         print(response.status_code, response_tx)
         assert response.status_code == HTTPStatus.CONFLICT
+
+
+def test_post_transaction_precondition_failed(client, test_accounts, json_dumps):
+    """
+    When posting a transaction with invalid input data, the response has the status code
+    412 PRECONDITION FAILED.
+    """
+
+    for post_tx in [
+        {
+            "memo": "amounts must be strings, not ints",
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "acct_version": None,
+                    "dr": 1000,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "acct_version": None,
+                    "cr": 1000,
+                    "curr": "USD",
+                },
+            ],
+        },
+        {
+            "memo": "amounts must be strings, not floats",
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "acct_version": None,
+                    "dr": 1000.00,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "acct_version": None,
+                    "cr": 1000.00,
+                    "curr": "USD",
+                },
+            ],
+        },
+        {
+            "memo": "acct must be valid types.ID",
+            "entries": [
+                {
+                    "acct": "NOT_AN_ID",
+                    "acct_version": None,
+                    "dr": 1000,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "acct_version": None,
+                    "cr": 1000,
+                    "curr": "USD",
+                },
+            ],
+        },
+        {
+            "memo": "either cr or dr must be defined",
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "acct_version": None,
+                    # "dr": "",
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "acct_version": None,
+                    # "cr": "1000",
+                    "curr": "USD",
+                },
+            ],
+        },
+        {
+            "memo": "cr or dr must not both be defined",
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "acct_version": None,
+                    "dr": "1000",
+                    "cr": "1000",
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "acct_version": None,
+                    "dr": "1000",
+                    "cr": "1000",
+                    "curr": "USD",
+                },
+            ],
+        },
+    ]:
+        response = client.post("/api/transactions", data=json_dumps(post_tx))
+        response_tx = response.json()
+        print(post_tx["memo"], response.status_code, response_tx)
+        assert response.status_code == HTTPStatus.PRECONDITION_FAILED

@@ -39,10 +39,6 @@ class ID(UUID):
         return base58.b58encode(self.bytes).decode()
 
     @classmethod
-    def from_bytes(cls, value: bytes):
-        return cls(base58.b58encode(value))
-
-    @classmethod
     def from_uuid(cls, value: str | UUID):
         if isinstance(value, str):
             value = UUID(value)
@@ -52,8 +48,6 @@ class ID(UUID):
     def field_converter(cls, value):
         if isinstance(value, str):
             value = cls(value)
-        if isinstance(value, UUID) and not isinstance(value, cls):
-            value = cls.from_uuid(value)
         return value
 
     def to_uuid(self):
