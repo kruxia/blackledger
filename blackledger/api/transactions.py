@@ -38,7 +38,7 @@ async def search_transactions(req: Request):
     filters = TransactionFilters.from_query(req.query_params)
     search_params = SearchParams.from_query(req.query_params)
     select_params = search_params.select_params()
-    query = [
+    tx_query = [
         # filter transaction ids based on transaction and entry fields
         "WITH filtered_tr AS (",
         "  SELECT distinct(transaction.id)",
@@ -47,11 +47,11 @@ async def search_transactions(req: Request):
         "    ON transaction.id = entry.tx",
     ]
     if filters.query_data():
-        query += [
+        tx_query += [
             "  WHERE",
             "\n    AND ".join(filters.select_filters()),
         ]
-    query += [
+    tx_query += [
         ")",
         # select matching transactions (only -- entries are separate)
         "SELECT",
@@ -62,18 +62,11 @@ async def search_transactions(req: Request):
     ]
 
     if select_params.get("orderby"):
-        query.append(f"ORDER BY {select_params['orderby']}")
+        tx_query.append(f"ORDER BY {select_params['orderby']}")
     if select_params.get("limit"):
-        query.append(f"LIMIT {select_params['limit']}")
+        tx_query.append(f"LIMIT {select_params['limit']}")
     if select_params.get("offset"):
-        query.append(f"OFFSET {select_params['offset']}")
-
-    async with req.app.pool.connection() as conn:
-        results = await req.app.sql.select_all(
-            conn, query, filters.query_data(), Constructor=model.Transaction
-        )
-        transactions = {tx.id: tx for tx in results}
-        print(f"{transactions=}")
+        tx_query.append(f"OFFSET {select_params['offset']}")
 
     # select corresponding entries
     entries_query = """
@@ -81,14 +74,18 @@ async def search_transactions(req: Request):
         JOIN transaction t ON e.tx = t.id
         WHERE t.id = ANY(:tx)
     """
-    entries_query_data = {"tx": [str(tx.to_uuid()) for tx in transactions.keys()]}
 
     async with req.app.pool.connection() as conn:
-        entries = await req.app.sql.select_all(
-            conn, entries_query, entries_query_data, Constructor=model.Entry
+        tx_results = await req.app.sql.select_all(
+            conn, tx_query, filters.query_data(), Constructor=model.Transaction
+        )
+        transactions = {tx.id: tx for tx in tx_results}
+        entries_params = {"tx": [str(tx.to_uuid()) for tx in transactions.keys()]}
+        entries_results = await req.app.sql.select_all(
+            conn, entries_query, entries_params, Constructor=model.Entry
         )
 
-    for entry in entries:
+    for entry in entries_results:
         transactions[entry.tx].entries.append(entry)
 
     return list(transactions.values())
