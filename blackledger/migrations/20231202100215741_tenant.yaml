@@ -2,7 +2,7 @@ app: blackledger
 ts: 20231202100215741
 name: tenant
 depends:
-- blackledger:20231110041521593_entry
+- blackledger:20230718035300931_ulid
 doc: null
 up:
 - |-
@@ -12,21 +12,7 @@ up:
     , name    varchar         NOT NULL UNIQUE
     , created timestamptz(6)  NOT NULL DEFAULT now()
   );
-  INSERT INTO tenant (name) VALUES ('home');
 
-  ALTER TABLE account DROP CONSTRAINT account_name_key;
-  ALTER TABLE account ADD COLUMN tenant_id uuid;
-  UPDATE account SET tenant_id = (select id from tenant where name = 'home');
-  ALTER TABLE account ALTER COLUMN tenant_id SET NOT NULL;
-  ALTER TABLE account ADD CONSTRAINT account_tenant_id_name_key UNIQUE (tenant_id, name);
-
-  ALTER TABLE transaction ADD COLUMN tenant_id uuid;
-  UPDATE transaction SET tenant_id = (select id from tenant where name = 'home');
-  ALTER TABLE transaction ALTER COLUMN tenant_id SET NOT NULL;
-
-  ALTER TABLE entry ADD COLUMN tenant_id uuid;
-  UPDATE entry SET tenant_id = (select id from tenant where name = 'home');
-  ALTER TABLE entry ALTER COLUMN tenant_id SET NOT NULL;
 dn:
 - |-
   ALTER TABLE entry DROP COLUMN tenant_id;

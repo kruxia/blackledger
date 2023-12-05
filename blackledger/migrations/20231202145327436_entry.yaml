@@ -1,10 +1,10 @@
 app: blackledger
-ts: 20231110041521593
+ts: 20231202145327436
 name: entry
 depends:
 - blackledger:20231110035214790_currency
-- blackledger:20231110035557748_account
-- blackledger:20231110041326051_transaction
+- blackledger:20231202145316665_account
+- blackledger:20231202145323950_transaction
 doc: >-
   Transaction entries: one per leg. Fields:
 
@@ -22,12 +22,13 @@ up:
 - |-
   CREATE SEQUENCE entry_id_seq AS smallint CYCLE;
   CREATE TABLE entry (
-    id      uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
-    , tx    uuid      NOT NULL references transaction(id)
-    , acct  uuid      NOT NULL references account(id)
-    , curr  varchar   NOT NULL references currency(code)
-    , dr    decimal
-    , cr    decimal
+    id          uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
+    , tenant_id uuid      NOT NULL references tenant(id)
+    , tx        uuid      NOT NULL references transaction(id)
+    , acct      uuid      NOT NULL references account(id)
+    , curr      varchar   NOT NULL references currency(code)
+    , dr        decimal
+    , cr        decimal
     , CHECK ((cr is null and dr > 0)
           OR (dr is null and cr > 0))
   );

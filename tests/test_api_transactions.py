@@ -96,7 +96,7 @@ def test_post_transactions_ok(
             else:
                 assert entry.get("acct_version") is not None
 
-        response = client.post("/api/transactions", data=json_dumps(post_tx))
+        response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
         print(response.status_code, response_tx)
         assert response.status_code == HTTPStatus.CREATED
@@ -133,7 +133,7 @@ def test_post_transaction_not_found(
         ],
     }
 
-    response = client.post("/api/transactions", data=json_dumps(post_tx))
+    response = client.post("/api/transactions", content=json_dumps(post_tx))
     response_tx = response.json()
     print(response.status_code, response_tx)
     assert response.status_code == HTTPStatus.NOT_FOUND
@@ -178,7 +178,7 @@ def test_post_transaction_conflict(
             ],
         }
 
-        response = client.post("/api/transactions", data=json_dumps(post_tx))
+        response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
         print(response.status_code, response_tx)
         assert response.status_code == HTTPStatus.CONFLICT
@@ -296,7 +296,7 @@ def test_post_transaction_precondition_failed(
             ],
         },
     ]:
-        response = client.post("/api/transactions", data=json_dumps(post_tx))
+        response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
         print(post_tx["memo"], response.status_code, response_tx)
         assert response.status_code == HTTPStatus.PRECONDITION_FAILED
