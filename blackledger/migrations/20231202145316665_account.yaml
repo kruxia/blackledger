@@ -24,7 +24,7 @@ up:
     , parent_id uuid      REFERENCES account(id)          -- optional parent account
     , name      varchar   NOT NULL                        -- name of the account
     , number    smallint                                  -- optional account number
-    , UNIQUE NULLS NOT DISTINCT (parent_id, name)         -- unique name per parent
+    , UNIQUE NULLS NOT DISTINCT (tenant_id, parent_id, name) -- unique name per context
     , UNIQUE (tenant_id, number)                          -- unique number per tenant
 
     , normal    varchar(2)

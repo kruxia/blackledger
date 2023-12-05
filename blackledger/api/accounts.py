@@ -15,6 +15,7 @@ class AccountFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[model.ID] = None
     name: Optional[constr(pattern=r"^\S+$")] = None
+    tenant_id: Optional[model.ID] = None
     parent_id: Optional[model.ID] = None
     number: Optional[int] = None
     normal: Optional[types.Normal] = None

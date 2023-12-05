@@ -13,6 +13,7 @@ router = APIRouter(prefix="/transactions")
 
 
 class TransactionFilters(SearchFilters):
+    tenant_id: Optional[model.ID] = None
     tx: Optional[list[model.ID]] = None
     acct: Optional[list[model.ID]] = None
     curr: Optional[list[types.CurrencyCode]] = None
@@ -26,8 +27,12 @@ class TransactionFilters(SearchFilters):
             return [v.strip() for v in val.split(",")]
 
     @field_serializer("tx", "acct")
-    def serialize_ids(self, val: types.ID):
+    def serialize_ids(self, val: list[types.ID]):
         return [str(i.to_uuid()) for i in val] if val else None
+
+    @field_serializer("tenant_id")
+    def serialize_tenant_id(self, val: types.ID):
+        return val.to_uuid()
 
 
 @router.get("")
