@@ -53,11 +53,22 @@ def base_currencies(dbpool):
         conn.execute("insert into currency (code) values ('USD'), ('CAD'), ('MSFT')")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def base_tenant(dbpool, sql):
+    with dbpool.connection() as conn:
+        return sql.select_one(
+            conn,
+            sql.queries.INSERT("tenant", ["name"], returning=True),
+            {"name": "test"},
+            Constructor=model.Tenant,
+        )
+
+
 # -- Test-scoped fixtures --
 
 
 @pytest.fixture(scope="function")
-def test_accounts(dbpool, sql):
+def test_accounts(dbpool, sql, base_tenant):
     """
     Provide a set of accounts that is scoped to this particular test function.
     """
@@ -77,8 +88,10 @@ def test_accounts(dbpool, sql):
                 basename: acct
                 for acct in sql.select_all(
                     conn,
-                    sql.queries.INSERT("account", ["name", "normal"], returning=True),
-                    {"name": name, "normal": normal},
+                    sql.queries.INSERT(
+                        "account", ["tenant_id", "name", "normal"], returning=True
+                    ),
+                    {"tenant_id": base_tenant.id, "name": name, "normal": normal},
                     Constructor=model.Account,
                 )
             }
@@ -87,7 +100,7 @@ def test_accounts(dbpool, sql):
 
 
 @pytest.fixture(scope="function")
-def test_transactions(dbpool, sql, test_accounts):
+def test_transactions(dbpool, sql, test_accounts, base_tenant):
     accts = test_accounts
     transactions = []
     with dbpool.connection() as conn:
@@ -140,12 +153,14 @@ def test_transactions(dbpool, sql, test_accounts):
         ]:
             tx = sql.select_one(
                 conn,
-                sql.queries.INSERT("transaction", ["memo"], returning=True),
-                {"memo": item["memo"]},
+                sql.queries.INSERT(
+                    "transaction", ["memo", "tenant_id"], returning=True
+                ),
+                {"memo": item["memo"], "tenant_id": base_tenant.id},
             )
             tx["entries"] = []
             for new_entry in item["entries"]:
-                new_entry["tx"] = tx["id"]
+                new_entry |= {"tx": tx["id"], "tenant_id": base_tenant.id}
                 entry = sql.select_one(
                     conn,
                     sql.queries.INSERT("entry", new_entry, returning=True),
