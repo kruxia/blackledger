@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from blackledger.api import accounts, currencies, transactions
+from blackledger.api import accounts, currencies, tenants, transactions
 from blackledger.meta import __name__, __version__
 
 api_router = APIRouter()
@@ -16,4 +16,5 @@ async def home():
 
 api_router.include_router(accounts.router)
 api_router.include_router(currencies.router)
+api_router.include_router(tenants.router)
 api_router.include_router(transactions.router)
