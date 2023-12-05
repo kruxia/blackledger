@@ -1,15 +1,15 @@
 app: blackledger
-ts: 20231110035557748
+ts: 20231202145316665
 name: account
 depends:
-- blackledger:20230718035300931_ulid
-- blackledger:20231110035214790_currency
+- blackledger:20231202100215741_tenant
 doc: >-
   account: Chart of all accounts. Fields:
 
   * id = unique primary key account identifier
+  * tenant_id = required tenant identifier
   * name = the name of the account, unique within the parent relationship
-  * number = the (optional) account number, unique if provided
+  * number = the (optional) account number, unique per tenant if provided
   * normal = the "normal side" (debit = 'DR' or credit = 'CR') for account display
   * curr = the operating currency (code) for this account
   * version = the account version, which equals the latest transaction entry id, for
@@ -20,25 +20,18 @@ up:
   CREATE SEQUENCE account_id_seq AS smallint CYCLE;
   CREATE TABLE account (
     id          uuid      PRIMARY KEY DEFAULT gen_id('account_id_seq')
-
-    , name      varchar   NOT NULL UNIQUE               -- name of the account
-    , parent_id uuid      REFERENCES account(id)        -- optional parent account
-    , UNIQUE NULLS NOT DISTINCT (parent_id, name)       -- unique name per parent (null
-                                                        --   parents are all the same)
-    , number    smallint   UNIQUE                       -- optional unique account number
+    , tenant_id uuid      NOT NULL REFERENCES tenant(id)  -- tenant identifier
+    , parent_id uuid      REFERENCES account(id)          -- optional parent account
+    , name      varchar   NOT NULL                        -- name of the account
+    , number    smallint                                  -- optional account number
+    , UNIQUE NULLS NOT DISTINCT (parent_id, name)         -- unique name per parent
+    , UNIQUE (tenant_id, number)                          -- unique number per tenant
 
     , normal    varchar(2)
                   NOT NULL
                   CHECK (normal in ('DR', 'CR'))
     , version   uuid                                    -- account version (=last entry)
   );
-  INSERT INTO account (name, number, normal)
-  VALUES
-    ('Asset', 1000, 'DR'),
-    ('Expense', 5000, 'DR'),
-    ('Liability', 2000, 'CR'),
-    ('Income', 4000, 'CR'),
-    ('Equity', 3000, 'CR');
 dn:
 - |-
   DROP TABLE account;

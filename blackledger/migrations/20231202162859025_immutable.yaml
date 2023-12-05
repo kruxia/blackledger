@@ -1,8 +1,8 @@
 app: blackledger
-ts: 20231121030049089
+ts: 20231202162859025
 name: immutable
 depends:
-- blackledger:20231202100215741_tenant
+- blackledger:20231202145327436_entry
 doc: |-
   The following data are immutable:
 

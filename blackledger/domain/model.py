@@ -33,9 +33,9 @@ class Currency(Model):
 class Account(Model):
     id: Optional[ID] = None
     tenant_id: ID
+    parent_id: Optional[ID] = None
     name: types.NameString
     normal: types.Normal
-    parent_id: Optional[ID] = None
     number: Optional[int] = None
     version: Optional[ID] = None
 

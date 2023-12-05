@@ -1,14 +1,15 @@
 app: blackledger
-ts: 20231110041326051
+ts: 20231202145323950
 name: transaction
 depends:
-- blackledger:20231110035557748_account
+- blackledger:20231202100215741_tenant
 doc:
 up:
 - |-
   CREATE SEQUENCE transaction_id_seq AS smallint CYCLE;
   CREATE TABLE transaction (
     id          uuid            PRIMARY KEY DEFAULT gen_id('transaction_id_seq')
+    , tenant_id uuid            NOT NULL REFERENCES tenant(id)
     , posted    timestamptz(6)  NOT NULL DEFAULT now()
     , effective timestamptz(6)  NOT NULL DEFAULT now()
     , memo      text

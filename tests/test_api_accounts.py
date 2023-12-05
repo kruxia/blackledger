@@ -5,17 +5,36 @@ import pytest
 from blackledger.domain import model, types
 
 
-@pytest.fixture(scope="function")
-def base_accounts(dbpool, sql):
+@pytest.fixture(scope="session")
+def base_accounts(dbpool, sql, base_tenant):
+    accounts = {}
     with dbpool.connection() as conn:
-        # select base parent accounts, map by name
-        accounts = {
-            acct.name: acct
-            for acct in sql.select_all(
-                conn, sql.queries.SELECT("account"), Constructor=model.Account
-            )
-        }
-        return accounts
+        # map accounts by basename
+        for name, number, normal in [
+            ("Asset", 1000, "DR"),
+            ("Expense", 5000, "DR"),
+            ("Liability", 2000, "CR"),
+            ("Income", 4000, "CR"),
+            ("Equity", 3000, "CR"),
+        ]:
+            accounts |= {
+                name: sql.select_one(
+                    conn,
+                    sql.queries.INSERT(
+                        "account",
+                        ["tenant_id", "name", "number", "normal"],
+                        returning=True,
+                    ),
+                    {
+                        "tenant_id": base_tenant.id,
+                        "name": name,
+                        "number": number,
+                        "normal": normal,
+                    },
+                    Constructor=model.Account,
+                )
+            }
+    yield accounts
 
 
 @pytest.mark.parametrize(
@@ -71,15 +90,13 @@ def test_search_accounts_fail(client, base_accounts, query, status_code):
         ("Asset", {"number": "100"}),
         # name can be changed
         ("Asset", {"name": "Assets"}),
-        # change it back
-        ("Assets", {"name": "Asset"}),
     ],
 )
 def test_update_account_ok(client, json_dumps, base_accounts, name, updates):
     account = base_accounts[name]
     data = account.model_dump(exclude_none=True) | updates
 
-    response = client.post("/api/accounts", data=json_dumps(data))
+    response = client.post("/api/accounts", content=json_dumps(data))
     assert response.status_code == HTTPStatus.OK
 
 
@@ -101,7 +118,7 @@ def test_update_account_unprocessable(client, json_dumps, base_accounts, name, u
     account = base_accounts[name]
     data = account.model_dump(exclude_none=True) | updates
 
-    response = client.post("/api/accounts", data=json_dumps(data))
+    response = client.post("/api/accounts", content=json_dumps(data))
     print(response.json())
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
@@ -121,7 +138,7 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
     account = base_accounts[name]
     data = account.model_dump(exclude_none=True) | updates
 
-    response = client.post("/api/accounts", data=json_dumps(data))
+    response = client.post("/api/accounts", content=json_dumps(data))
     assert response.status_code == HTTPStatus.CONFLICT
 
 
@@ -142,5 +159,5 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
     ],
 )
 def test_create_account_invalid(client, json_dumps, base_accounts, item):
-    response = client.post("/api/accounts", data=json_dumps(item))
+    response = client.post("/api/accounts", content=json_dumps(item))
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
