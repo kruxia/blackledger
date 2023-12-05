@@ -127,6 +127,17 @@ class Transaction(Model):
         assert all(
             v == Decimal("0") for v in sums.values()
         ), "transaction is unbalanced"
+        return self
+
+    @model_validator(mode="after")
+    def one_tenant(self):
+        """
+        A transaction and its entries must belong to a single tenant.
+        """
+        assert all(
+            e.tenant_id == self.tenant_id for e in self.entries
+        ), "transaction entries must belong to the same tenant as the transaction"
+        return self
 
 
 class NewTransaction(Transaction):
