@@ -32,6 +32,7 @@ class Currency(Model):
 
 class Account(Model):
     id: Optional[ID] = None
+    tenant_id: ID
     name: types.NameString
     normal: types.Normal
     parent_id: Optional[ID] = None
@@ -57,6 +58,7 @@ class Account(Model):
 
 class Entry(Model):
     id: Optional[ID] = None
+    tenant_id: ID
     tx: Optional[ID] = None
     acct: ID
     dr: Optional[Decimal] = None
@@ -107,6 +109,7 @@ class NewEntry(Entry):
 
 class Transaction(Model):
     id: Optional[ID] = None
+    tenant_id: ID
     posted: Optional[datetime] = None
     effective: Optional[datetime] = None
     memo: Optional[str] = None
@@ -128,3 +131,9 @@ class Transaction(Model):
 
 class NewTransaction(Transaction):
     entries: list[NewEntry] = Field(default_factory=list)
+
+
+class Tenant(Model):
+    id: Optional[ID] = None
+    name: types.NameString
+    created: Optional[datetime] = None

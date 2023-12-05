@@ -2,7 +2,7 @@ app: blackledger
 ts: 20231121030049089
 name: immutable
 depends:
-- blackledger:20231110041521593_entry
+- blackledger:20231202100215741_tenant
 doc: |-
   The following data are immutable:
 

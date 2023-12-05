@@ -58,10 +58,8 @@ async def edit_accounts(req: Request, item: model.Account):
     """
     Insert/update account.
     """
-    print(f"{item=}")
     sql = req.app.sql
     data = item.model_dump(exclude_none=True)
-    print(f"{data=}")
     query = sql.queries.UPSERT("account", fields=data, key=["id"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Account)

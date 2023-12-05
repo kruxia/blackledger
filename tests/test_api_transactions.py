@@ -53,7 +53,9 @@ def test_search_transactions(client, test_transactions, query, memos):
         assert len(response_tx["entries"]) == len(test_tx["entries"])
 
 
-def test_post_transactions_ok(client, base_currencies, test_accounts, json_dumps):
+def test_post_transactions_ok(
+    client, base_tenant, base_currencies, test_accounts, json_dumps
+):
     """
     The first transaction posted to an account should not have an 'acct_version' because
     it doesn't yet exist.
@@ -64,9 +66,20 @@ def test_post_transactions_ok(client, base_currencies, test_accounts, json_dumps
     post_txs = [
         {
             "memo": "first tx",
+            "tenant_id": base_tenant.id,
             "entries": [
-                {"acct": test_accounts["Asset"].id, "dr": "1000", "curr": "USD"},
-                {"acct": test_accounts["Income"].id, "cr": "1000", "curr": "USD"},
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
+                    "dr": "1000",
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
+                    "cr": "1000",
+                    "curr": "USD",
+                },
             ],
         }
     ]
@@ -94,7 +107,7 @@ def test_post_transactions_ok(client, base_currencies, test_accounts, json_dumps
 
 
 def test_post_transaction_not_found(
-    client, test_accounts, test_transactions, json_dumps
+    client, base_tenant, test_accounts, test_transactions, json_dumps
 ):
     """
     When posting a transaction to an account that doesn't exist, the
@@ -103,14 +116,17 @@ def test_post_transaction_not_found(
 
     post_tx = {
         "memo": "tx with unknown debit account",
+        "tenant_id": base_tenant.id,
         "entries": [
             {
                 "acct": types.ID(),
+                "tenant_id": base_tenant.id,
                 "dr": "1000",
                 "curr": "USD",
             },
             {
                 "acct": test_accounts["Income"].id,
+                "tenant_id": base_tenant.id,
                 "cr": "1000",
                 "curr": "USD",
             },
@@ -133,7 +149,7 @@ def test_post_transaction_not_found(
     ],
 )
 def test_post_transaction_conflict(
-    client, test_accounts, test_transactions, acct_version, json_dumps
+    client, base_tenant, test_accounts, test_transactions, acct_version, json_dumps
 ):
     """
     When posting a transaction to an account that already has transactions, the
@@ -143,15 +159,18 @@ def test_post_transaction_conflict(
     for version in acct_version:
         post_tx = {
             "memo": "not the first tx",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": version,
                     "dr": "1000",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": version,
                     "cr": "1000",
                     "curr": "USD",
@@ -165,7 +184,9 @@ def test_post_transaction_conflict(
         assert response.status_code == HTTPStatus.CONFLICT
 
 
-def test_post_transaction_precondition_failed(client, test_accounts, json_dumps):
+def test_post_transaction_precondition_failed(
+    client, base_tenant, test_accounts, json_dumps
+):
     """
     When posting a transaction with invalid input data, the response has the status code
     412 PRECONDITION FAILED.
@@ -174,15 +195,18 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
     for post_tx in [
         {
             "memo": "amounts must be strings, not ints",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "dr": 1000,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "cr": 1000,
                     "curr": "USD",
@@ -191,15 +215,18 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
         },
         {
             "memo": "amounts must be strings, not floats",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "dr": 1000.00,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "cr": 1000.00,
                     "curr": "USD",
@@ -208,15 +235,18 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
         },
         {
             "memo": "acct must be valid types.ID",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": "NOT_AN_ID",
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "dr": 1000,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "cr": 1000,
                     "curr": "USD",
@@ -225,15 +255,18 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
         },
         {
             "memo": "either cr or dr must be defined",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     # "dr": "",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     # "cr": "1000",
                     "curr": "USD",
@@ -242,9 +275,11 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
         },
         {
             "memo": "cr or dr must not both be defined",
+            "tenant_id": base_tenant.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "dr": "1000",
                     "cr": "1000",
@@ -252,6 +287,7 @@ def test_post_transaction_precondition_failed(client, test_accounts, json_dumps)
                 },
                 {
                     "acct": test_accounts["Income"].id,
+                    "tenant_id": base_tenant.id,
                     "acct_version": None,
                     "dr": "1000",
                     "cr": "1000",
