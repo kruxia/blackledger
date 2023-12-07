@@ -15,12 +15,5 @@ up:
 
 dn:
 - |-
-  ALTER TABLE entry DROP COLUMN tenant_id;
-  ALTER TABLE transaction DROP COLUMN tenant_id;
-  ALTER TABLE account DROP CONSTRAINT account_tenant_id_name_key;
-  ALTER TABLE account DROP COLUMN tenant_id;
-
   DROP TABLE tenant;
   DROP SEQUENCE tenant_id_seq;
-
-  ALTER TABLE account ADD UNIQUE (name);

@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import ConfigDict, field_serializer, field_validator
+from pydantic import ConfigDict, Field, field_serializer, field_validator
 from sqly import Q
 
 from blackledger.domain import model, types
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/transactions")
 
 
 class TransactionFilters(SearchFilters):
-    tenant_id: Optional[model.ID] = None
+    tenant_id: Optional[model.ID] = Field(default=None, alias="tenant")
     tx: Optional[list[model.ID]] = None
     acct: Optional[list[model.ID]] = None
     curr: Optional[list[types.CurrencyCode]] = None
@@ -33,6 +33,16 @@ class TransactionFilters(SearchFilters):
     @field_serializer("tenant_id")
     def serialize_tenant_id(self, val: types.ID):
         return val.to_uuid()
+
+    def select_filters(self):
+        """
+        Specify transaction.tenant_id to resolve ambiguity in where clause between
+        transaction and entry tables.
+        """
+        return [
+            "transaction.tenant_id = :tenant_id" if "tenant_id" in filter else filter
+            for filter in super().select_filters()
+        ]
 
 
 @router.get("")
