@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import psycopg_pool
 import pytest
@@ -39,6 +40,8 @@ def json_dumps():
         def default(self, obj):
             if isinstance(obj, (types.ID,)):
                 return str(obj)
+            if isinstance(obj, datetime):
+                return obj.isoformat()
             return super().default(obj)
 
     return TestJsonEncoder().encode
