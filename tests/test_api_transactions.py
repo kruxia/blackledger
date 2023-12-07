@@ -4,6 +4,8 @@ import pytest
 
 from blackledger.domain import types
 
+# -- SEARCH TRANSACTIONS --
+
 
 @pytest.mark.parametrize(
     "query, memos",
@@ -11,6 +13,7 @@ from blackledger.domain import types
         # -- FILTERS --
         ("?_orderby=id&curr=CAD", ["lunch", "dinner"]),
         ("?_orderby=id&memo=@", ["5 MSFT @ 377.43 USD"]),
+        (f"?tenant={types.ID()}", []),
         # -- SELECT PARAMS --
         # orderby
         (
@@ -51,6 +54,9 @@ def test_search_transactions(client, test_transactions, query, memos):
     for response_tx in response_data:
         test_tx = test_transactions[test_transaction_ids.index(response_tx["id"])]
         assert len(response_tx["entries"]) == len(test_tx["entries"])
+
+
+# -- POST TRANSACTION --
 
 
 def test_post_transactions_ok(

@@ -37,6 +37,9 @@ def base_accounts(dbpool, sql, base_tenant):
     yield accounts
 
 
+# -- SEARCH ACCOUNTS --
+
+
 @pytest.mark.parametrize(
     "query, expected_names",
     [
@@ -46,6 +49,7 @@ def base_accounts(dbpool, sql, base_tenant):
         ("?normal=CR", ["Liability", "Income", "Equity"]),
         ("?name=e", ["Asset", "Expense", "Income", "Equity"]),
         ("?name=^E", ["Expense", "Equity"]),
+        (f"?tenant={types.ID()}", []),
         # -- SEARCH PARAMS --
         ("?_orderby=number", ["Asset", "Liability", "Equity", "Income", "Expense"]),
         ("?_orderby=-number", ["Expense", "Income", "Equity", "Liability", "Asset"]),
@@ -67,18 +71,31 @@ def test_search_accounts(client, base_accounts, query, expected_names):
     assert response_names == expected_names
 
 
+def test_search_accounts_unmatched_tenant(client, base_accounts):
+    response = client.get(f"/api/accounts?tenant={types.ID()}")
+    assert response.status_code == HTTPStatus.OK
+    items = response.json()
+    assert len(items) == 0
+
+
 @pytest.mark.parametrize(
     "query, status_code",
     [
         ("?normal=FR", HTTPStatus.PRECONDITION_FAILED),
         ("?version=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
         ("?name=No spaces allowed", HTTPStatus.PRECONDITION_FAILED),
+        ("?tenant=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
+        ("?parent=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
+        ("?number=INTS_ONLY", HTTPStatus.PRECONDITION_FAILED),
     ],
 )
 def test_search_accounts_fail(client, base_accounts, query, status_code):
     response = client.get(f"/api/accounts{query}")
     print(response.json())
     assert response.status_code == status_code
+
+
+# -- EDIT ACCOUNT --
 
 
 @pytest.mark.parametrize(
@@ -140,6 +157,9 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
 
     response = client.post("/api/accounts", content=json_dumps(data))
     assert response.status_code == HTTPStatus.CONFLICT
+
+
+# -- CREATE ACCOUNT --
 
 
 @pytest.mark.parametrize(

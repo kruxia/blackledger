@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Request
-from pydantic import ConfigDict, constr, field_serializer, field_validator
+from pydantic import ConfigDict, Field, constr, field_serializer, field_validator
 
 from blackledger.domain import model, types
 
@@ -15,8 +15,8 @@ class AccountFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[model.ID] = None
     name: Optional[constr(pattern=r"^\S+$")] = None
-    tenant_id: Optional[model.ID] = None
-    parent_id: Optional[model.ID] = None
+    tenant_id: Optional[model.ID] = Field(default=None, alias="tenant")
+    parent_id: Optional[model.ID] = Field(default=None, alias="parent")
     number: Optional[int] = None
     normal: Optional[types.Normal] = None
     version: Optional[model.ID] = None
@@ -41,8 +41,8 @@ async def search_accounts(req: Request):
     """
     Search for and list accounts.
     """
-    filters = AccountFilters.from_query(req.query_params)
     params = SearchParams.from_query(req.query_params).select_params()
+    filters = AccountFilters.from_query(req.query_params)
     query = req.app.sql.queries.SELECT(
         "account", filters=filters.select_filters(), **params
     )
@@ -50,12 +50,11 @@ async def search_accounts(req: Request):
         results = await req.app.sql.select_all(
             conn, query, filters.query_data(), Constructor=model.Account
         )
-
     return results
 
 
 @router.post("", response_model=model.Account)
-async def edit_accounts(req: Request, item: model.Account):
+async def edit_account(req: Request, item: model.Account):
     """
     Insert/update account.
     """
