@@ -63,7 +63,7 @@ def base_accounts(dbpool, sql, base_tenant):
         ("?_orderby=name&_offset=3&_limit=1", ["Income"]),
     ],
 )
-def test_search_accounts(client, base_accounts, query, expected_names):
+def testsearch_accounts(client, base_accounts, query, expected_names):
     response = client.get(f"/api/accounts{query}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
@@ -71,7 +71,7 @@ def test_search_accounts(client, base_accounts, query, expected_names):
     assert response_names == expected_names
 
 
-def test_search_accounts_unmatched_tenant(client, base_accounts):
+def testsearch_accounts_unmatched_tenant(client, base_accounts):
     response = client.get(f"/api/accounts?tenant={types.ID()}")
     assert response.status_code == HTTPStatus.OK
     items = response.json()
@@ -89,7 +89,7 @@ def test_search_accounts_unmatched_tenant(client, base_accounts):
         ("?number=INTS_ONLY", HTTPStatus.PRECONDITION_FAILED),
     ],
 )
-def test_search_accounts_fail(client, base_accounts, query, status_code):
+def testsearch_accounts_fail(client, base_accounts, query, status_code):
     response = client.get(f"/api/accounts{query}")
     print(response.json())
     assert response.status_code == status_code

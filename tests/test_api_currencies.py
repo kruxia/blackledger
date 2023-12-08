@@ -27,7 +27,7 @@ import pytest
         ("?_orderby=code&_limit=1&_offset=3", []),
     ],
 )
-def test_search_currencies_ok(client, query, results):
+def testsearch_currencies_ok(client, query, results):
     response = client.get(f"/api/currencies{query}")
     assert response.status_code == HTTPStatus.OK
     assert response.json() == results

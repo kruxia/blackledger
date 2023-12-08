@@ -17,7 +17,7 @@ from blackledger.domain import types
         (f"?id={types.ID()}", []),
     ],
 )
-def test_search_tenants_ok(client, query, names):
+def testsearch_tenants_ok(client, query, names):
     response = client.get(f"/api/tenants{query}")
     assert response.status_code == HTTPStatus.OK
     response_data = response.json()
