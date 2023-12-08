@@ -1,14 +1,18 @@
 from contextlib import asynccontextmanager
 from http import HTTPStatus
+from pathlib import Path
 
 import psycopg_pool
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from psycopg.errors import ForeignKeyViolation, RaiseException, UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL
 
-from blackledger.api import api_router
+from blackledger import api, ui
 from blackledger.db import type_adapters  # noqa - provides psycopg registrations.
 from blackledger.settings import DatabaseSettings
 
@@ -29,8 +33,12 @@ async def lifespan(app: FastAPI):
     await app.pool.close()
 
 
+PATH = Path(__file__).absolute().parent
+
 app = FastAPI(lifespan=lifespan)
-app.include_router(api_router, prefix="/api")
+app.include_router(api.router, prefix="/api")
+app.include_router(ui.app)
+app.mount("/static", StaticFiles(directory=PATH / "ui" / "static"), name="static")
 
 
 @app.exception_handler(NotImplementedError)
