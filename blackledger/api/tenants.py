@@ -5,7 +5,7 @@ from pydantic import ConfigDict, constr
 
 from blackledger.domain import model
 
-from ._search import SearchFilters, SearchParams
+from .search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/tenants")
 

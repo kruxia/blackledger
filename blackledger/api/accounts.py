@@ -6,7 +6,7 @@ from pydantic import ConfigDict, Field, constr, field_serializer, field_validato
 
 from blackledger.domain import model, types
 
-from ._search import SearchFilters, SearchParams
+from .search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/accounts")
 

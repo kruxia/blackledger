@@ -33,7 +33,7 @@ from blackledger.domain import types
         ),
     ],
 )
-def test_search_transactions(client, test_transactions, query, memos):
+def testsearch_transactions(client, test_transactions, query, memos):
     """
     For the given URL query, we expect:
 
