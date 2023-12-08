@@ -3,10 +3,10 @@ from fastapi import APIRouter
 from blackledger.api import accounts, currencies, tenants, transactions
 from blackledger.meta import __name__, __version__
 
-api_router = APIRouter()
+router = APIRouter()
 
 
-@api_router.get("")
+@router.get("")
 async def home():
     return {
         "name": __name__,
@@ -14,7 +14,7 @@ async def home():
     }
 
 
-api_router.include_router(accounts.router)
-api_router.include_router(currencies.router)
-api_router.include_router(tenants.router)
-api_router.include_router(transactions.router)
+router.include_router(accounts.router)
+router.include_router(currencies.router)
+router.include_router(tenants.router)
+router.include_router(transactions.router)
