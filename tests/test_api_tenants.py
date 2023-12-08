@@ -31,6 +31,8 @@ def test_search_tenants_ok(client, query, names):
         {"name": "Tenant 1"},
         {"name": "Tenant-1"},
         {"name": "Tenant.1"},
+        {"name": "Tenant 2", "id": types.ID()},
+        {"name": "Tenant 3", "created": datetime.now(tz=timezone.utc)},
     ],
 )
 def test_post_tenant_insert_ok(client, data, json_dumps):
@@ -54,3 +56,23 @@ def test_post_tenant_update_ok(client, base_tenant, json_dumps):
     assert dateparser.parse(response_data["created"]) == dateparser.parse(
         data["created"]
     )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        # name not empty
+        {"name": ""},
+        {"name": None},
+        # name is NameString
+        {"name": "Tenant,1"},
+        # id is ID
+        {"name": "Tenant 1", "id": "NOT_AN_ID"},
+        # created is datetime
+        {"name": "Tenant 1", "created": "NOT_A_TIMESTAMP"},
+    ],
+)
+def test_post_tenant_insert_unprocessable(client, data, json_dumps):
+    response = client.post("/api/tenants", content=json_dumps(data))
+    print(response.json())
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
