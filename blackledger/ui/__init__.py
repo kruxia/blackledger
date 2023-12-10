@@ -1,10 +1,13 @@
 from pathlib import Path
+
+import jinja2.exceptions
 from fastapi import APIRouter, Request
+from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from blackledger.meta import __name__, __version__
 from blackledger.domain import model, types
+from blackledger.meta import __name__, __version__
 
 PATH = Path(__file__).absolute().parent
 
@@ -22,4 +25,13 @@ templates = Jinja2Templates(
 @app.get("/{tenant_id}/{template_path:path}", response_class=HTMLResponse)
 async def home(req: Request, tenant_id: str = None, template_path: str = "home"):
     print(f"{template_path=}")
-    return templates.TemplateResponse(f"{template_path}.html", {"request": req, "tenant_id": tenant_id})
+    try:
+        response = templates.TemplateResponse(
+            f"{template_path}.html", {"request": req, "tenant_id": tenant_id}
+        )
+    except jinja2.exceptions.TemplateNotFound as exc:
+        raise HTTPException(
+            status_code=404, detail=f"Template not found: {template_path}"
+        )
+
+    return response

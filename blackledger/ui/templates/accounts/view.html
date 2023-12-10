@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block main %}
+<div id="app">
+  <h1 class="text-4xl">Account<span v-if="account.id">: {{account.name}}</span></h1>
+  <table v-if="account.transactions">
+    <tr>
+      <th class="text-left pr-2">Date</th>
+      <th class="text-left pr-2">Memo</th>
+      <th class="text-left pr-2">Entries</th>
+    </tr>
+    <tr v-for="transaction of account.transactions">
+      <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
+      <td class="align-text-top pt-1 pr-2">{{transaction.memo}}</td>
+      <td class="align-text-top pt-1 pr-2">
+        <table>
+          <tr v-for="entry of transaction.entries">
+            <td class="align-text-top w-80 pr-2">
+              <span :class="entry.acct == account.id ? 'font-bold' : ''">
+                <a :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">{{entry.acct_name}}</a>
+              </span>
+            </td>
+            <td class="align-text-top w-16 pr-2">
+              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
+            </td>
+            <td class="align-text-top w-16 pr-2">
+              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
+            </td>
+            <td class="align-text-top w-16">
+              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+{% endblock %}
+{% block footscript %}
+<script>
+  const TENANT = "{$tenant_id}";
+  const ACCOUNT_ID = "{$request.query_params.get('id')}";
+  const app = Vue.createApp({
+    data() {
+      return {
+        error: null,
+        account: {}
+      }
+    },
+    async created() {
+      this.account = await fetchAccount();
+      console.log(this.account);
+    }
+  }).mount("#app");
+  async function fetchAccount() {
+    const account_url = `http://localhost:8000/api/accounts?id=${ACCOUNT_ID}`;
+    console.log("account_url =", account_url);
+    const result = await fetch(account_url).then((response) => response.json());
+    if (result.length > 0) {
+      const tx_url = `http://localhost:8000/api/transactions?acct=${ACCOUNT_ID}&_orderby=-id`;
+      account = result[0];
+      account.transactions = await fetch(tx_url).then((response) => response.json());
+      console.log(account.transactions);
+      return account;
+    } else {
+      return {};
+    }
+  }
+</script>
+{% endblock %}

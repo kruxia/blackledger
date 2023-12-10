@@ -3,11 +3,9 @@ from http import HTTPStatus
 from pathlib import Path
 
 import psycopg_pool
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from psycopg.errors import ForeignKeyViolation, RaiseException, UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL

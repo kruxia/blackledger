@@ -61,6 +61,7 @@ class Entry(Model):
     tenant_id: ID
     tx: Optional[ID] = None
     acct: ID
+    acct_name: Optional[str] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
     curr: types.CurrencyCode
