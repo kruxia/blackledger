@@ -85,8 +85,9 @@ async def search_transactions(req: Request):
 
     # select corresponding entries
     entries_query = """
-        SELECT e.* FROM entry e
+        SELECT e.*, a.name acct_name FROM entry e
         JOIN transaction t ON e.tx = t.id
+        JOIN account a ON e.acct = a.id
         WHERE t.id = ANY(:tx)
     """
 

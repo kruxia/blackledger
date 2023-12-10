@@ -20,14 +20,14 @@
       <th class="text-left pr-2">Balances</th>
     </tr>
     <tr v-for="account of accounts" :id="account.id" :key="account.id">
-      <td class="pr-2">{{account.parent ? account.parent.name : ""}}</td>
-      <td class="pr-2">{{account.name}}</td>
-      <td class="pr-2">{{account.normal}}</td>
-      <td class="pr-2">
+      <td class="align-text-top pr-2">{{account.parent ? account.parent.name : ""}}</td>
+      <td class="align-text-top pr-2"><a :href="`/{$tenant_id}/accounts/view?id=${account.id}`">{{account.name}}</a></td>
+      <td class="align-text-top pr-2">{{account.normal}}</td>
+      <td class="align-text-top pr-2">
         <table v-if="account.balances">
           <tr v-for="[curr, bal] of Object.entries(account.balances)">
-            <td class="w-16 text-right pr-2" v-text="bal"></td>
-            <td v-text="curr"></td>
+            <td class="align-text-top w-16 text-right pr-2" v-text="bal"></td>
+            <td class="align-text-top " v-text="curr"></td>
           </tr>
         </table>
       </td>
