@@ -39,7 +39,7 @@ requires = ["setuptools>=45"]           #, "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["blackledger"]
+packages = ["blackledger", "tests"]
 
 # [tool.setuptools_scm]
 # write_to = "blackledger/__version__.py"
