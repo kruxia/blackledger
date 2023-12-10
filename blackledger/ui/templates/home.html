@@ -1,4 +1,21 @@
-{% extends "base.html" %}
-{% block body %}
+{% extends "base.html" %} {% block main %}
 <h1 class="text-4xl">Hello world!</h1>
+{% if request.query_params %}
+<p>Request Query Params: {$request.query_params}</p>
+{% endif %}
+<div id="app">
+    <input type="text" v-model="message"/>
+    <p v-if="message">== {{message}} ==</p>
+</div>
+{% endblock %}
+{% block footscript %}
+<script>
+  const app = Vue.createApp({
+    data() {
+      return {
+        message: "Hello from VueJS!",
+      };
+    },
+  }).mount("#app");
+</script>
 {% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block main %}
+<div id="app">
+  <h1 class="text-4xl">Accounts
+    <a class="text-2xl" href="/{$tenant_id}/accounts/new">
+      <button type="button"
+        class="rounded-full bg-indigo-600 p-1 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path
+            d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+        </svg>
+      </button>
+    </a>
+  </h1>
+  <table v-if="accounts.length > 0">
+    <tr>
+      <th class="text-left pr-2">Parent</th>
+      <th class="text-left pr-2">Name</th>
+      <th class="text-left pr-2">Normal</th>
+      <th class="text-left pr-2">Balances</th>
+    </tr>
+    <tr v-for="account of accounts" :id="account.id" :key="account.id">
+      <td class="pr-2">{{account.parent ? account.parent.name : ""}}</td>
+      <td class="pr-2">{{account.name}}</td>
+      <td class="pr-2">{{account.normal}}</td>
+      <td class="pr-2">
+        <table v-if="account.balances">
+          <tr v-for="[curr, bal] of Object.entries(account.balances)">
+            <td class="w-16 text-right pr-2" v-text="bal"></td>
+            <td v-text="curr"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+{% endblock %}
+
+{% block footscript %}
+<script>
+  const TENANT = '{$tenant_id}';
+  const app = Vue.createApp({
+    data() {
+      return {
+        accounts: []
+      };
+    },
+    async created() {
+      this.accounts = await fetchAccounts();
+    }
+  }).mount("#app");
+  async function fetchAccounts() {
+    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}`;
+    const accounts = await fetch(accounts_url).then((r) => r.json());
+    if (accounts.length > 0) {
+      const account_ids = accounts.map((account) => account.id).filter((id) => id != null);
+      const balances = await fetch(
+        `http://localhost:8000/api/accounts/balances?id=${account_ids.join()}`
+      ).then((r) => r.json());
+      if (balances.length > 0) {
+        const balances_map = Object.fromEntries(
+          balances.map((item) => [item.account.id, item.balances]));
+        for (account of accounts) {
+          if (balances_map[account.id]) {
+            account.balances = balances_map[account.id];
+          }
+        }
+      }
+    }
+    const parent_ids = accounts.map((account) => account.parent_id).filter((id) => id != null);
+    if (parent_ids.length > 0) {
+      const parents = await fetch(
+        `http://localhost:8000/api/accounts?id=${parent_ids.join()}&_orderby=parent_id,name`
+      ).then((r) => r.json());
+      const parents_map = Object.fromEntries(parents.map((parent) => [parent.id, parent]));
+      for (account of accounts) {
+        if (account.parent_id) {
+          account.parent = parents_map[account.parent_id];
+        }
+      }
+    }
+    return accounts;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block bodyOnLoad %}document.getElementById('new-account-name').focus();{% endblock %}
+{% block main %}
+<h1 class="text-4xl">New Account</h1>
+<div id="app">
+  <form id="new-account">
+    <input type="hidden" name="tenant_id" value="{$tenant_id}" />
+    <p>
+      <label for="new-account-name">Name: </label>
+      <input type="text" id="new-account-name" name="name" value="" />
+    </p>
+    <p>
+      Normal:
+      <input type="radio" id="new-account-normal-dr" name="normal" value="DR" />
+      <label class="px-1" for="new-account-normal-dr">DR</label>
+      <input type="radio" id="new-account-normal-cr" name="normal" value="CR" />
+      <label class="px-1" for="new-account-normal-cr">CR</label>
+    </p>
+    <p v-if="parents.length > 0">
+      <label for="new-account-parent">Parent: </label>
+      <select id="new-account-parent" name="parent_id">
+        <option value=""></option>
+        <option v-for="parent of parents" :value="parent.id" v-text="parent.name"></option>
+      </select>
+    </p>
+    <p>
+      <button onclick="submitForm()">Create Account</button>
+      <a class="px-2" href="/{$tenant_id}/accounts">Cancel</a>
+    </p>
+    <p v-if="error" v-text="error"></p>
+  </form>
+</div>
+{% endblock %}
+{% block footscript %}
+<script>
+  const TENANT = "{$tenant_id}";
+  const app = Vue.createApp({
+    data() {
+      return {
+        error: null,
+        parents: []
+      };
+    },
+    async created() {
+      this.parents = await fetchParents();
+    }
+  }).mount("#app");
+  async function fetchParents() {
+    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}&_orderby=parent_id,name`;
+    const accounts = await fetch(accounts_url).then((r) => r.json());
+    return accounts;
+  }
+  async function submitForm() {
+    event.preventDefault();
+    const account_url = `http://localhost:8000/api/accounts`;
+    const form = document.getElementById('new-account');
+    const formdata = new FormData(form);
+    const postdata = Object.fromEntries(
+      Array.from(formdata.entries()).filter(([key, val]) => val.trim() != ""));
+    const fetchOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(postdata)
+    }
+    const result = await fetch(account_url, fetchOptions).then(
+      async function (response) {
+        data = await response.json();
+        if (response.status == 200) return data
+        else {
+          return { "status": response.status, "message": data.message }
+        }
+      });
+    if (result.id) {
+      window.location = `/${TENANT}/accounts`;
+    } else {
+      app.error = result.message;
+    }
+    return result;
+  }
+</script>
+{% endblock %}
