@@ -36,9 +36,9 @@ async def lifespan(app: FastAPI):
 PATH = Path(__file__).absolute().parent
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=PATH / "ui" / "static"), name="static")
 app.include_router(api.router, prefix="/api")
 app.include_router(ui.app)
-app.mount("/static", StaticFiles(directory=PATH / "ui" / "static"), name="static")
 
 
 @app.exception_handler(NotImplementedError)

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/accounts")
 
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
-    id: Optional[model.ID] = None
+    id: Optional[list[model.ID]] = None
     name: Optional[constr(pattern=r"^\S+$")] = None
     tenant_id: Optional[model.ID] = Field(default=None, alias="tenant")
     parent_id: Optional[model.ID] = Field(default=None, alias="parent")
@@ -23,6 +23,11 @@ class AccountFilters(SearchFilters):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    @field_validator("id", mode="before")
+    def convert_list_fields(cls, val):
+        if isinstance(val, str):
+            return [v.strip() for v in val.split(",")]
+
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
         if isinstance(value, str):
@@ -30,6 +35,10 @@ class AccountFilters(SearchFilters):
                 raise ValueError(value)
             value = types.Normal[value]
         return value
+
+    @field_serializer("id")
+    def serialize_ids(self, val: list[types.ID]):
+        return [str(i.to_uuid()) for i in val] if val else None
 
     @field_serializer("normal")
     def serialize_normal(self, val: types.Normal):
