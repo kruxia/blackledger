@@ -41,7 +41,7 @@ async def edit_currencies(req: Request, item: model.Currency):
     Insert/update currency.
     """
     sql = req.app.sql
-    data = item.model_dump(exclude_none=True)
+    data = item.model_dump(exclude_unset=True)
     query = sql.queries.UPSERT("currency", fields=data, key=["code"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Currency)

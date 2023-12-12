@@ -42,7 +42,7 @@ async def edit_tenants(req: Request, item: model.Tenant):
     Insert/update tenant.
     """
     sql = req.app.sql
-    data = item.model_dump(exclude_none=True)
+    data = item.model_dump(exclude_unset=True)
     query = sql.queries.UPSERT("tenant", fields=data, key=["id"], returning=True)
     async with req.app.pool.connection() as conn:
         result = await sql.select_one(conn, query, data, Constructor=model.Tenant)
