@@ -6,7 +6,60 @@
     <tr>
       <th class="text-left pr-2">Date</th>
       <th class="text-left pr-2">Memo</th>
-      <th class="text-left pr-2">Entries</th>
+      <th class="text-left pr-2">Entries
+        {% include "components/button-plus.html" %}
+      </th>
+    </tr>
+    <tr>
+      <td class="align-text-top pt-1 pr-2">
+        <input type="date" />
+      </td>
+      <td class="align-text-top pt-1 pr-2">
+        <input type="text" class="border rounded" />
+      </td>
+      <td class="align-text-top pt-1 pr-2">
+        <table>
+          <tr>
+            <td class="align-text-top w-48 pr-2">{{account.name}}</td>
+            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
+                pattern="\d+(\.\d*)?" /></td>
+            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
+                pattern="\d+(\.\d*)?" /></td>
+            <td class="align-text-top w-20">
+              <select>
+                <option value=""></option>
+                <option v-for="currency of currencies" :value="currency.code"
+                  v-text="currency.code"></option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td class="align-text-top w-48 pr-2">
+              <select>
+                <option value=""></option>
+                <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
+              </select>
+            </td>
+            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
+                pattern="\d+(\.\d*)?" /></td>
+            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
+                pattern="\d+(\.\d*)?" /></td>
+            <td class="align-text-top w-20">
+              <select>
+                <option value=""></option>
+                <option v-for="currency of currencies" :value="currency.code"
+                  v-text="currency.code"></option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td class="align-text-top w-48 pr-2">
+              <button class="pr-2">Post</button>
+              <button>Cancel</button>
+            </td>
+          </tr>
+        </table>
+      </td>
     </tr>
     <tr v-for="transaction of account.transactions">
       <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
@@ -14,18 +67,18 @@
       <td class="align-text-top pt-1 pr-2">
         <table>
           <tr v-for="entry of transaction.entries">
-            <td class="align-text-top w-80 pr-2">
+            <td class="align-text-top w-48 pr-2">
               <span :class="entry.acct == account.id ? 'font-bold' : ''">
                 <a :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">{{entry.acct_name}}</a>
               </span>
             </td>
-            <td class="align-text-top w-16 pr-2">
+            <td class="align-text-top w-20 pr-2">
               <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
             </td>
-            <td class="align-text-top w-16 pr-2">
+            <td class="align-text-top w-20 pr-2">
               <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
             </td>
-            <td class="align-text-top w-16">
+            <td class="align-text-top w-20">
               <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
             </td>
           </tr>
@@ -43,27 +96,37 @@
     data() {
       return {
         error: null,
-        account: {}
+        account: {},
+        currencies: [],
+        accounts: [],
       }
     },
     async created() {
       this.account = await fetchAccount();
-      console.log(this.account);
+      this.accounts = await fetchAccounts();
+      this.currencies = await fetchCurrencies();
     }
   }).mount("#app");
   async function fetchAccount() {
     const account_url = `http://localhost:8000/api/accounts?id=${ACCOUNT_ID}`;
-    console.log("account_url =", account_url);
     const result = await fetch(account_url).then((response) => response.json());
     if (result.length > 0) {
       const tx_url = `http://localhost:8000/api/transactions?acct=${ACCOUNT_ID}&_orderby=-id`;
       account = result[0];
       account.transactions = await fetch(tx_url).then((response) => response.json());
-      console.log(account.transactions);
       return account;
     } else {
       return {};
     }
+  }
+  async function fetchCurrencies() {
+    const currencies_url = "http://localhost:8000/api/currencies?_orderby=code";
+    return await fetch(currencies_url).then((response) => response.json());
+  }
+  async function fetchAccounts() {
+    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}&_orderby=parent_id,name`;
+    accounts = await fetch(accounts_url).then((response) => response.json());
+    return accounts
   }
 </script>
 {% endblock %}
