@@ -29,8 +29,8 @@ up:
     , curr      varchar   NOT NULL references currency(code)
     , dr        decimal
     , cr        decimal
-    , CHECK ((cr is null and dr > 0)
-          OR (dr is null and cr > 0))
+    , CHECK ((dr is not null and dr > 0 and cr is null)
+          OR (cr is not null and cr > 0 and dr is null))
   );
   ALTER TABLE account ADD CONSTRAINT account_version_fkey
     FOREIGN KEY (version) REFERENCES entry(id);
