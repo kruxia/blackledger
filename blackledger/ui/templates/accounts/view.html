@@ -5,86 +5,94 @@
   <table v-if="account.transactions">
     <tr>
       <th class="text-left pr-2">Date</th>
-      <th class="text-left pr-2">Memo</th>
-      <th class="text-left pr-2">Entries
+      <th class="text-left pr-2">Memo / Accounts</th>
+      <th class="text-left pr-2" colspan="3">Entries
         {% include "components/button-plus.html" %}
       </th>
     </tr>
+    <!-- new transaction -->
+    <!-- first line includes date, memo, and first entry for this page's account. -->
     <tr>
       <td class="align-text-top pt-1 pr-2">
         <input type="date" />
       </td>
       <td class="align-text-top pt-1 pr-2">
-        <input type="text" class="border rounded" />
+        <input type="text" class="w-48 border rounded" />
       </td>
       <td class="align-text-top pt-1 pr-2">
-        <table>
-          <tr>
-            <td class="align-text-top w-48 pr-2">{{account.name}}</td>
-            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
-                pattern="\d+(\.\d*)?" /></td>
-            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
-                pattern="\d+(\.\d*)?" /></td>
-            <td class="align-text-top w-20">
-              <select>
-                <option value=""></option>
-                <option v-for="currency of currencies" :value="currency.code"
-                  v-text="currency.code"></option>
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <td class="align-text-top w-48 pr-2">
-              <select>
-                <option value=""></option>
-                <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
-              </select>
-            </td>
-            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
-                pattern="\d+(\.\d*)?" /></td>
-            <td class="align-text-top w-20 pr-2"><input class="border rounded w-16" type="text"
-                pattern="\d+(\.\d*)?" /></td>
-            <td class="align-text-top w-20">
-              <select>
-                <option value=""></option>
-                <option v-for="currency of currencies" :value="currency.code"
-                  v-text="currency.code"></option>
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <td class="align-text-top w-48 pr-2">
-              <button class="pr-2">Post</button>
-              <button>Cancel</button>
-            </td>
-          </tr>
-        </table>
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
       </td>
-    </tr>
-    <tr v-for="transaction of account.transactions">
-      <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
-      <td class="align-text-top pt-1 pr-2">{{transaction.memo}}</td>
       <td class="align-text-top pt-1 pr-2">
-        <table>
-          <tr v-for="entry of transaction.entries">
-            <td class="align-text-top w-48 pr-2">
-              <span :class="entry.acct == account.id ? 'font-bold' : ''">
-                <a :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">{{entry.acct_name}}</a>
-              </span>
-            </td>
-            <td class="align-text-top w-20 pr-2">
-              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
-            </td>
-            <td class="align-text-top w-20 pr-2">
-              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
-            </td>
-            <td class="align-text-top w-20">
-              <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
-            </td>
-          </tr>
-        </table>
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
+      </td>
+      <td class="align-text-top pt-1 pr-2">
+        <select>
+          <option value=""></option>
+          <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
+          </option>
+        </select>
       </td>
     </tr>
+    <!-- additional new transaction entries -->
+    <tr>
+      <td></td>
+      <td class="align-text-top pr-2">
+        <select class="w-44 ml-4">
+          <option value=""></option>
+          <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
+        </select>
+      </td>
+      <td class="align-text-top w-20 pr-2">
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
+      </td>
+      <td class="align-text-top w-20 pr-2">
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
+      </td>
+      <td class="align-text-top w-20">
+        <select>
+          <option value=""></option>
+          <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
+          </option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td class="align-text-top pr-2 text-right" colspan="5">
+        <button class="pr-2">Post</button>
+        <button>Cancel</button>
+      </td>
+    </tr>
+    <!-- existing transactions -->
+    <template v-for="transaction in account.transactions">
+      <!-- entries for this account first since we're suppressing this account name on the page -->
+      <tr v-for="(entry, entryIndex) in transaction.entries.filter(
+          (entry) => entry.acct == account.id).concat(
+            transaction.entries.filter((entry) => entry.acct != account.id))">
+        <template v-if="entryIndex == 0">
+          <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
+          <td class="align-text-top pt-1 pr-2"><span class="font-bold">{{transaction.memo}}</span>
+          </td>
+        </template>
+        <template v-else="">
+          <td class="align-text-top pt-1 pr-2"></td>
+          <td class="align-text-top pt-1 pr-2">
+            <a v-if="entry.acct != account.id" class="ml-4"
+              :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">
+              {{entry.acct_name}}
+            </a>
+          </td>
+        </template>
+        <td class="align-text-top pt-1 pr-2">
+          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
+        </td>
+        <td class="align-text-top pt-1 pr-2">
+          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
+        </td>
+        <td class="align-text-top pt-1 pr-2">
+          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
+        </td>
+      </tr>
+    </template>
   </table>
 </div>
 {% endblock %}
