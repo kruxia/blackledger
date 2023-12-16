@@ -12,44 +12,34 @@
     </tr>
     <!-- new transaction -->
     <!-- first line includes date, memo, and first entry for this page's account. -->
-    <tr>
+    <tr v-for="(entry, index) in newTransaction.entries">
+      <template v-if="index == 0">
+        <td class="align-text-top pt-1 pr-2">
+          <input type="date" v-model="newTransaction.effective" />
+        </td>
+        <td class="align-text-top pt-1 pr-2">
+          <input type="text" class="w-48 border rounded" v-model="newTransaction.memo" />
+        </td>
+      </template>
+      <template v-else="">
+        <td></td>
+        <td class="align-text-top pr-2">
+          <select class="w-44 ml-4" v-model="newTransaction.entries[index].acct">
+            <option value=""></option>
+            <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
+          </select>
+        </td>
+      </template>
       <td class="align-text-top pt-1 pr-2">
-        <input type="date" />
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+          v-model="newTransaction.entries[index].dr" />
       </td>
       <td class="align-text-top pt-1 pr-2">
-        <input type="text" class="w-48 border rounded" />
+        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+          v-model="newTransaction.entries[index].cr" />
       </td>
       <td class="align-text-top pt-1 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
-      </td>
-      <td class="align-text-top pt-1 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
-      </td>
-      <td class="align-text-top pt-1 pr-2">
-        <select>
-          <option value=""></option>
-          <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
-          </option>
-        </select>
-      </td>
-    </tr>
-    <!-- additional new transaction entries -->
-    <tr>
-      <td></td>
-      <td class="align-text-top pr-2">
-        <select class="w-44 ml-4">
-          <option value=""></option>
-          <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
-        </select>
-      </td>
-      <td class="align-text-top w-20 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
-      </td>
-      <td class="align-text-top w-20 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?" />
-      </td>
-      <td class="align-text-top w-20">
-        <select>
+        <select v-model="newTransaction.entries[index].curr">
           <option value=""></option>
           <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
           </option>
@@ -107,6 +97,29 @@
         account: {},
         currencies: [],
         accounts: [],
+        newTransaction: {
+          tenant_id: "{$tenant_id}",
+          effective: (new Date()).toISOString().split('T')[0],
+          memo: "",
+          entries: [
+            // the first entry is assigned to this page's account
+            {
+              tenant_id: "{$tenant_id}",
+              acct: ACCOUNT_ID,
+              dr: null,
+              cr: null,
+              curr: null
+            },
+            // there are always at least two entries
+            {
+              tenant_id: "{$tenant_id}",
+              acct: null,
+              dr: null,
+              cr: null,
+              curr: null
+            },
+          ]
+        }
       }
     },
     async created() {
