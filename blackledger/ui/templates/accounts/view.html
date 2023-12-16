@@ -32,16 +32,20 @@
       </template>
       <td class="align-text-top pt-1 pr-2">
         <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-          v-model="newTransaction.entries[index].dr" />
+          v-model="newTransaction.entries[index].dr" @change="balanceNewTransaction" />
       </td>
       <td class="align-text-top pt-1 pr-2">
         <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-          v-model="newTransaction.entries[index].cr" />
+          v-model="newTransaction.entries[index].cr" @change="balanceNewTransaction" />
       </td>
       <td class="align-text-top pt-1 pr-2">
-        <select v-model="newTransaction.entries[index].curr">
+        <select v-model="newTransaction.entries[index].curr" @change="balanceNewTransaction">
           <option value=""></option>
-          <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
+          <template v-for="currency of currencies">
+            <option v-if="entry.curr == currency.code" :value="currency.code" v-text="currency.code"
+              selected="">
+            <option v-else="" :value="currency.code" v-text="currency.code">
+          </template>
           </option>
         </select>
       </td>
@@ -98,22 +102,14 @@
         currencies: [],
         accounts: [],
         newTransaction: {
-          tenant_id: "{$tenant_id}",
+          tenant_id: TENANT,
           effective: (new Date()).toISOString().split('T')[0],
           memo: "",
           entries: [
             // the first entry is assigned to this page's account
             {
-              tenant_id: "{$tenant_id}",
+              tenant_id: TENANT,
               acct: ACCOUNT_ID,
-              dr: null,
-              cr: null,
-              curr: null
-            },
-            // there are always at least two entries
-            {
-              tenant_id: "{$tenant_id}",
-              acct: null,
               dr: null,
               cr: null,
               curr: null
@@ -126,6 +122,41 @@
       this.account = await fetchAccount();
       this.accounts = await fetchAccounts();
       this.currencies = await fetchCurrencies();
+    },
+    methods: {
+      // when a new transaction entry is changed, balance the new transaction
+      balanceNewTransaction(event) {
+        this.newTransaction.entries = this.newTransaction.entries.filter((e) => e.dr || e.cr);
+        const balances = this.newTransaction.entries.reduce(
+          function (balances, entry) {
+            // if (entry.curr)
+              balances = Object.assign(
+                balances, {
+                [entry.curr]: {
+                  dr: Number((balances[entry.curr] || {}).dr || 0) + Number(entry.dr),
+                  cr: Number((balances[entry.curr] || {}).cr || 0) + Number(entry.cr)
+                }
+              });
+            return balances;
+          }, {});
+        console.log(balances);
+        for (curr in balances) {
+          if (balances[curr].dr > balances[curr].cr) {
+            this.newTransaction.entries.push(
+              { tenant_id: TENANT, acct: null, dr: null, cr: balances[curr].dr - balances[curr].cr, curr: curr }
+            );
+          } else if (balances[curr].cr > balances[curr].dr) {
+            this.newTransaction.entries.push(
+              { tenant_id: TENANT, acct: null, dr: balances[curr].cr - balances[curr].dr, cr: null, curr: curr }
+            );
+          }
+        }
+        if (this.newTransaction.entries.length == 0) {
+          this.newTransaction.entries.push(
+            { tenant_id: TENANT, acct: ACCOUNT_ID, dr: balances[curr].cr - balances[curr].dr, cr: null, curr: curr }
+          );
+        }
+      }
     }
   }).mount("#app");
   async function fetchAccount() {
