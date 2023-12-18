@@ -15,7 +15,8 @@
     </tr>
     <tr v-for="account of accounts" :id="account.id" :key="account.id">
       <td class="align-text-top pr-2">{{account.parent ? account.parent.name : ""}}</td>
-      <td class="align-text-top pr-2"><a :href="`/{$tenant_id}/accounts/view?id=${account.id}`">{{account.name}}</a></td>
+      <td class="align-text-top pr-2"><a
+          :href="`/{$tenant_id}/accounts/view?id=${account.id}`">{{account.name}}</a></td>
       <td class="align-text-top pr-2">{{account.normal}}</td>
       <td class="align-text-top pr-2">
         <table v-if="account.balances">
