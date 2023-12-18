@@ -32,10 +32,12 @@
       </template>
       <td class="align-text-top pt-1 pr-2">
         <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+          :OFF-disabled="newTransaction.entries[index].cr != null"
           v-model="newTransaction.entries[index].dr" @change="balanceNewTransaction" />
       </td>
       <td class="align-text-top pt-1 pr-2">
         <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+          :OFF-disabled="newTransaction.entries[index].dr != null"
           v-model="newTransaction.entries[index].cr" @change="balanceNewTransaction" />
       </td>
       <td class="align-text-top pt-1 pr-2">
@@ -94,6 +96,12 @@
 <script>
   const TENANT = "{$tenant_id}";
   const ACCOUNT_ID = "{$request.query_params.get('id')}";
+  // create an integer sequence generator - used to ensure that entries have unique keys
+  function integerSequence() {
+    var id = 0;
+    return () => id += 1;
+  }
+  const newEntryKey = integerSequence();
   const app = Vue.createApp({
     data() {
       return {
@@ -102,17 +110,19 @@
         currencies: [],
         accounts: [],
         newTransaction: {
-          tenant_id: TENANT,
+          // tenant_id: TENANT,
           effective: (new Date()).toISOString().split('T')[0],
           memo: "",
           entries: [
             // the first entry is assigned to this page's account
             {
-              tenant_id: TENANT,
+              key: newEntryKey(),
+              // tenant_id: TENANT,
               acct: ACCOUNT_ID,
+              refs: [],
               dr: null,
               cr: null,
-              curr: null
+              curr: null,
             },
           ]
         }
@@ -126,35 +136,61 @@
     methods: {
       // when a new transaction entry is changed, balance the new transaction
       balanceNewTransaction(event) {
-        this.newTransaction.entries = this.newTransaction.entries.filter((e) => e.dr || e.cr);
+        accts = this.newTransaction.entries.filter(e => e.acct).map(e => e.acct);
+        console.log(accts);
+        this.newTransaction.entries = this.newTransaction.entries.filter(
+          (e) => (e.acct == ACCOUNT_ID || e.refs.length > 0) && (e.dr || e.cr));
         const balances = this.newTransaction.entries.reduce(
           function (balances, entry) {
-            // if (entry.curr)
-              balances = Object.assign(
-                balances, {
-                [entry.curr]: {
-                  dr: Number((balances[entry.curr] || {}).dr || 0) + Number(entry.dr),
-                  cr: Number((balances[entry.curr] || {}).cr || 0) + Number(entry.cr)
-                }
-              });
+            // if (entry.curr) {
+            if (!balances[entry.curr]) {
+              balances[entry.curr] = { dr: 0, cr: 0, refs: [] };
+            }
+            balances[entry.curr].dr += Number(entry.dr);
+            balances[entry.curr].cr += Number(entry.cr);
+            balances[entry.curr].refs.push(entry.key);
             return balances;
+            // }
           }, {});
-        console.log(balances);
         for (curr in balances) {
           if (balances[curr].dr > balances[curr].cr) {
-            this.newTransaction.entries.push(
-              { tenant_id: TENANT, acct: null, dr: null, cr: balances[curr].dr - balances[curr].cr, curr: curr }
-            );
+            const newEntry = {
+              key: newEntryKey(),
+              // tenant_id: TENANT,
+              acct: null,
+              refs: balances[curr].refs,
+              dr: null,
+              cr: balances[curr].dr - balances[curr].cr,
+              curr: curr,
+            };
+            this.newTransaction.entries.push(newEntry);
+            console.log(balances[curr].dr, balances[curr].cr, newEntry);
           } else if (balances[curr].cr > balances[curr].dr) {
-            this.newTransaction.entries.push(
-              { tenant_id: TENANT, acct: null, dr: balances[curr].cr - balances[curr].dr, cr: null, curr: curr }
-            );
+            const newEntry = {
+              key: newEntryKey(),
+              // tenant_id: TENANT,
+              acct: null,
+              refs: balances[curr].refs,
+              dr: balances[curr].cr - balances[curr].dr,
+              cr: null,
+              curr: curr,
+            }
+            this.newTransaction.entries.push(newEntry);
+            console.log(balances[curr].dr, balances[curr].cr, newEntry);
           }
         }
         if (this.newTransaction.entries.length == 0) {
-          this.newTransaction.entries.push(
-            { tenant_id: TENANT, acct: ACCOUNT_ID, dr: balances[curr].cr - balances[curr].dr, cr: null, curr: curr }
-          );
+          const newEntry = {
+            key: newEntryKey(),
+            // tenant_id: TENANT,
+            acct: ACCOUNT_ID,
+            dr: null,
+            cr: null,
+            curr: null,
+            refs: []
+          };
+          this.newTransaction.entries.push(newEntry);
+          console.log(newEntry);
         }
       }
     }
