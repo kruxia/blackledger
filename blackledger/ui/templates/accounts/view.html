@@ -55,7 +55,7 @@
         </td>
       </tr>
       <!-- existing transactions -->
-      <template v-for="transaction in account.transactions">
+      <template v-for="transaction in transactions">
         <!-- entries for this account first since we're suppressing this account name on the page -->
         <tr v-for="(entry, entryIndex) in transaction.entries.filter(
           (entry) => entry.acct == account.id).concat(
@@ -91,7 +91,7 @@
 {% endblock %}
 {% block footscript %}
 <script>
-  const TENANT = "{$tenant_id}";
+  const TENANT_ID = "{$tenant_id}";
   const ACCOUNT_ID = "{$request.query_params.get('id')}";
   const app = Vue.createApp({
     data() {
@@ -100,35 +100,15 @@
         account: {},
         currencies: [],
         accounts: [],
-        newTransaction: {
-          tenant_id: "{$tenant_id}",
-          effective: (new Date()).toISOString().split('T')[0],
-          memo: "",
-          entries: [
-            // the first entry is assigned to this page's account
-            {
-              tenant_id: "{$tenant_id}",
-              acct: ACCOUNT_ID,
-              dr: null,
-              cr: null,
-              curr: null
-            },
-            // there are always at least two entries
-            {
-              tenant_id: "{$tenant_id}",
-              acct: null,
-              dr: null,
-              cr: null,
-              curr: null
-            },
-          ]
-        }
+        newTransaction: newBlankTransaction(),
+        transactions: [],
       }
     },
     async created() {
-      this.account = await fetchAccount();
+      this.account = await fetchAccount(ACCOUNT_ID);
       this.accounts = await fetchAccounts();
       this.currencies = await fetchCurrencies();
+      this.transactions = await fetchTransactions(ACCOUNT_ID);
       document.getElementById('new-tx-memo').focus();
     },
     methods: {
@@ -146,7 +126,11 @@
           async function (response) {
             const data = await response.json();
             if (response.status == 201) {
-              this.transactions.unshift(data);
+              // data == the new transaction
+              app.transactions.unshift(data);
+              // clear the newTransaction
+              app.newTransaction = newBlankTransaction();
+              document.getElementById('new-tx-memo').focus();
             }
             return { "status": response.status, "data": data };
           });
@@ -154,24 +138,51 @@
       },
     },
   }).mount("#app");
-  async function fetchAccount() {
-    const account_url = `http://localhost:8000/api/accounts?id=${ACCOUNT_ID}`;
+  function newBlankTransaction() {
+    return {
+      tenant_id: TENANT_ID,
+      effective: (new Date()).toISOString().split('T')[0],
+      memo: "",
+      entries: [
+        // the first entry is assigned to this page's account
+        {
+          tenant_id: TENANT_ID,
+          acct: ACCOUNT_ID,
+          dr: null,
+          cr: null,
+          curr: null
+        },
+        // there are always at least two entries
+        {
+          tenant_id: TENANT_ID,
+          acct: null,
+          dr: null,
+          cr: null,
+          curr: null
+        },
+      ]
+    }
+  }
+  async function fetchAccount(account_id) {
+    const account_url = `http://localhost:8000/api/accounts?id=${account_id}`;
     const result = await fetch(account_url).then((response) => response.json());
     if (result.length > 0) {
-      const tx_url = `http://localhost:8000/api/transactions?acct=${ACCOUNT_ID}&_orderby=-id`;
       account = result[0];
-      account.transactions = await fetch(tx_url).then((response) => response.json());
       return account;
     } else {
       return {};
     }
+  }
+  async function fetchTransactions(account_id) {
+    const tx_url = `http://localhost:8000/api/transactions?acct=${account_id}&_orderby=-id`;
+    return await fetch(tx_url).then((response) => response.json());
   }
   async function fetchCurrencies() {
     const currencies_url = "http://localhost:8000/api/currencies?_orderby=code";
     return await fetch(currencies_url).then((response) => response.json());
   }
   async function fetchAccounts() {
-    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}&_orderby=parent_id,name`;
+    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT_ID}&_orderby=parent_id,name`;
     accounts = await fetch(accounts_url).then((response) => response.json());
     return accounts
   }
