@@ -128,8 +128,6 @@ async def post_transaction(req: Request):
         entries = []
         entry_accts_versions = {}
         for entry_item in item.entries:
-            # ensure that each entry's account.version is equal to the latest entry
-            # for that account (optimistic locking / concurrency control)
             acct = await sql.select_one(
                 conn,
                 sql.queries.SELECT(
@@ -148,7 +146,9 @@ async def post_transaction(req: Request):
             if entry_item.acct in entry_accts_versions:
                 entry_item.acct_version = entry_accts_versions[entry_item.acct]
 
-            if acct["version"] != entry_item.acct_version:
+            # ensure that each entry's account.version, if given, is equal to the latest
+            # entry for that account (optimistic locking / concurrency control).
+            if entry_item.acct_version and acct["version"] != entry_item.acct_version:
                 raise HTTPException(
                     status_code=HTTPStatus.CONFLICT,
                     detail="Entry account_version is out of date",
