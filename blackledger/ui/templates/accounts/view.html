@@ -52,7 +52,7 @@
       <tr>
         <td class="align-text-top pr-2 text-right" colspan="5">
           <input type="submit" class="pr-2" value="Post" />
-          <button>Cancel</button>
+          <button @click.prevent="resetNewTransaction">Cancel</button>
         </td>
       </tr>
       <!-- existing transactions -->
@@ -186,6 +186,10 @@
           });
         console.log(JSON.stringify(result, null, 2))
       },
+      resetNewTransaction(event) {
+        this.newTransaction = newBlankTransaction();
+        document.getElementById('new-tx-memo').focus();
+      }
     },
   }).mount("#app");
   function newEntry(params) {
