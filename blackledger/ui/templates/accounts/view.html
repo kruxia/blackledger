@@ -34,14 +34,15 @@
         </template>
         <td class="align-text-top pt-1 pr-2">
           <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-            v-model="newTransaction.entries[index].dr" />
+            v-model="newTransaction.entries[index].dr" @change="balanceNewTransaction" />
         </td>
         <td class="align-text-top pt-1 pr-2">
           <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-            v-model="newTransaction.entries[index].cr" />
+            v-model="newTransaction.entries[index].cr" @change="balanceNewTransaction" />
         </td>
         <td class="align-text-top pt-1 pr-2">
-          <select class="w-12" v-model="newTransaction.entries[index].curr">
+          <select class="w-12" v-model="newTransaction.entries[index].curr"
+            @change="balanceNewTransaction">
             <option value=""></option>
             <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
             </option>
@@ -93,6 +94,12 @@
 <script>
   const TENANT_ID = "{$tenant_id}";
   const ACCOUNT_ID = "{$request.query_params.get('id')}";
+  // create an integer sequence generator - used to ensure that entries have unique keys
+  function integerSequence() {
+    var id = 0;
+    return () => id += 1;
+  }
+  const newEntryKey = integerSequence();
   const app = Vue.createApp({
     data() {
       return {
@@ -112,6 +119,49 @@
       document.getElementById('new-tx-memo').focus();
     },
     methods: {
+      balanceNewTransaction(event) {
+        console.log(JSON.stringify(this.newTransaction, null, 2));
+        var balances = {};
+        for (index in this.newTransaction.entries) {
+          entry = this.newTransaction.entries[index];
+          if (index > 0 && !entry.dr && !entry.cr) {
+            // remove empty non-initial entry #1 (see #2 below)
+            this.newTransaction.entries.pop(entry);
+          } else {
+            // update entry.curr to match entry.ref
+            if (entry.ref) {
+              entry.curr = this.newTransaction.entries[entry.ref].curr;
+            }
+            // update the balances
+            balances = Object.assign(balances, {
+              [entry.curr]: {
+                dr: Number((balances[entry.curr] || { dr: 0 }).dr) + Number(entry.dr),
+                cr: Number((balances[entry.curr] || { cr: 0 }).cr) + Number(entry.cr),
+                refs: (balances[entry.curr] || { refs: [] }).refs.concat([index]),
+              }
+            });
+          }
+        }
+        console.log(JSON.stringify(balances, null, 2));
+
+        // remove empty non-initial entries #2 (see #1 above)
+        this.newTransaction.entries = this.newTransaction.entries.filter(
+          (entry, index) => index == 0 || entry.dr || entry.cr);
+
+        // add entries to balance the transaction
+        for (curr in balances) {
+          var bal = balances[curr];
+          if (bal.dr > bal.cr) {
+            this.newTransaction.entries.push(newEntry({
+              cr: (bal.dr - bal.cr).toString(), curr: curr, ref: bal.refs.slice(-1)
+            }));
+          } else if (bal.cr > bal.dr) {
+            this.newTransaction.entries.push(newEntry({
+              dr: (bal.cr - bal.dr).toString(), curr: curr, ref: bal.refs.slice(-1)[0] || null
+            }));
+          }
+        }
+      },
       async submitNewTransaction(event) {
         const transaction_url = `http://localhost:8000/api/transactions`;
         console.log(JSON.stringify(this.newTransaction, null, 2))
@@ -138,6 +188,16 @@
       },
     },
   }).mount("#app");
+  function newEntry(params) {
+    return Object.assign({
+      key: newEntryKey(),
+      tenant_id: TENANT_ID,
+      acct: null,
+      dr: null,
+      cr: null,
+      curr: null
+    }, params);
+  }
   function newBlankTransaction() {
     return {
       tenant_id: TENANT_ID,
@@ -145,21 +205,7 @@
       memo: "",
       entries: [
         // the first entry is assigned to this page's account
-        {
-          tenant_id: TENANT_ID,
-          acct: ACCOUNT_ID,
-          dr: null,
-          cr: null,
-          curr: null
-        },
-        // there are always at least two entries
-        {
-          tenant_id: TENANT_ID,
-          acct: null,
-          dr: null,
-          cr: null,
-          curr: null
-        },
+        newEntry({ acct: ACCOUNT_ID }),
       ]
     }
   }
