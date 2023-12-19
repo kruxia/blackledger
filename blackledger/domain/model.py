@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
+import dateparser
 import orjson
 from pydantic import (
     BaseModel,
@@ -116,6 +117,12 @@ class Transaction(Model):
     memo: Optional[str] = None
     meta: Optional[dict] = None
     entries: list[Entry] = Field(default_factory=list)
+
+    @field_validator("posted", "effective", mode="before")
+    def convert_datetimes(cls, value):
+        if isinstance(value, str):
+            value = dateparser.parse(value)
+        return value
 
     @model_validator(mode="after")
     def balanced_entries(self):

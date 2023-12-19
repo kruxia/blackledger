@@ -2,88 +2,91 @@
 {% block main %}
 <div id="app">
   <h1 class="text-4xl">Account<span v-if="account.id">: {{account.name}}</span></h1>
-  <table v-if="account.transactions">
-    <tr>
-      <th class="text-left pr-2">Date</th>
-      <th class="text-left pr-2">Memo / Accounts</th>
-      <th class="text-left pr-2" colspan="3">Entries
-        {% include "components/button-plus.html" %}
-      </th>
-    </tr>
-    <!-- new transaction -->
-    <!-- first line includes date, memo, and first entry for this page's account. -->
-    <tr v-for="(entry, index) in newTransaction.entries">
-      <template v-if="index == 0">
-        <td class="align-text-top pt-1 pr-2">
-          <input type="date" v-model="newTransaction.effective" />
-        </td>
-        <td class="align-text-top pt-1 pr-2">
-          <input type="text" class="w-48 border rounded" v-model="newTransaction.memo" />
-        </td>
-      </template>
-      <template v-else="">
-        <td></td>
-        <td class="align-text-top pr-2">
-          <select class="w-44 ml-4" v-model="newTransaction.entries[index].acct">
-            <option value=""></option>
-            <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
-          </select>
-        </td>
-      </template>
-      <td class="align-text-top pt-1 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-          v-model="newTransaction.entries[index].dr" />
-      </td>
-      <td class="align-text-top pt-1 pr-2">
-        <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
-          v-model="newTransaction.entries[index].cr" />
-      </td>
-      <td class="align-text-top pt-1 pr-2">
-        <select v-model="newTransaction.entries[index].curr">
-          <option value=""></option>
-          <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
-          </option>
-        </select>
-      </td>
-    </tr>
-    <tr>
-      <td class="align-text-top pr-2 text-right" colspan="5">
-        <button class="pr-2">Post</button>
-        <button>Cancel</button>
-      </td>
-    </tr>
-    <!-- existing transactions -->
-    <template v-for="transaction in account.transactions">
-      <!-- entries for this account first since we're suppressing this account name on the page -->
-      <tr v-for="(entry, entryIndex) in transaction.entries.filter(
-          (entry) => entry.acct == account.id).concat(
-            transaction.entries.filter((entry) => entry.acct != account.id))">
-        <template v-if="entryIndex == 0">
-          <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
-          <td class="align-text-top pt-1 pr-2"><span class="font-bold">{{transaction.memo}}</span>
+  <form @submit.prevent="submitNewTransaction">
+    <table>
+      <tr>
+        <th class="text-left pr-2">Date</th>
+        <th class="text-left pr-2">Memo / Accounts</th>
+        <th class="text-left pr-2" colspan="3">Entries</th>
+      </tr>
+      <!-- new transaction
+      first line includes date, memo, and first entry for this page's account.
+      following lines for following entries
+    -->
+      <tr v-for="(entry, index) in newTransaction.entries">
+        <template v-if="index == 0">
+          <td class="align-text-top pt-1 pr-2">
+            <input id="new-tx-date" type="date" v-model="newTransaction.effective" />
+          </td>
+          <td class="align-text-top pt-1 pr-2">
+            <input id="new-tx-memo" type="text" class="w-48 border rounded"
+              v-model="newTransaction.memo" />
           </td>
         </template>
         <template v-else="">
-          <td class="align-text-top pt-1 pr-2"></td>
-          <td class="align-text-top pt-1 pr-2">
-            <a v-if="entry.acct != account.id" class="ml-4"
-              :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">
-              {{entry.acct_name}}
-            </a>
+          <td></td>
+          <td class="align-text-top pr-2">
+            <select class="w-44 ml-4" v-model="newTransaction.entries[index].acct">
+              <option value=""></option>
+              <option v-for="acct of accounts" :value="acct.id" v-text="acct.name"></option>
+            </select>
           </td>
         </template>
         <td class="align-text-top pt-1 pr-2">
-          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
+          <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+            v-model="newTransaction.entries[index].dr" />
         </td>
         <td class="align-text-top pt-1 pr-2">
-          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
+          <input class="border rounded w-16" type="text" pattern="\d+(\.\d*)?"
+            v-model="newTransaction.entries[index].cr" />
         </td>
         <td class="align-text-top pt-1 pr-2">
-          <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
+          <select class="w-12" v-model="newTransaction.entries[index].curr">
+            <option value=""></option>
+            <option v-for="currency of currencies" :value="currency.code" v-text="currency.code">
+            </option>
+          </select>
         </td>
       </tr>
-    </template>
-  </table>
+      <tr>
+        <td class="align-text-top pr-2 text-right" colspan="5">
+          <input type="submit" class="pr-2" value="Post" />
+          <button>Cancel</button>
+        </td>
+      </tr>
+      <!-- existing transactions -->
+      <template v-for="transaction in account.transactions">
+        <!-- entries for this account first since we're suppressing this account name on the page -->
+        <tr v-for="(entry, entryIndex) in transaction.entries.filter(
+          (entry) => entry.acct == account.id).concat(
+            transaction.entries.filter((entry) => entry.acct != account.id))">
+          <template v-if="entryIndex == 0">
+            <td class="align-text-top pt-1 pr-2">{{transaction.effective.split('T')[0]}}</td>
+            <td class="align-text-top pt-1 pr-2"><span class="font-bold">{{transaction.memo}}</span>
+            </td>
+          </template>
+          <template v-else="">
+            <td class="align-text-top pt-1 pr-2"></td>
+            <td class="align-text-top pt-1 pr-2">
+              <a v-if="entry.acct != account.id" class="ml-4"
+                :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">
+                {{entry.acct_name}}
+              </a>
+            </td>
+          </template>
+          <td class="align-text-top pt-1 pr-2">
+            <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.dr}}</span>
+          </td>
+          <td class="align-text-top pt-1 pr-2">
+            <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.cr}}</span>
+          </td>
+          <td class="align-text-top pt-1 pr-2">
+            <span :class="entry.acct == account.id ? 'font-bold' : ''">{{entry.curr}}</span>
+          </td>
+        </tr>
+      </template>
+    </table>
+  </form>
 </div>
 {% endblock %}
 {% block footscript %}
@@ -126,7 +129,30 @@
       this.account = await fetchAccount();
       this.accounts = await fetchAccounts();
       this.currencies = await fetchCurrencies();
-    }
+      document.getElementById('new-tx-memo').focus();
+    },
+    methods: {
+      async submitNewTransaction(event) {
+        const transaction_url = `http://localhost:8000/api/transactions`;
+        console.log(JSON.stringify(this.newTransaction, null, 2))
+        const fetchOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(this.newTransaction)
+        }
+        const result = await fetch(transaction_url, fetchOptions).then(
+          async function (response) {
+            const data = await response.json();
+            if (response.status == 201) {
+              this.transactions.unshift(data);
+            }
+            return { "status": response.status, "data": data };
+          });
+        console.log(JSON.stringify(result, null, 2))
+      },
+    },
   }).mount("#app");
   async function fetchAccount() {
     const account_url = `http://localhost:8000/api/accounts?id=${ACCOUNT_ID}`;
