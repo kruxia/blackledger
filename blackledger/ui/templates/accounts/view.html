@@ -174,15 +174,19 @@
         }
         const result = await fetch(transaction_url, fetchOptions).then(
           async function (response) {
-            const data = await response.json();
-            if (response.status == 201) {
-              // data == the new transaction
-              app.transactions.unshift(data);
-              // clear the newTransaction
-              app.newTransaction = newBlankTransaction();
-              document.getElementById('new-tx-memo').focus();
+            const transaction = await response.json();
+            const accountsById = Object.fromEntries(
+              app.accounts.map(acct => [acct.id, acct]));
+            for (entry of transaction.entries) {
+              entry.acct_name = accountsById[entry.acct].name;
             }
-            return { "status": response.status, "data": data };
+            if (response.status == 201) {
+              // transaction == the new transaction
+              app.transactions.unshift(transaction);
+              // clear the newTransaction
+              app.resetNewTransaction(event);
+            }
+            return { "status": response.status, "data": transaction };
           });
         console.log(JSON.stringify(result, null, 2))
       },
