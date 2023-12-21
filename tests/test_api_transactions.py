@@ -66,8 +66,8 @@ def test_post_transactions_ok(
     The first transaction posted to an account should not have an 'acct_version' because
     it doesn't yet exist.
 
-    Following transactions to an should have the correct 'acct_version', which is the
-    last entry.id
+    Following transactions to an account should have the correct 'acct_version', which
+    is the last entry.id
     """
     post_txs = [
         {
@@ -146,48 +146,53 @@ def test_post_transaction_not_found(
 
 
 @pytest.mark.parametrize(
-    "acct_version",
+    "acct_version, status_code",
     [
-        # posting with no acct_version
-        (None,),
+        # posting with no acct_version does NOT cause a conflict -- optimistic locking
+        # is optional
+        (None, HTTPStatus.CREATED),
         # posting with an invalid acct_version
-        (types.ID(),),
+        (types.ID(), HTTPStatus.CONFLICT),
     ],
 )
 def test_post_transaction_conflict(
-    client, base_tenant, test_accounts, test_transactions, acct_version, json_dumps
+    client,
+    base_tenant,
+    test_accounts,
+    test_transactions,
+    acct_version,
+    status_code,
+    json_dumps,
 ):
     """
     When posting a transaction to an account that already has transactions, the
-    'acct_version' field is required and must match the latest entry.id.
+    'acct_version' field, if not null, must match the latest entry.id.
     """
+    post_tx = {
+        "memo": "not the first tx",
+        "tenant_id": base_tenant.id,
+        "entries": [
+            {
+                "acct": test_accounts["Asset"].id,
+                "tenant_id": base_tenant.id,
+                "acct_version": acct_version,
+                "dr": "1000",
+                "curr": "USD",
+            },
+            {
+                "acct": test_accounts["Income"].id,
+                "tenant_id": base_tenant.id,
+                "acct_version": acct_version,
+                "cr": "1000",
+                "curr": "USD",
+            },
+        ],
+    }
 
-    for version in acct_version:
-        post_tx = {
-            "memo": "not the first tx",
-            "tenant_id": base_tenant.id,
-            "entries": [
-                {
-                    "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
-                    "acct_version": version,
-                    "dr": "1000",
-                    "curr": "USD",
-                },
-                {
-                    "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
-                    "acct_version": version,
-                    "cr": "1000",
-                    "curr": "USD",
-                },
-            ],
-        }
-
-        response = client.post("/api/transactions", content=json_dumps(post_tx))
-        response_tx = response.json()
-        print(response.status_code, response_tx)
-        assert response.status_code == HTTPStatus.CONFLICT
+    response = client.post("/api/transactions", content=json_dumps(post_tx))
+    response_tx = response.json()
+    print(response.status_code, response_tx)
+    assert response.status_code == status_code
 
 
 def test_post_transaction_precondition_failed(

@@ -147,7 +147,7 @@ async def post_transaction(req: Request):
                 entry_item.acct_version = entry_accts_versions[entry_item.acct]
 
             # ensure that each entry's account.version, if given, is equal to the latest
-            # entry for that account (optimistic locking / concurrency control).
+            # entry for that account (OPTIONAL optimistic locking / concurrency control)
             if entry_item.acct_version and acct["version"] != entry_item.acct_version:
                 raise HTTPException(
                     status_code=HTTPStatus.CONFLICT,
