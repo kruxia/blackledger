@@ -157,7 +157,7 @@
             }));
           } else if (bal.cr > bal.dr) {
             this.newTransaction.entries.push(newEntry({
-              dr: (bal.cr - bal.dr).toString(), curr: curr, ref: bal.refs.slice(-1)[0] || null
+              dr: (bal.cr - bal.dr).toString(), curr: curr, ref: bal.refs.slice(-1)
             }));
           }
         }
@@ -177,10 +177,10 @@
             const transaction = await response.json();
             const accountsById = Object.fromEntries(
               app.accounts.map(acct => [acct.id, acct]));
-            for (entry of transaction.entries) {
-              entry.acct_name = accountsById[entry.acct].name;
-            }
             if (response.status == 201) {
+              for (entry of transaction.entries) {
+                entry.acct_name = accountsById[entry.acct].name;
+              }
               // transaction == the new transaction
               app.transactions.unshift(transaction);
               // clear the newTransaction
@@ -190,12 +190,14 @@
           });
         console.log(JSON.stringify(result, null, 2))
       },
+
       resetNewTransaction(event) {
         this.newTransaction = newBlankTransaction();
         document.getElementById('new-tx-memo').focus();
       }
     },
   }).mount("#app");
+
   function newEntry(params) {
     return Object.assign({
       key: newEntryKey(),
