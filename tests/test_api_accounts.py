@@ -81,12 +81,12 @@ def testsearch_accounts_unmatched_tenant(client, base_accounts):
 @pytest.mark.parametrize(
     "query, status_code",
     [
-        ("?normal=FR", HTTPStatus.PRECONDITION_FAILED),
-        ("?version=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
-        ("?name=No spaces allowed", HTTPStatus.PRECONDITION_FAILED),
-        ("?tenant=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
-        ("?parent=NOT_AN_ID", HTTPStatus.PRECONDITION_FAILED),
-        ("?number=INTS_ONLY", HTTPStatus.PRECONDITION_FAILED),
+        ("?normal=FR", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?version=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?name=No spaces allowed", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?tenant=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?parent=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?number=INTS_ONLY", HTTPStatus.UNPROCESSABLE_ENTITY),
     ],
 )
 def testsearch_accounts_fail(client, base_accounts, query, status_code):
