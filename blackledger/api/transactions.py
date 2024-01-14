@@ -150,7 +150,7 @@ async def post_transaction(req: Request):
             # entry for that account (OPTIONAL optimistic locking / concurrency control)
             if entry_item.acct_version and acct["version"] != entry_item.acct_version:
                 raise HTTPException(
-                    status_code=HTTPStatus.CONFLICT,
+                    status_code=HTTPStatus.PRECONDITION_FAILED,
                     detail="Entry account_version is out of date",
                 )
 

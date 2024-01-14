@@ -54,7 +54,7 @@ async def validation_error_handler(_, exc: ValidationError):
         for key in error.get("ctx", {}):
             error["ctx"][key] = str(error["ctx"][key])
     return JSONResponse(
-        status_code=HTTPStatus.PRECONDITION_FAILED,
+        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         content=errors,
     )
 

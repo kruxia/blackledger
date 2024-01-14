@@ -148,14 +148,14 @@ def test_post_transaction_not_found(
 @pytest.mark.parametrize(
     "acct_version, status_code",
     [
+        # posting with an invalid acct_version
+        (types.ID(), HTTPStatus.PRECONDITION_FAILED),
         # posting with no acct_version does NOT cause a conflict -- optimistic locking
         # is optional
         (None, HTTPStatus.CREATED),
-        # posting with an invalid acct_version
-        (types.ID(), HTTPStatus.CONFLICT),
     ],
 )
-def test_post_transaction_conflict(
+def test_post_transaction_optimistic_locking(
     client,
     base_tenant,
     test_accounts,
@@ -200,7 +200,7 @@ def test_post_transaction_precondition_failed(
 ):
     """
     When posting a transaction with invalid input data, the response has the status code
-    412 PRECONDITION FAILED.
+    422 Unprocessable Entity.
     """
 
     for post_tx in [
@@ -310,4 +310,4 @@ def test_post_transaction_precondition_failed(
         response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
         print(post_tx["memo"], response.status_code, response_tx)
-        assert response.status_code == HTTPStatus.PRECONDITION_FAILED
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
