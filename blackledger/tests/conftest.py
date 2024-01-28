@@ -1,6 +1,6 @@
 import pytest
 
-from tests import fixtures
+from blackledger.tests import fixtures
 
 client = pytest.fixture(scope="session")(fixtures.client)
 dbpool = pytest.fixture(scope="session")(fixtures.dbpool)
