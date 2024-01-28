@@ -75,7 +75,8 @@ class ID(UUID):
     >>>  import psycopg; from blackledger.settings import DatabaseSettings
     >>> db = DatabaseSettings(); sql = SQL(dialect=db.dialect)
     >>> conn = psycopg.connect(conninfo=db.url.get_secret_value())
-    >>> records = sql.select_all(conn, "select i, gen_id('my_id_seq') id from generate_series(1,5) i")
+    >>> records = sql.select_all(conn,
+    ...     "select i, gen_id('my_id_seq') id from generate_series(1,5) i")
     >>> [(r['i'], r['id'].to_uuid()) for r in records]
     [(1, UUID('018d4ced-3a4e-0001-3a42-804c43e425cd')),
      (2, UUID('018d4ced-3a4e-0002-0402-e203134921f0')),

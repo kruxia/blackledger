@@ -13,13 +13,13 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
-    id: Optional[list[model.ID]] = None
+    id: Optional[list[model.IDField]] = None
     name: Optional[constr(pattern=r"^\S+$")] = None
-    tenant_id: Optional[model.ID] = Field(default=None, alias="tenant")
-    parent_id: Optional[model.ID] = Field(default=None, alias="parent")
+    tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
+    parent_id: Optional[model.IDField] = Field(default=None, alias="parent")
     number: Optional[int] = None
     normal: Optional[types.Normal] = None
-    version: Optional[model.ID] = None
+    version: Optional[model.IDField] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

@@ -1,6 +1,8 @@
-from typing import Any
 import json
+from typing import Any
+
 import fastapi.responses
+
 from blackledger.domain import types
 
 
