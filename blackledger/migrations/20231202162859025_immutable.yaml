@@ -33,7 +33,7 @@ up:
         IF (OLD.id <> NEW.id) THEN
           RAISE EXCEPTION 'Account id cannot be updated';
         ELSIF (OLD.normal <> NEW.normal) THEN
-          RAISE EXCEPTION 'Account normal cannot be updated';
+          RAISE EXCEPTION 'Account normal type cannot be updated';
         END IF;
         RETURN NEW;
       END;

@@ -12,7 +12,6 @@ up:
     , name    varchar         NOT NULL UNIQUE
     , created timestamptz(6)  NOT NULL DEFAULT now()
   );
-
 dn:
 - |-
   DROP TABLE tenant;

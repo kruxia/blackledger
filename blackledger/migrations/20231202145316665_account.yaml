@@ -27,6 +27,7 @@ up:
     , UNIQUE NULLS NOT DISTINCT (tenant_id, parent_id, name) -- unique name per context
     , UNIQUE (tenant_id, number)                          -- unique number per tenant
 
+    , created timestamptz(6)  NOT NULL DEFAULT now()
     , normal    varchar(2)
                   NOT NULL
                   CHECK (normal in ('DR', 'CR'))
