@@ -3,7 +3,7 @@ import psycopg_pool
 
 from blackledger.domain import types
 from blackledger.settings import DatabaseSettings
-from tests import fixtures
+from blackledger.tests import fixtures
 
 if __name__ == "__main__":
     settings = DatabaseSettings()

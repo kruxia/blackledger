@@ -11,8 +11,8 @@ from sqly import ASQL
 
 from blackledger import api, ui
 from blackledger.db import type_adapters  # noqa - provides psycopg type registrations.
-from blackledger.settings import DatabaseSettings
 from blackledger.response import JSONResponse
+from blackledger.settings import DatabaseSettings
 
 
 @asynccontextmanager

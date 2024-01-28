@@ -13,9 +13,9 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 class TransactionFilters(SearchFilters):
-    tenant_id: Optional[model.ID] = Field(default=None, alias="tenant")
-    tx: Optional[list[model.ID]] = None
-    acct: Optional[list[model.ID]] = None
+    tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
+    tx: Optional[list[model.IDField]] = None
+    acct: Optional[list[model.IDField]] = None
     curr: Optional[list[types.CurrencyCode]] = None
     memo: Optional[str] = None
 
@@ -108,11 +108,10 @@ async def search_transactions(req: Request):
 
 
 @router.post("", status_code=HTTPStatus.CREATED)
-async def post_transaction(req: Request):
+async def post_transaction(req: Request, item: model.NewTransaction):
     """
     Post transaction.
     """
-    item = model.NewTransaction(**(await req.json()))
     # the input item has been validated -- just post it
     sql = req.app.sql
     async with req.app.pool.connection() as conn:  # (creates a db tx context)

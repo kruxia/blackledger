@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
+from uuid import UUID
 
 import orjson
 from pydantic import (
@@ -16,7 +17,20 @@ from typing_extensions import Annotated
 
 from . import types
 
-ID = Annotated[types.ID, BeforeValidator(types.ID.field_converter)]
+CurrencyField = Annotated[types.CurrencyCode, Field(examples=["USD", "CAD", "GOOG"])]
+IDField = Annotated[
+    UUID,
+    BeforeValidator(types.ID.field_converter),
+    Field(examples=[str(types.ID())]),
+]
+NormalField = Annotated[
+    types.Normal,
+    Field(examples=[types.Normal.DR.name]),
+]
+NameField = Annotated[
+    types.NameString,
+    Field(examples=["Some-Name"]),
+]
 
 
 class Model(BaseModel):
@@ -27,17 +41,17 @@ class Model(BaseModel):
 
 
 class Currency(Model):
-    code: types.CurrencyCode
+    code: CurrencyField
 
 
 class Account(Model):
-    id: Optional[ID] = None
-    tenant_id: ID
-    parent_id: Optional[ID] = None
-    name: types.NameString
-    normal: types.Normal
+    id: Optional[IDField] = None
+    tenant_id: IDField
+    parent_id: Optional[IDField] = None
+    name: NameField
+    normal: NormalField
     number: Optional[int] = None
-    version: Optional[ID] = None
+    version: Optional[IDField] = None
 
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
@@ -47,24 +61,20 @@ class Account(Model):
             value = types.Normal[value]
         return value
 
-    # @field_serializer("id")
-    # def serialize_id(self, val: ID):
-    #     return str(val)
-
     @field_serializer("normal")
     def serialize_normal(self, val: types.Normal):
         return val.name
 
 
 class Entry(Model):
-    id: Optional[ID] = None
-    tenant_id: ID
-    tx: Optional[ID] = None
-    acct: ID
+    id: Optional[IDField] = None
+    tenant_id: IDField
+    tx: Optional[IDField] = None
+    acct: IDField
     acct_name: Optional[str] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
-    curr: types.CurrencyCode
+    curr: CurrencyField
 
     @field_validator("dr", "cr", mode="before")
     def validate_dr_cr(cls, value):
@@ -105,12 +115,12 @@ class Entry(Model):
 
 
 class NewEntry(Entry):
-    acct_version: Optional[ID] = None
+    acct_version: Optional[IDField] = None
 
 
 class Transaction(Model):
-    id: Optional[ID] = None
-    tenant_id: ID
+    id: Optional[IDField] = None
+    tenant_id: IDField
     posted: Optional[datetime] = None
     effective: Optional[datetime] = None
     memo: Optional[str] = None
@@ -146,6 +156,6 @@ class NewTransaction(Transaction):
 
 
 class Tenant(Model):
-    id: Optional[ID] = None
-    name: types.NameString
+    id: Optional[IDField] = None
+    name: NameField
     created: Optional[datetime] = None

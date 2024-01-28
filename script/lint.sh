@@ -1,5 +1,5 @@
 #!/bin/bash
-DEFAULT_PATHS="blackledger script tests"
+DEFAULT_PATHS="blackledger script"
 
 isort --profile black --check ${@:-$DEFAULT_PATHS}
 black --check ${@:-$DEFAULT_PATHS}
