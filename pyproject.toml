@@ -39,7 +39,13 @@ requires = ["setuptools>=45"]           #, "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["blackledger", "tests"]
+packages = ["blackledger"]
 
 # [tool.setuptools_scm]
 # write_to = "blackledger/__version__.py"
+
+[tool.coverage.run]
+omit = ["blackledger/tests/*"]
+
+[tool.coverage.report]
+skip_covered = true
