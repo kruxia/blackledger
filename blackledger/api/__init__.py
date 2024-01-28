@@ -6,7 +6,7 @@ from blackledger.meta import __name__, __version__
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", tags=["home"])
 async def home():
     return {
         "name": __name__,

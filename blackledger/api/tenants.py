@@ -7,7 +7,7 @@ from blackledger.domain import model
 
 from .search import SearchFilters, SearchParams
 
-router = APIRouter(prefix="/tenants")
+router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 
 class TenantFilters(SearchFilters):

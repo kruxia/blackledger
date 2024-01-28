@@ -4,15 +4,15 @@ from pathlib import Path
 
 import psycopg_pool
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg.errors import ForeignKeyViolation, RaiseException, UniqueViolation
 from pydantic import ValidationError
 from sqly import ASQL
 
 from blackledger import api, ui
-from blackledger.db import type_adapters  # noqa - provides psycopg registrations.
+from blackledger.db import type_adapters  # noqa - provides psycopg type registrations.
 from blackledger.settings import DatabaseSettings
+from blackledger.response import JSONResponse
 
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ PATH = Path(__file__).absolute().parent
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=PATH / "ui" / "static"), name="static")
-app.include_router(api.router, prefix="/api")
+app.include_router(api.router, prefix="/api", default_response_class=JSONResponse)
 app.include_router(ui.app)
 
 

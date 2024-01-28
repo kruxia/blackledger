@@ -8,7 +8,7 @@ from blackledger.domain import model, types
 
 from .search import SearchFilters, SearchParams
 
-router = APIRouter(prefix="/accounts")
+router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 
 class AccountFilters(SearchFilters):
