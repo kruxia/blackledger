@@ -7,13 +7,13 @@ doc: >-
   All currencies that are known to this blackledger installation
 
   * code = the short code for the currency
-  * dec = the number of decimal places used with this currency (default = 2)
-    - used to scale internal integer amounts to presentational decimal amounts
+  * created = when the currency code was added to the database
 up:
 - |-
   CREATE TABLE currency (
-    code    varchar   PRIMARY KEY
-              CHECK (code ~ '^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$')
+    code      varchar         PRIMARY KEY
+                                CHECK (code ~ '^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$')
+    , created timestamptz(6)  NOT NULL DEFAULT now()
   );
 dn:
 - |-
