@@ -7,7 +7,7 @@ from blackledger.domain import model
 
 from .search import SearchFilters, SearchParams
 
-router = APIRouter(prefix="/currencies")
+router = APIRouter(prefix="/currencies", tags=["currencies"])
 
 
 class CurrencyFilters(SearchFilters):
