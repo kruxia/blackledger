@@ -11,7 +11,7 @@ CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
 NameString = constr(pattern=r"^[\w\-\. ]+$")
 
 
-class Normal(IntEnum):
+class NormalType(IntEnum):
     DR = 1
     CR = -1
 

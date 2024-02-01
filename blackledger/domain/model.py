@@ -24,8 +24,8 @@ IDField = Annotated[
     Field(examples=[str(types.ID())]),
 ]
 NormalField = Annotated[
-    types.Normal,
-    Field(examples=[types.Normal.DR.name]),
+    types.NormalType,
+    Field(examples=[types.NormalType.DR.name]),
 ]
 NameField = Annotated[
     types.NameString,
@@ -56,13 +56,13 @@ class Account(Model):
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
         if isinstance(value, str):
-            if value not in types.Normal.__members__:
+            if value not in types.NormalType.__members__:
                 raise ValueError(value)
-            value = types.Normal[value]
+            value = types.NormalType[value]
         return value
 
     @field_serializer("normal")
-    def serialize_normal(self, val: types.Normal):
+    def serialize_normal(self, val: types.NormalType):
         return val.name
 
 
@@ -109,9 +109,9 @@ class Entry(Model):
         * Credits (CR) are negative
         """
         if self.dr:
-            return self.dr * types.Normal.DR
+            return self.dr * types.NormalType.DR
         else:
-            return self.cr * types.Normal.CR
+            return self.cr * types.NormalType.CR
 
 
 class NewEntry(Entry):
