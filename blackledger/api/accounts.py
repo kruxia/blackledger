@@ -1,12 +1,12 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import ConfigDict, Field, constr, field_serializer, field_validator
 
 from blackledger.domain import model, types
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -18,7 +18,7 @@ class AccountFilters(SearchFilters):
     tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
     parent_id: Optional[model.IDField] = Field(default=None, alias="parent")
     number: Optional[int] = None
-    normal: Optional[types.NormalType] = None
+    normal: Optional[model.NormalField] = None
     version: Optional[model.IDField] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -46,12 +46,14 @@ class AccountFilters(SearchFilters):
 
 
 @router.get("", response_model=list[model.Account])
-async def search_accounts(req: Request):
+async def search_accounts(
+    req: Request, filters: Annotated[AccountFilters, Depends(AccountFilters)]
+):
     """
     Search for and list accounts.
     """
     params = SearchParams.from_query(req.query_params).select_params()
-    filters = AccountFilters.from_query(req.query_params)
+    # filters = AccountFilters.from_query(req.query_params)
     query = req.app.sql.queries.SELECT(
         "account", filters=filters.select_filters(), **params
     )
@@ -76,7 +78,9 @@ async def edit_account(req: Request, item: model.Account):
 
 
 @router.get("/balances")
-async def get_balances(req: Request):
+async def get_balances(
+    req: Request, filters: Annotated[AccountFilters, Depends(AccountFilters)]
+):
     query = [
         "WITH balances AS (",
         "    SELECT a.id account_id,",
@@ -92,20 +96,19 @@ async def get_balances(req: Request):
         "JOIN balances",
         "    ON account.id = balances.account_id",
     ]
-    filters = AccountFilters.from_query(req.query_params)
     select_filters = filters.select_filters()
     if select_filters:
         query += [
             "WHERE",
             "\n    AND ".join(select_filters),
         ]
-    params = SearchParams.from_query(req.query_params).select_params()
-    if params.get("orderby"):
-        query.append(f" ORDER BY {params['orderby']}")
-    if params.get("limit"):
-        query.append(f" LIMIT {params['limit']}")
-    if params.get("offset"):
-        query.append(f" OFFSET {params['offset']}")
+    select_params = SearchParams.from_query(req.query_params).select_params()
+    if select_params.get("orderby"):
+        query.append(f" ORDER BY {select_params['orderby']}")
+    if select_params.get("limit"):
+        query.append(f" LIMIT {select_params['limit']}")
+    if select_params.get("offset"):
+        query.append(f" OFFSET {select_params['offset']}")
 
     async with req.app.pool.connection() as conn:
         results = await req.app.sql.select_all(conn, query, filters.query_data())

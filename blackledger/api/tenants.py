@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import ConfigDict, constr
 
 from blackledger.domain import model
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
@@ -19,11 +19,12 @@ class TenantFilters(SearchFilters):
 
 
 @router.get("", response_model=list[model.Tenant])
-async def search_tenants(req: Request):
+async def search_tenants(
+    req: Request, filters: Annotated[TenantFilters, Depends(TenantFilters)]
+):
     """
     Search for and list tenants.
     """
-    filters = TenantFilters.from_query(req.query_params)
     params = SearchParams.from_query(req.query_params).select_params()
     query = req.app.sql.queries.SELECT(
         "tenant", filters=filters.select_filters(), **params
