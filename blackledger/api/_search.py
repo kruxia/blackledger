@@ -4,6 +4,23 @@ from pydantic import BaseModel, conint, constr
 from sqly import Q
 
 
+class SelectParams(BaseModel):
+    _orderby: Optional[constr(pattern=r"^-?\w+(,\-?\w+)*$")] = None
+    _limit: Optional[conint(le=100)] = 100
+    _offset: Optional[int] = None
+
+    def select_params(self):
+        data = self.model_dump(exclude_none=True, exclude=["_orderby"])
+        if self._orderby:
+            data["_orderby"] = ",".join(
+                [
+                    f"{field.lstrip('-')} desc" if field.startswith("-") else field
+                    for field in [field.strip() for field in self._orderby.split(",")]
+                ]
+            )
+        return data
+
+
 class SearchFilters(BaseModel):
     @classmethod
     def from_query(cls, qargs):
