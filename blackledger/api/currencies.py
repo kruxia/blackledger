@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import constr
 
 from blackledger.domain import model
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/currencies", tags=["currencies"])
 
@@ -15,11 +15,12 @@ class CurrencyFilters(SearchFilters):
 
 
 @router.get("", response_model=list[model.Currency])
-async def search_currencies(req: Request):
+async def search_currencies(
+    req: Request, filters: Annotated[CurrencyFilters, Depends(CurrencyFilters)]
+):
     """
     Search for and list currencies.
     """
-    filters = CurrencyFilters.from_query(req.query_params)
     search_params = SearchParams.from_query(req.query_params).select_params()
     query = req.app.sql.queries.SELECT(
         "currency", filters=filters.select_filters(), **search_params

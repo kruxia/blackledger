@@ -15,6 +15,14 @@ class NormalType(IntEnum):
     DR = 1
     CR = -1
 
+    @classmethod
+    def field_converter(cls, value):
+        if isinstance(value, str):
+            if value not in cls.__members__:
+                raise ValueError("Not a valid NormalType value")
+            value = cls.__members__[value]
+        return value
+
 
 class ID(UUID):
     """

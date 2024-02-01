@@ -7,7 +7,7 @@ from sqly import Q
 
 from blackledger.domain import model, types
 
-from .search import SearchFilters, SearchParams
+from ._search import SearchFilters, SearchParams
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 

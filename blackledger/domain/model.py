@@ -26,6 +26,7 @@ IDField = Annotated[
 NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
+    BeforeValidator(types.NormalType.field_converter),
 ]
 NameField = Annotated[
     types.NameString,
