@@ -18,7 +18,7 @@ class AccountFilters(SearchFilters):
     tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
     parent_id: Optional[model.IDField] = Field(default=None, alias="parent")
     number: Optional[int] = None
-    normal: Optional[types.Normal] = None
+    normal: Optional[types.NormalType] = None
     version: Optional[model.IDField] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -31,9 +31,9 @@ class AccountFilters(SearchFilters):
     @field_validator("normal", mode="before")
     def convert_normal(cls, value):
         if isinstance(value, str):
-            if value not in types.Normal.__members__:
+            if value not in types.NormalType.__members__:
                 raise ValueError(value)
-            value = types.Normal[value]
+            value = types.NormalType[value]
         return value
 
     @field_serializer("id")
@@ -41,7 +41,7 @@ class AccountFilters(SearchFilters):
         return [str(i.to_uuid()) for i in val] if val else None
 
     @field_serializer("normal")
-    def serialize_normal(self, val: types.Normal):
+    def serialize_normal(self, val: types.NormalType):
         return val.name
 
 
