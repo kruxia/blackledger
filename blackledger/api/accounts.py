@@ -53,7 +53,6 @@ async def search_accounts(
     Search for and list accounts.
     """
     params = SearchParams.from_query(req.query_params).select_params()
-    # filters = AccountFilters.from_query(req.query_params)
     query = req.app.sql.queries.SELECT(
         "account", filters=filters.select_filters(), **params
     )
