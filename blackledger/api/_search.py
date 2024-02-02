@@ -1,10 +1,12 @@
 from typing import Optional
 
-from pydantic import BaseModel, conint, constr
+from pydantic import conint, constr
 from sqly import Q
 
+from blackledger.domain.model import Model
 
-class SelectParams(BaseModel):
+
+class SelectParams(Model):
     _orderby: Optional[constr(pattern=r"^-?\w+(,\-?\w+)*$")] = None
     _limit: Optional[conint(le=100)] = 100
     _offset: Optional[int] = None
@@ -21,7 +23,7 @@ class SelectParams(BaseModel):
         return data
 
 
-class SearchFilters(BaseModel):
+class SearchFilters(Model):
     @classmethod
     def from_query(cls, qargs):
         vals = {k: v for k, v in qargs.items() if not k.startswith("_")}
@@ -44,7 +46,7 @@ class SearchFilters(BaseModel):
         return self.model_dump(exclude_none=True)
 
 
-class SearchParams(BaseModel):
+class SearchParams(Model):
     orderby: Optional[constr(pattern=r"^-?\w+(,\-?\w+)*$")] = None
     limit: Optional[conint(le=100)] = 100
     offset: Optional[int] = None

@@ -8,7 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    field_serializer,
+    PlainSerializer,
     field_validator,
     model_validator,
 )
@@ -20,13 +20,14 @@ from . import types
 CurrencyField = Annotated[types.CurrencyCode, Field(examples=["USD", "CAD", "GOOG"])]
 IDField = Annotated[
     UUID,
-    BeforeValidator(types.ID.field_converter),
     Field(examples=[str(types.ID())]),
+    BeforeValidator(types.ID.from_str),
+    PlainSerializer(types.ID.__str__, when_used="json"),  # not when going into database
 ]
 NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
-    BeforeValidator(types.NormalType.field_converter),
+    BeforeValidator(types.NormalType.from_str),
 ]
 NameField = Annotated[
     types.NameString,
@@ -53,18 +54,6 @@ class Account(Model):
     normal: NormalField
     number: Optional[int] = None
     version: Optional[IDField] = None
-
-    @field_validator("normal", mode="before")
-    def convert_normal(cls, value):
-        if isinstance(value, str):
-            if value not in types.NormalType.__members__:
-                raise ValueError(value)
-            value = types.NormalType[value]
-        return value
-
-    @field_serializer("normal")
-    def serialize_normal(self, val: types.NormalType):
-        return val.name
 
 
 class Entry(Model):

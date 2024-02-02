@@ -8,7 +8,9 @@ from ulid import ULID
 
 Base58String = constr(pattern=r"^[1-9A-HJ-NP-Za-km-z]+$")
 CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
+CurrencyFilter = constr(pattern=r"^[\^\$\*\?A-Za-z0-9\.\-_]+$")
 NameString = constr(pattern=r"^[\w\-\. ]+$")
+NameFilter = constr(pattern=r"^[\^\$\*\?\w\-\. ]+$")
 
 
 class NormalType(IntEnum):
@@ -16,7 +18,7 @@ class NormalType(IntEnum):
     CR = -1
 
     @classmethod
-    def field_converter(cls, value):
+    def from_str(cls, value):
         if isinstance(value, str):
             if value not in cls.__members__:
                 raise ValueError("Not a valid NormalType value")
@@ -157,7 +159,7 @@ class ID(UUID):
         return cls(base58.b58encode(value.bytes))
 
     @classmethod
-    def field_converter(cls, value):
+    def from_str(cls, value):
         if isinstance(value, str):
             value = cls(value)
         return value
