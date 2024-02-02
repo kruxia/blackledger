@@ -2,6 +2,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
 
+from blackledger.db import queries
 from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
@@ -22,14 +23,9 @@ async def search_tenants(
     """
     Search for and list tenants.
     """
-    params = SearchParams.from_query(req.query_params).select_params()
-    query = req.app.sql.queries.SELECT(
-        "tenant", filters=filters.select_filters(), **params
-    )
+    params = SearchParams.from_query(req.query_params)
     async with req.app.pool.connection() as conn:
-        results = await req.app.sql.select_all(
-            conn, query, filters.query_data(), Constructor=model.Tenant
-        )
+        results = await queries.select_tenants(conn, req.app.sql, filters, params)
 
     return results
 

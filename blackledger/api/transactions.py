@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field, field_serializer, field_validator
 from sqly import Q
 
+from blackledger.db import queries
 from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
@@ -49,60 +50,12 @@ async def search_transactions(req: Request):
     Search for and list transactions.
     """
     filters = TransactionFilters.from_query(req.query_params)
-    search_params = SearchParams.from_query(req.query_params)
-    select_params = search_params.select_params()
-    tx_query = [
-        # filter transaction ids based on transaction and entry fields
-        "WITH filtered_tr AS (",
-        "  SELECT distinct(transaction.id)",
-        "  FROM transaction",
-        "  JOIN entry",
-        "    ON transaction.id = entry.tx",
-    ]
-    if filters.query_data():
-        tx_query += [
-            "  WHERE",
-            "\n    AND ".join(filters.select_filters()),
-        ]
-    tx_query += [
-        ")",
-        # select matching transactions (only -- entries are separate)
-        "SELECT",
-        "  DISTINCT tx.*",
-        "FROM transaction tx",
-        "JOIN filtered_tr",
-        "  ON filtered_tr.id = tx.id",
-    ]
-
-    if select_params.get("orderby"):
-        tx_query.append(f"ORDER BY {select_params['orderby']}")
-    if select_params.get("limit"):
-        tx_query.append(f"LIMIT {select_params['limit']}")
-    if select_params.get("offset"):
-        tx_query.append(f"OFFSET {select_params['offset']}")
-
-    # select corresponding entries
-    entries_query = """
-        SELECT e.*, a.name acct_name FROM entry e
-        JOIN transaction t ON e.tx = t.id
-        JOIN account a ON e.acct = a.id
-        WHERE t.id = ANY(:tx)
-    """
+    params = SearchParams.from_query(req.query_params)
 
     async with req.app.pool.connection() as conn:
-        tx_results = await req.app.sql.select_all(
-            conn, tx_query, filters.query_data(), Constructor=model.Transaction
-        )
-        transactions = {tx.id: tx for tx in tx_results}
-        entries_params = {"tx": [str(tx.to_uuid()) for tx in transactions.keys()]}
-        entries_results = await req.app.sql.select_all(
-            conn, entries_query, entries_params, Constructor=model.Entry
-        )
+        results = await queries.select_transactions(conn, req.app.sql, filters, params)
 
-    for entry in entries_results:
-        transactions[entry.tx].entries.append(entry)
-
-    return list(transactions.values())
+    return results
 
 
 @router.post("", status_code=HTTPStatus.CREATED)

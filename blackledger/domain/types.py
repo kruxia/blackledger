@@ -115,7 +115,7 @@ class ID(UUID):
       5 | 018d4cf3-9d3a-7ffd-537e-75c33926c271
       6 | 018d4cf3-9d3a-7ffe-1c74-70ac3fe5f11c
       7 | 018d4cf3-9d3a-7fff-15a7-cb6e3c3487cf
-      8 | 018d4cf3-9d3a-0001-6ee2-1bfc09d541eb  /* <-- WHOOPS! wrap-around! */
+      8 | 018d4cf3-9d3a-0001-6ee2-1bfc09d541eb  /* <-- WHOOPS! counter wrap-around! */
       9 | 018d4cf3-9d3a-0002-5dcb-aff21f5ef447
      10 | 018d4cf3-9d3a-0003-5b84-bc7f5d71d66e
 

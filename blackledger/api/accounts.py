@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field, field_validator
 
+from blackledger.db import queries
 from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
@@ -62,37 +63,9 @@ async def edit_account(req: Request, item: model.Account):
 async def get_balances(
     req: Request, filters: Annotated[AccountFilters, Depends(AccountFilters)]
 ):
-    query = [
-        "WITH balances AS (",
-        "    SELECT a.id account_id,",
-        "        e.curr, sum(e.dr) dr, sum(e.cr) cr",
-        "    FROM account a",
-        "    JOIN entry e",
-        "        ON a.id = e.acct",
-        "    GROUP BY (a.id, e.curr)",
-        ")",
-        "SELECT account.*,",
-        "    balances.curr, balances.dr, balances.cr",
-        "FROM account",
-        "JOIN balances",
-        "    ON account.id = balances.account_id",
-    ]
-    select_filters = filters.select_filters()
-    if select_filters:
-        query += [
-            "WHERE",
-            "\n    AND ".join(select_filters),
-        ]
-    select_params = SearchParams.from_query(req.query_params).select_params()
-    if select_params.get("orderby"):
-        query.append(f" ORDER BY {select_params['orderby']}")
-    if select_params.get("limit"):
-        query.append(f" LIMIT {select_params['limit']}")
-    if select_params.get("offset"):
-        query.append(f" OFFSET {select_params['offset']}")
-
+    params = SearchParams.from_query(req.query_params)
     async with req.app.pool.connection() as conn:
-        results = await req.app.sql.select_all(conn, query, filters.query_data())
+        results = await queries.select_balances(conn, req.app.sql, filters, params)
 
     balances = {}
     for result in results:
