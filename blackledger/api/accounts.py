@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import ConfigDict, Field, constr, field_serializer, field_validator
+from pydantic import Field, field_validator
 
 from blackledger.domain import model, types
 
@@ -14,35 +14,17 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[list[model.IDField]] = None
-    name: Optional[constr(pattern=r"^\S+$")] = None
+    name: Optional[types.NameFilter] = None
     tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
     parent_id: Optional[model.IDField] = Field(default=None, alias="parent")
     number: Optional[int] = None
     normal: Optional[model.NormalField] = None
     version: Optional[model.IDField] = None
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     @field_validator("id", mode="before")
     def convert_list_fields(cls, val):
         if isinstance(val, str):
             return [v.strip() for v in val.split(",")]
-
-    @field_validator("normal", mode="before")
-    def convert_normal(cls, value):
-        if isinstance(value, str):
-            if value not in types.NormalType.__members__:
-                raise ValueError(value)
-            value = types.NormalType[value]
-        return value
-
-    @field_serializer("id")
-    def serialize_ids(self, val: list[types.ID]):
-        return [str(i.to_uuid()) for i in val] if val else None
-
-    @field_serializer("normal")
-    def serialize_normal(self, val: types.NormalType):
-        return val.name
 
 
 @router.get("", response_model=list[model.Account])
@@ -52,9 +34,9 @@ async def search_accounts(
     """
     Search for and list accounts.
     """
-    params = SearchParams.from_query(req.query_params).select_params()
+    params = SearchParams.from_query(req.query_params)
     query = req.app.sql.queries.SELECT(
-        "account", filters=filters.select_filters(), **params
+        "account", filters=filters.select_filters(), **params.select_params()
     )
     async with req.app.pool.connection() as conn:
         results = await req.app.sql.select_all(

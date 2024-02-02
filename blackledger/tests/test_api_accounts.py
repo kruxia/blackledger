@@ -85,7 +85,7 @@ def testsearch_accounts_unmatched_tenant(client, base_accounts):
     [
         ("?normal=FR", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?version=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
-        ("?name=No spaces allowed", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?name=No@punctuation$allowed", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?tenant=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?parent=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?number=INTS_ONLY", HTTPStatus.UNPROCESSABLE_ENTITY),

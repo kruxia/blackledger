@@ -1,9 +1,8 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import ConfigDict, constr
 
-from blackledger.domain import model
+from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
 
@@ -13,9 +12,7 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 class TenantFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[model.IDField] = None
-    name: Optional[constr(pattern=r"^\S+$")] = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: Optional[types.NameFilter] = None
 
 
 @router.get("", response_model=list[model.Tenant])

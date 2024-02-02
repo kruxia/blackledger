@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import ConfigDict, Field, field_serializer, field_validator
+from pydantic import Field, field_serializer, field_validator
 from sqly import Q
 
 from blackledger.domain import model, types
@@ -18,8 +18,6 @@ class TransactionFilters(SearchFilters):
     acct: Optional[list[model.IDField]] = None
     curr: Optional[list[types.CurrencyCode]] = None
     memo: Optional[str] = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("tx", "acct", "curr", mode="before")
     def convert_list_fields(cls, val):
