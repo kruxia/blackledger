@@ -2,6 +2,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
 
+from blackledger.db import queries
 from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
@@ -20,17 +21,9 @@ async def search_currencies(
     """
     Search for and list currencies.
     """
-    search_params = SearchParams.from_query(req.query_params).select_params()
-    query = req.app.sql.queries.SELECT(
-        "currency", filters=filters.select_filters(), **search_params
-    )
+    params = SearchParams.from_query(req.query_params)
     async with req.app.pool.connection() as conn:
-        results = await req.app.sql.select_all(
-            conn,
-            query,
-            filters.model_dump(exclude_none=True),
-            Constructor=model.Currency,
-        )
+        results = await queries.select_currencies(conn, req.app.sql, filters, params)
 
     return results
 
