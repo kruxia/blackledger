@@ -2,7 +2,6 @@ from enum import IntEnum
 from typing import Optional
 from uuid import UUID
 
-import base58
 from pydantic import constr
 from ulid import ULID
 
@@ -25,11 +24,15 @@ class NormalType(IntEnum):
             value = cls.__members__[value]
         return value
 
+    @classmethod
+    def to_str(cls, value):
+        return value.name
+
 
 class ID(UUID):
     """
     ID is generated from ULID, stored as a 128-bit UUID internally, and represented as a
-    base58-encoded string. It can easily be output as UUID or bytes using ULID methods.
+    hex-encoded string. It can easily be output as UUID or bytes using ULID methods.
 
     NOTE: IDs that are generated in Python code do not guarantee monotonicity, because
     the underlying python-ulid library does not. To test this try the following:
@@ -138,31 +141,25 @@ class ID(UUID):
 
     def __init__(self, value: Optional[str] = None):
         """
-        If a value is given, it is a base58 encoded string to initialize ID. Otherwise,
+        If a value is given, it is a hex-encoded string to initialize ID. Otherwise,
         a new ID is generated via ULID.
         """
         if value:
-            super().__init__(ULID(base58.b58decode(value)).hex)
+            super().__init__(value)
         else:
             super().__init__(ULID().hex)
 
     def __str__(self):
         """
-        ID is represented as a base58-encoded string
+        ID is represented as a hex-encoded string
         """
-        return base58.b58encode(self.bytes).decode()
+        return self.hex
 
     @classmethod
-    def from_uuid(cls, value: str | UUID):
-        if isinstance(value, str):
-            value = UUID(value)
-        return cls(base58.b58encode(value.bytes))
+    def from_str(cls, value: str | UUID):
+        return cls(str(value))
 
-    @classmethod
-    def from_str(cls, value):
-        if isinstance(value, str):
-            value = cls(value)
-        return value
+    from_uuid = from_str
 
     def to_uuid(self):
         return UUID(self.hex)
