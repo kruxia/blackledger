@@ -28,6 +28,7 @@ NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
     BeforeValidator(types.NormalType.from_str),
+    PlainSerializer(types.NormalType.to_str, when_used="json"),
 ]
 NameField = Annotated[
     types.NameString,
