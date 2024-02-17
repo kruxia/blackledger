@@ -39,7 +39,7 @@ class ID(UUID):
 
     ```python
     # generate a list of indexed IDs, sort that list by ID, and compare the two
-    >>> import json; from blackledger.domain.types import ID
+    >>> import json; from blackledger.types import ID
     >>> l0 = [(i, ID()) for i in range(int(10))]
     >>> l1 = list(sorted(l0, key=lambda i: i[1]))
     >>> l1 == l0

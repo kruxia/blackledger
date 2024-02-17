@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 import pytest
 
-from blackledger.domain import types
+from blackledger import types
 
 # -- GET BALANCES --
 

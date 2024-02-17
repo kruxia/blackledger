@@ -2,8 +2,8 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
 
+from blackledger import model, types
 from blackledger.db import queries
-from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
 

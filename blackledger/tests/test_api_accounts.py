@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 import pytest
 
-from blackledger.domain import model, types
+from blackledger import model, types
 
 
 @pytest.fixture(scope="session")

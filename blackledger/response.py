@@ -3,7 +3,7 @@ from typing import Any
 
 import fastapi.responses
 
-from blackledger.domain import types
+from blackledger import types
 
 
 class JsonEncoder(json.JSONEncoder):

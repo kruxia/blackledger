@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field, field_serializer, field_validator
 from sqly import Q
 
+from blackledger import model, types
 from blackledger.db import queries
-from blackledger.domain import model, types
 
 from ._search import SearchFilters, SearchParams
 
