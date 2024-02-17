@@ -45,16 +45,16 @@ class ID(UUID):
     >>> l1 == l0
     False
     >>> l1
-    [(0, ID('C7garHDQEHXkq2oxPzwC6')),
-     (3, ID('C7garHDTLFc4UMZnWESBG')),
-     (5, ID('C7garHDTgra76mCT13fp7')),
-     (4, ID('C7garHDVTxWrHkBsLFN6X')),
-     (6, ID('C7garHDWNLBuHJEB6HwU3')),
-     (8, ID('C7garHDWvtVoX6pAHYYAF')),
-     (2, ID('C7garHDXL75t88gZuaTHZ')),
-     (9, ID('C7garHDYkU1tWdvKPNi7s')),
-     (1, ID('C7garHDZqcfLXp4PZoku5')),
-     (7, ID('C7garHDajsKSogFn1S3DH'))]
+    [(3, ID('018db5084a6717290bd8828c75061169')),
+     (5, ID('018db5084a675af9b175bb6d829407bf')),
+     (4, ID('018db5084a675e137448d0a0de304005')),
+     (1, ID('018db5084a677566d750ba4936f2a944')),
+     (0, ID('018db5084a678152c63b0db62607afa5')),
+     (2, ID('018db5084a67f4bfb90085f93766329c')),
+     (6, ID('018db5084a683b0738f3c290ab64b51b')),
+     (9, ID('018db5084a684ace11df7477aa9936ed')),
+     (8, ID('018db5084a686de0d5defcb4ecef5148')),
+     (7, ID('018db5084a68b0fde1cfa514878a84d1'))]
     ```
 
     To guarantee monotonicity, you need a global sequence that is guaranteed to increase
