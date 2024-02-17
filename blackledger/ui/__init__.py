@@ -6,9 +6,6 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from blackledger.domain import model, types
-from blackledger.meta import __name__, __version__
-
 PATH = Path(__file__).absolute().parent
 
 app = APIRouter()
@@ -29,7 +26,7 @@ async def home(req: Request, tenant_id: str = None, template_path: str = "home")
         response = templates.TemplateResponse(
             f"{template_path}.html", {"request": req, "tenant_id": tenant_id}
         )
-    except jinja2.exceptions.TemplateNotFound as exc:
+    except jinja2.exceptions.TemplateNotFound:
         raise HTTPException(
             status_code=404, detail=f"Template not found: {template_path}"
         )

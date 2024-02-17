@@ -1,5 +1,5 @@
 #!/bin/bash
 DEFAULT_PATHS="blackledger script"
 
-isort --profile black ${@:-$DEFAULT_PATHS}
-black ${@:-$DEFAULT_PATHS}
+ruff check --select I --fix ${@:-$DEFAULT_PATHS}
+ruff format ${@:-$DEFAULT_PATHS}
