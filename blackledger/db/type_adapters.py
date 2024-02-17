@@ -1,6 +1,6 @@
 from psycopg import adapt, adapters
 
-from blackledger.domain import types
+from blackledger import types
 
 
 class UUIDLoader(adapt.Loader):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import psycopg_pool
 
-from blackledger.domain import types
+from blackledger import types
 from blackledger.settings import DatabaseSettings
 from blackledger.tests import fixtures
 

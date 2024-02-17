@@ -5,7 +5,7 @@ from http import HTTPStatus
 import dateparser
 import pytest
 
-from blackledger.domain import types
+from blackledger import types
 
 
 @pytest.mark.parametrize(

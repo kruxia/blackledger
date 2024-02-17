@@ -5,7 +5,7 @@ import psycopg_pool
 from fastapi.testclient import TestClient
 from sqly import SQL
 
-from blackledger.domain import model, types
+from blackledger import model, types
 from blackledger.http import app
 from blackledger.settings import DatabaseSettings
 

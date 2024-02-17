@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import conint, constr
 from sqly import Q
 
-from blackledger.domain.model import Model
+from blackledger.model import Model
 
 
 class SelectParams(Model):

@@ -1,4 +1,4 @@
-from blackledger.domain import model
+from blackledger import model
 
 
 def _get_where_clause(filters):
