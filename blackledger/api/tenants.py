@@ -12,7 +12,7 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 class TenantFilters(SearchFilters):
     # allow partial match where applicable
-    id: Optional[model.IDField] = None
+    id: Optional[model.IDSearchField] = None
     name: Optional[types.NameFilter] = None
 
 

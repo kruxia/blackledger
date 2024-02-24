@@ -24,11 +24,16 @@ IDField = Annotated[
     BeforeValidator(types.ID.from_str),
     PlainSerializer(types.ID.__str__, when_used="json"),  # not when going into database
 ]
+IDSearchField = Annotated[
+    str,
+    Field(pattern=r"^[0-9a-fA-F\-,]+$"),
+    PlainSerializer(lambda val: val.split(",") if val else None),
+]
 NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
     BeforeValidator(types.NormalType.from_str),
-    PlainSerializer(types.NormalType.to_str, when_used="json"),
+    PlainSerializer(types.NormalType.to_str),
 ]
 NameField = Annotated[
     types.NameString,
@@ -39,8 +44,8 @@ NameField = Annotated[
 class Model(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def json(self):
-        return orjson.dumps(self.model_dump())
+    def json(self, **kwargs):
+        return orjson.dumps(self.model_dump(**kwargs))
 
 
 class Currency(Model):

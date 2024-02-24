@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from blackledger import model, types
 from blackledger.db import queries
@@ -14,18 +14,13 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 class AccountFilters(SearchFilters):
     # allow partial match where applicable
-    id: Optional[list[model.IDField]] = None
+    id: Optional[model.IDSearchField] = None
     name: Optional[types.NameFilter] = None
-    tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
-    parent_id: Optional[model.IDField] = Field(default=None, alias="parent")
+    tenant_id: Optional[model.IDSearchField] = Field(default=None, alias="tenant")
+    parent_id: Optional[model.IDSearchField] = Field(default=None, alias="parent")
     number: Optional[int] = None
     normal: Optional[model.NormalField] = None
-    version: Optional[model.IDField] = None
-
-    @field_validator("id", mode="before")
-    def convert_list_fields(cls, val):
-        if isinstance(val, str):
-            return [v.strip() for v in val.split(",")]
+    version: Optional[model.IDSearchField] = None
 
 
 @router.get("", response_model=list[model.Account])
@@ -43,7 +38,7 @@ async def search_accounts(
         results = await req.app.sql.select_all(
             conn, query, filters.query_data(), Constructor=model.Account
         )
-    return results
+    return [account.model_dump(exclude_none=True) for account in results]
 
 
 @router.post("", response_model=model.Account)
