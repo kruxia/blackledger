@@ -1,8 +1,8 @@
 from http import HTTPStatus
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import Field, field_serializer, field_validator
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import Field
 from sqly import Q
 
 from blackledger import model, types
@@ -14,24 +14,11 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 class TransactionFilters(SearchFilters):
-    tenant_id: Optional[model.IDField] = Field(default=None, alias="tenant")
-    tx: Optional[list[model.IDField]] = None
-    acct: Optional[list[model.IDField]] = None
-    curr: Optional[list[types.CurrencyCode]] = None
+    tenant_id: Optional[model.IDSearchField] = Field(default=None, alias="tenant")
+    tx: Optional[model.IDSearchField] = None
+    acct: Optional[model.IDSearchField] = None
+    curr: Optional[types.CurrencyCode] = None
     memo: Optional[str] = None
-
-    @field_validator("tx", "acct", "curr", mode="before")
-    def convert_list_fields(cls, val):
-        if isinstance(val, str):
-            return [v.strip() for v in val.split(",")]
-
-    @field_serializer("tx", "acct")
-    def serialize_ids(self, val: list[types.ID]):
-        return [str(i.to_uuid()) for i in val] if val else None
-
-    @field_serializer("tenant_id")
-    def serialize_tenant_id(self, val: types.ID):
-        return val.to_uuid()
 
     def select_filters(self):
         """
@@ -45,11 +32,13 @@ class TransactionFilters(SearchFilters):
 
 
 @router.get("")
-async def search_transactions(req: Request):
+async def search_transactions(
+    req: Request, filters: Annotated[TransactionFilters, Depends(TransactionFilters)]
+):
     """
     Search for and list transactions.
     """
-    filters = TransactionFilters.from_query(req.query_params)
+    # filters = TransactionFilters.from_query(req.query_params)
     params = SearchParams.from_query(req.query_params)
 
     async with req.app.pool.connection() as conn:

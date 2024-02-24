@@ -26,19 +26,21 @@ def _get_query_params(params):
 
 async def select_balances(conn, sql, filters, params):
     query = [
-        "WITH balances AS (",
-        "    SELECT a.id account_id,",
-        "        e.curr, sum(e.dr) dr, sum(e.cr) cr",
-        "    FROM account a",
-        "    JOIN entry e",
-        "        ON a.id = e.acct",
-        "    GROUP BY (a.id, e.curr)",
-        ")",
-        "SELECT account.*,",
-        "    balances.curr, balances.dr, balances.cr",
-        "FROM account",
-        "JOIN balances",
-        "    ON account.id = balances.account_id",
+        """
+        WITH balances AS (
+            SELECT a.id account_id,
+                e.curr, sum(e.dr) dr, sum(e.cr) cr
+            FROM account a
+            JOIN entry e
+                ON a.id = e.acct
+            GROUP BY (a.id, e.curr)
+        )
+        SELECT account.*,
+            balances.curr, balances.dr, balances.cr
+        FROM account
+        JOIN balances
+            ON account.id = balances.account_id
+        """
     ]
     query.extend(_get_where_clause(filters))
     query.extend(_get_query_params(params))
