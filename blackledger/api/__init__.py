@@ -1,9 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from blackledger.api import accounts, currencies, tenants, transactions
+from blackledger.auth import JWTAuthorization
 from blackledger.meta import __name__, __version__
+from blackledger.settings import AuthSettings
 
-router = APIRouter()
+jwt_authorization_dependency = JWTAuthorization(AuthSettings(), name="Authorization")
+router = APIRouter(dependencies=[Depends(jwt_authorization_dependency)])
 
 
 @router.get("", tags=["home"])

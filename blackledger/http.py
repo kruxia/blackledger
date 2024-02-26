@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from pathlib import Path
@@ -12,16 +13,15 @@ from sqly import ASQL
 from blackledger import api, ui
 from blackledger.db import type_adapters  # noqa - provides psycopg type registrations.
 from blackledger.response import JSONResponse
-from blackledger.settings import DatabaseSettings
+from blackledger.settings import Settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # create the database pool and SQL query engine
-    db = DatabaseSettings()
-    app.sql = ASQL(dialect=db.dialect)
+    app.sql = ASQL(dialect=app.settings.db.dialect)
     app.pool = psycopg_pool.AsyncConnectionPool(
-        conninfo=db.url.get_secret_value(), open=False
+        conninfo=app.settings.db.url.get_secret_value(), open=False
     )
     await app.pool.open()
 
@@ -37,6 +37,9 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=PATH / "ui" / "static"), name="static")
 app.include_router(api.router, prefix="/api", default_response_class=JSONResponse)
 app.include_router(ui.app)
+
+app.settings = Settings()
+logging.basicConfig(level=10 if app.settings.debug else 20)
 
 
 @app.exception_handler(NotImplementedError)
