@@ -13,8 +13,14 @@ from blackledger.settings import DatabaseSettings
 def client():
     # "You should use TestClient as a context manager, to ensure that the lifespan is
     # called." --<https://www.starlette.io/lifespan/#running-lifespan-in-tests>
+    app.settings.auth.disabled = True
     with TestClient(app) as testclient:
         yield testclient
+
+
+def auth_client(client):
+    app.settings.auth.disabled = False
+    yield client
 
 
 def dbpool():

@@ -16,6 +16,9 @@ services:
       - "8000:8000"
     environment:
       DEBUG: "True"
+      AUTH_DISABLED: false
+      AUTH_JWKS_URL: http://keycloak:8001/realms/blackledger/protocol/openid-connect/certs
+      AUTH_ISS: http://localhost:8001/realms/blackledger
       DATABASE_NAME: blackledger
       DATABASE_USER: postgres
       DATABASE_PASSWORD: password
@@ -48,6 +51,27 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - .:/opt/blackledger
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.5
+    depends_on:
+      - postgres
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: password
+      KC_HTTP_PORT: "8001"
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+    command: ["start-dev"]
+    ports:
+      - "8001:8001"
+    restart: on-failure
 
 volumes:
   pgdata:
