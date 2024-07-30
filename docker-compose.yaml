@@ -1,6 +1,5 @@
-version: "3.7"
 services:
-  blackledger:
+  app:
     depends_on:
       - postgres
     build:
@@ -30,8 +29,8 @@ services:
   migrate:
     depends_on:
       - postgres
-      - blackledger
-    image: blackledger-blackledger
+      - app
+    image: blackledger-app
     entrypoint: ["script/migrate.sh"]
     volumes:
       - .:/opt/blackledger
