@@ -15,7 +15,7 @@ services:
       - "8000:8000"
     environment:
       DEBUG: "True"
-      AUTH_DISABLED: false
+      AUTH_DISABLED: "True"
       AUTH_JWKS_URL: http://keycloak:8001/realms/blackledger/protocol/openid-connect/certs
       AUTH_ISS: http://localhost:8001/realms/blackledger
       DATABASE_NAME: blackledger

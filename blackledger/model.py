@@ -54,7 +54,7 @@ class Currency(Model):
 
 class Account(Model):
     id: Optional[IDField] = None
-    tenant_id: IDField
+    ledger_id: IDField
     parent_id: Optional[IDField] = None
     name: NameField
     normal: NormalField
@@ -64,7 +64,7 @@ class Account(Model):
 
 class Entry(Model):
     id: Optional[IDField] = None
-    tenant_id: IDField
+    ledger_id: IDField
     tx: Optional[IDField] = None
     acct: IDField
     acct_name: Optional[str] = None
@@ -116,7 +116,7 @@ class NewEntry(Entry):
 
 class Transaction(Model):
     id: Optional[IDField] = None
-    tenant_id: IDField
+    ledger_id: IDField
     posted: Optional[datetime] = None
     effective: Optional[datetime] = None
     memo: Optional[str] = None
@@ -137,13 +137,13 @@ class Transaction(Model):
         return self
 
     @model_validator(mode="after")
-    def one_tenant(self):
+    def one_ledger(self):
         """
-        A transaction and its entries must belong to a single tenant.
+        A transaction and its entries must belong to a single ledger.
         """
         assert all(
-            e.tenant_id == self.tenant_id for e in self.entries
-        ), "transaction entries must belong to the same tenant as the transaction"
+            e.ledger_id == self.ledger_id for e in self.entries
+        ), "transaction entries must belong to the same ledger as the transaction"
         return self
 
 
@@ -151,7 +151,7 @@ class NewTransaction(Transaction):
     entries: list[NewEntry] = Field(default_factory=list)
 
 
-class Tenant(Model):
+class Ledger(Model):
     id: Optional[IDField] = None
     name: NameField
     created: Optional[datetime] = None

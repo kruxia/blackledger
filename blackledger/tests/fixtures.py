@@ -58,17 +58,17 @@ def base_currencies(dbpool):
         )
 
 
-def base_tenant_name():
+def base_ledger_name():
     return "test"
 
 
-def base_tenant(dbpool, sql, base_tenant_name):
+def base_ledger(dbpool, sql, base_ledger_name):
     with dbpool.connection() as conn:
         return sql.select_one(
             conn,
-            sql.queries.INSERT("tenant", ["name"], returning=True),
-            {"name": base_tenant_name},
-            Constructor=model.Tenant,
+            sql.queries.INSERT("ledger", ["name"], returning=True),
+            {"name": base_ledger_name},
+            Constructor=model.Ledger,
         )
 
 
@@ -76,7 +76,7 @@ def run_id():
     return types.ID()
 
 
-def test_accounts(dbpool, sql, base_tenant, run_id):
+def test_accounts(dbpool, sql, base_ledger, run_id):
     """
     Provide a set of accounts that is scoped to this particular test function.
     """
@@ -94,9 +94,9 @@ def test_accounts(dbpool, sql, base_tenant, run_id):
             acct = sql.select_one(
                 conn,
                 sql.queries.INSERT(
-                    "account", ["tenant_id", "name", "normal"], returning=True
+                    "account", ["ledger_id", "name", "normal"], returning=True
                 ),
-                {"tenant_id": base_tenant.id, "name": name, "normal": normal},
+                {"ledger_id": base_ledger.id, "name": name, "normal": normal},
                 Constructor=model.Account,
             )
             accounts[basename] = acct
@@ -104,7 +104,7 @@ def test_accounts(dbpool, sql, base_tenant, run_id):
     yield accounts
 
 
-def test_transactions(dbpool, sql, test_accounts, base_tenant):
+def test_transactions(dbpool, sql, test_accounts, base_ledger):
     accts = test_accounts
     transactions = []
     with dbpool.connection() as conn:
@@ -158,13 +158,13 @@ def test_transactions(dbpool, sql, test_accounts, base_tenant):
             tx = sql.select_one(
                 conn,
                 sql.queries.INSERT(
-                    "transaction", ["memo", "tenant_id"], returning=True
+                    "transaction", ["memo", "ledger_id"], returning=True
                 ),
-                {"memo": item["memo"], "tenant_id": base_tenant.id},
+                {"memo": item["memo"], "ledger_id": base_ledger.id},
             )
             tx["entries"] = []
             for new_entry in item["entries"]:
-                new_entry |= {"tx": tx["id"], "tenant_id": base_tenant.id}
+                new_entry |= {"tx": tx["id"], "ledger_id": base_ledger.id}
                 entry = sql.select_one(
                     conn,
                     sql.queries.INSERT("entry", new_entry, returning=True),

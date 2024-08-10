@@ -2,7 +2,7 @@
 {% block main %}
 <div id="app">
   <h1 class="text-4xl">Accounts
-    <a class="text-2xl" href="/{$tenant_id}/accounts/new">
+    <a class="text-2xl" href="/{$ledger_id}/accounts/new">
       {% include "components/button-plus.html" %}
     </a>
   </h1>
@@ -15,7 +15,7 @@
     </tr>
     <tr v-for="account of accounts" :id="account.id" :key="account.id">
       <td class="align-text-top pr-2">{{account.parent ? account.parent.name : ""}}</td>
-      <td class="align-text-top pr-2"><a :href="`/{$tenant_id}/accounts/view?id=${account.id}`">{{account.name}}</a></td>
+      <td class="align-text-top pr-2"><a :href="`/{$ledger_id}/accounts/view?id=${account.id}`">{{account.name}}</a></td>
       <td class="align-text-top pr-2">{{account.normal}}</td>
       <td class="align-text-top pr-2">
         <table v-if="account.balances">
@@ -32,7 +32,7 @@
 
 {% block footscript %}
 <script>
-  const TENANT = '{$tenant_id}';
+  const TENANT = '{$ledger_id}';
   const app = Vue.createApp({
     data() {
       return {
@@ -44,7 +44,7 @@
     }
   }).mount("#app");
   async function fetchAccounts() {
-    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}`;
+    const accounts_url = `http://localhost:8000/api/accounts?ledger=${TENANT}`;
     const accounts = await fetch(accounts_url).then((r) => r.json());
     if (accounts.length > 0) {
       const account_ids = accounts.map((account) => account.id).filter((id) => id != null);

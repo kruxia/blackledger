@@ -16,7 +16,7 @@ class AccountFilters(SearchFilters):
     # allow partial match where applicable
     id: Optional[model.IDSearchField] = None
     name: Optional[types.NameFilter] = None
-    tenant_id: Optional[model.IDSearchField] = Field(default=None, alias="tenant")
+    ledger_id: Optional[model.IDSearchField] = Field(default=None, alias="ledger")
     parent_id: Optional[model.IDSearchField] = Field(default=None, alias="parent")
     number: Optional[int] = None
     normal: Optional[model.NormalField] = None

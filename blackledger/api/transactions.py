@@ -14,7 +14,7 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 class TransactionFilters(SearchFilters):
-    tenant_id: Optional[model.IDSearchField] = Field(default=None, alias="tenant")
+    ledger_id: Optional[model.IDSearchField] = Field(default=None, alias="ledger")
     tx: Optional[model.IDSearchField] = None
     acct: Optional[model.IDSearchField] = None
     curr: Optional[types.CurrencyCode] = None
@@ -22,11 +22,11 @@ class TransactionFilters(SearchFilters):
 
     def select_filters(self):
         """
-        Specify transaction.tenant_id to resolve ambiguity in where clause between
+        Specify transaction.ledger_id to resolve ambiguity in where clause between
         transaction and entry tables.
         """
         return [
-            "transaction.tenant_id = :tenant_id" if "tenant_id" in filter else filter
+            "transaction.ledger_id = :ledger_id" if "ledger_id" in filter else filter
             for filter in super().select_filters()
         ]
 

@@ -4,7 +4,7 @@
 <h1 class="text-4xl">New Account</h1>
 <div id="app">
   <form id="new-account">
-    <input type="hidden" name="tenant_id" value="{$tenant_id}" />
+    <input type="hidden" name="ledger_id" value="{$ledger_id}" />
     <p>
       <label for="new-account-name">Name: </label>
       <input type="text" id="new-account-name" name="name" value="" />
@@ -25,7 +25,7 @@
     </p>
     <p>
       <button onclick="submitForm()">Create Account</button>
-      <a class="px-2" href="/{$tenant_id}/accounts">Cancel</a>
+      <a class="px-2" href="/{$ledger_id}/accounts">Cancel</a>
     </p>
     <p v-if="error" v-text="error"></p>
   </form>
@@ -33,7 +33,7 @@
 {% endblock %}
 {% block footscript %}
 <script>
-  const TENANT = "{$tenant_id}";
+  const TENANT = "{$ledger_id}";
   const app = Vue.createApp({
     data() {
       return {
@@ -46,7 +46,7 @@
     }
   }).mount("#app");
   async function fetchParents() {
-    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}&_orderby=parent_id,name`;
+    const accounts_url = `http://localhost:8000/api/accounts?ledger=${TENANT}&_orderby=parent_id,name`;
     const accounts = await fetch(accounts_url).then((r) => r.json());
     return accounts;
   }

@@ -60,12 +60,12 @@ async def select_currencies(conn, sql, filters, params):
     )
 
 
-async def select_tenants(conn, sql, filters, params):
+async def select_ledgers(conn, sql, filters, params):
     query = sql.queries.SELECT(
-        "tenant", filters=filters.select_filters(), **params.select_params()
+        "ledger", filters=filters.select_filters(), **params.select_params()
     )
     return await sql.select_all(
-        conn, query, filters.query_data(), Constructor=model.Tenant
+        conn, query, filters.query_data(), Constructor=model.Ledger
     )
 
 

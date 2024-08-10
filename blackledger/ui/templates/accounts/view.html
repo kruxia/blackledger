@@ -69,7 +69,7 @@
           <tr v-for="entry of transaction.entries">
             <td class="align-text-top w-48 pr-2">
               <span :class="entry.acct == account.id ? 'font-bold' : ''">
-                <a :href="`/{$tenant_id}/accounts/view?id=${entry.acct}`">{{entry.acct_name}}</a>
+                <a :href="`/{$ledger_id}/accounts/view?id=${entry.acct}`">{{entry.acct_name}}</a>
               </span>
             </td>
             <td class="align-text-top w-20 pr-2">
@@ -90,7 +90,7 @@
 {% endblock %}
 {% block footscript %}
 <script>
-  const TENANT = "{$tenant_id}";
+  const TENANT = "{$ledger_id}";
   const ACCOUNT_ID = "{$request.query_params.get('id')}";
   const app = Vue.createApp({
     data() {
@@ -124,7 +124,7 @@
     return await fetch(currencies_url).then((response) => response.json());
   }
   async function fetchAccounts() {
-    const accounts_url = `http://localhost:8000/api/accounts?tenant=${TENANT}&_orderby=parent_id,name`;
+    const accounts_url = `http://localhost:8000/api/accounts?ledger=${TENANT}&_orderby=parent_id,name`;
     accounts = await fetch(accounts_url).then((response) => response.json());
     return accounts
   }

@@ -17,8 +17,8 @@ from blackledger import types
         (f"?id={types.ID()}", []),
     ],
 )
-def testsearch_tenants_ok(client, query, names):
-    response = client.get(f"/api/tenants{query}")
+def testsearch_ledgers_ok(client, query, names):
+    response = client.get(f"/api/ledgers{query}")
     assert response.status_code == HTTPStatus.OK
     response_data = response.json()
     response_names = [item["name"] for item in response_data]
@@ -28,27 +28,27 @@ def testsearch_tenants_ok(client, query, names):
 @pytest.mark.parametrize(
     "data",
     [
-        {"name": "Tenant 1"},
-        {"name": "Tenant-1"},
-        {"name": "Tenant.1"},
-        {"name": "Tenant 2", "id": types.ID()},
-        {"name": "Tenant 3", "created": datetime.now(tz=timezone.utc)},
+        {"name": "Ledger 1"},
+        {"name": "Ledger-1"},
+        {"name": "Ledger.1"},
+        {"name": "Ledger 2", "id": types.ID()},
+        {"name": "Ledger 3", "created": datetime.now(tz=timezone.utc)},
     ],
 )
-def test_post_tenant_insert_ok(client, data, json_dumps):
-    response = client.post("/api/tenants", content=json_dumps(data))
+def test_post_ledger_insert_ok(client, data, json_dumps):
+    response = client.post("/api/ledgers", content=json_dumps(data))
     assert response.status_code == HTTPStatus.OK
     response_data = response.json()
     assert response_data["name"] == data["name"]
     assert "id" in response_data
 
 
-def test_post_tenant_update_ok(client, base_tenant, json_dumps):
+def test_post_ledger_update_ok(client, base_ledger, json_dumps):
     # "test" already exists, but that's fine
-    data = json.loads(base_tenant.model_dump_json())
+    data = json.loads(base_ledger.model_dump_json())
     data["name"] = "TESTED"
     data["created"] = datetime.now(tz=timezone.utc).isoformat()
-    response = client.post("/api/tenants", json=data)
+    response = client.post("/api/ledgers", json=data)
     assert response.status_code == HTTPStatus.OK
     response_data = response.json()
     assert response_data["name"] == data["name"]
@@ -65,14 +65,14 @@ def test_post_tenant_update_ok(client, base_tenant, json_dumps):
         {"name": ""},
         {"name": None},
         # name is NameString
-        {"name": "Tenant,1"},
+        {"name": "Ledger,1"},
         # id is ID
-        {"name": "Tenant 1", "id": "NOT_AN_ID"},
+        {"name": "Ledger 1", "id": "NOT_AN_ID"},
         # created is datetime
-        {"name": "Tenant 1", "created": "NOT_A_TIMESTAMP"},
+        {"name": "Ledger 1", "created": "NOT_A_TIMESTAMP"},
     ],
 )
-def test_post_tenant_insert_unprocessable(client, data, json_dumps):
-    response = client.post("/api/tenants", content=json_dumps(data))
+def test_post_ledger_insert_unprocessable(client, data, json_dumps):
+    response = client.post("/api/ledgers", content=json_dumps(data))
     print(response.json())
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
