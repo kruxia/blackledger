@@ -6,9 +6,8 @@ services:
       context: ./
       dockerfile: ./Dockerfile
       target: develop
-    # # Use the following to test performance
-    # command: ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker",
-    #     "--bind", "0.0.0.0:8000", "blackledger.http:app"]
+      # Use the following to test performance
+      # target: test
     volumes:
       - .:/opt/blackledger
     ports:
