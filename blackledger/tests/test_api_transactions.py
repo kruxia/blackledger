@@ -13,7 +13,7 @@ from blackledger import types
         # -- FILTERS --
         ("?_orderby=id&curr=CAD", ["lunch", "dinner"]),
         ("?_orderby=id&memo=@", ["5 MSFT @ 377.43 USD"]),
-        (f"?tenant={types.ID()}", []),
+        (f"?ledger={types.ID()}", []),
         # -- SELECT PARAMS --
         # orderby
         (
@@ -60,7 +60,7 @@ def testsearch_transactions(client, test_transactions, query, memos):
 
 
 def test_post_transactions_ok(
-    client, base_tenant, base_currencies, test_accounts, json_dumps
+    client, base_ledger, base_currencies, test_accounts, json_dumps
 ):
     """
     The first transaction posted to an account should not have an 'acct_version' because
@@ -72,17 +72,17 @@ def test_post_transactions_ok(
     post_txs = [
         {
             "memo": "first tx",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "dr": "1000",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "cr": "1000",
                     "curr": "USD",
                 },
@@ -113,7 +113,7 @@ def test_post_transactions_ok(
 
 
 def test_post_transaction_not_found(
-    client, base_tenant, test_accounts, test_transactions, json_dumps
+    client, base_ledger, test_accounts, test_transactions, json_dumps
 ):
     """
     When posting a transaction to an account that doesn't exist, the
@@ -122,17 +122,17 @@ def test_post_transaction_not_found(
 
     post_tx = {
         "memo": "tx with unknown debit account",
-        "tenant_id": base_tenant.id,
+        "ledger_id": base_ledger.id,
         "entries": [
             {
                 "acct": types.ID(),
-                "tenant_id": base_tenant.id,
+                "ledger_id": base_ledger.id,
                 "dr": "1000",
                 "curr": "USD",
             },
             {
                 "acct": test_accounts["Income"].id,
-                "tenant_id": base_tenant.id,
+                "ledger_id": base_ledger.id,
                 "cr": "1000",
                 "curr": "USD",
             },
@@ -157,7 +157,7 @@ def test_post_transaction_not_found(
 )
 def test_post_transaction_optimistic_locking(
     client,
-    base_tenant,
+    base_ledger,
     test_accounts,
     test_transactions,
     acct_version,
@@ -170,18 +170,18 @@ def test_post_transaction_optimistic_locking(
     """
     post_tx = {
         "memo": "not the first tx",
-        "tenant_id": base_tenant.id,
+        "ledger_id": base_ledger.id,
         "entries": [
             {
                 "acct": test_accounts["Asset"].id,
-                "tenant_id": base_tenant.id,
+                "ledger_id": base_ledger.id,
                 "acct_version": acct_version,
                 "dr": "1000",
                 "curr": "USD",
             },
             {
                 "acct": test_accounts["Income"].id,
-                "tenant_id": base_tenant.id,
+                "ledger_id": base_ledger.id,
                 "acct_version": acct_version,
                 "cr": "1000",
                 "curr": "USD",
@@ -196,7 +196,7 @@ def test_post_transaction_optimistic_locking(
 
 
 def test_post_transaction_precondition_failed(
-    client, base_tenant, test_accounts, json_dumps
+    client, base_ledger, test_accounts, json_dumps
 ):
     """
     When posting a transaction with invalid input data, the response has the status code
@@ -206,18 +206,18 @@ def test_post_transaction_precondition_failed(
     for post_tx in [
         {
             "memo": "amounts must be strings, not ints",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "dr": 1000,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "cr": 1000,
                     "curr": "USD",
@@ -226,18 +226,18 @@ def test_post_transaction_precondition_failed(
         },
         {
             "memo": "amounts must be strings, not floats",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "dr": 1000.00,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "cr": 1000.00,
                     "curr": "USD",
@@ -246,18 +246,18 @@ def test_post_transaction_precondition_failed(
         },
         {
             "memo": "acct must be valid types.ID",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": "NOT_AN_ID",
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "dr": 1000,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "cr": 1000,
                     "curr": "USD",
@@ -266,18 +266,18 @@ def test_post_transaction_precondition_failed(
         },
         {
             "memo": "either cr or dr must be defined",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     # "dr": "",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     # "cr": "1000",
                     "curr": "USD",
@@ -286,11 +286,11 @@ def test_post_transaction_precondition_failed(
         },
         {
             "memo": "cr or dr must not both be defined",
-            "tenant_id": base_tenant.id,
+            "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": test_accounts["Asset"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "dr": "1000",
                     "cr": "1000",
@@ -298,7 +298,7 @@ def test_post_transaction_precondition_failed(
                 },
                 {
                     "acct": test_accounts["Income"].id,
-                    "tenant_id": base_tenant.id,
+                    "ledger_id": base_ledger.id,
                     "acct_version": None,
                     "dr": "1000",
                     "cr": "1000",

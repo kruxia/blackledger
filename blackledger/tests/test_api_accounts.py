@@ -6,7 +6,7 @@ from blackledger import model, types
 
 
 @pytest.fixture(scope="session")
-def base_accounts(dbpool, sql, base_tenant):
+def base_accounts(dbpool, sql, base_ledger):
     accounts = {}
     with dbpool.connection() as conn:
         # map accounts by basename
@@ -22,11 +22,11 @@ def base_accounts(dbpool, sql, base_tenant):
                     conn,
                     sql.queries.INSERT(
                         "account",
-                        ["tenant_id", "name", "number", "normal"],
+                        ["ledger_id", "name", "number", "normal"],
                         returning=True,
                     ),
                     {
-                        "tenant_id": base_tenant.id,
+                        "ledger_id": base_ledger.id,
                         "name": name,
                         "number": number,
                         "normal": normal,
@@ -49,7 +49,7 @@ def base_accounts(dbpool, sql, base_tenant):
         ("?normal=CR", ["Liability", "Income", "Equity"]),
         ("?name=e", ["Asset", "Expense", "Income", "Equity"]),
         ("?name=^E", ["Expense", "Equity"]),
-        (f"?tenant={types.ID()}", []),
+        (f"?ledger={types.ID()}", []),
         # -- SEARCH PARAMS --
         ("?_orderby=number", ["Asset", "Liability", "Equity", "Income", "Expense"]),
         ("?_orderby=-number", ["Expense", "Income", "Equity", "Liability", "Asset"]),
@@ -72,8 +72,8 @@ def testsearch_accounts(client, base_accounts, query, expected_names):
     assert response_names == expected_names
 
 
-def testsearch_accounts_unmatched_tenant(client, base_accounts):
-    response = client.get(f"/api/accounts?tenant={types.ID()}")
+def testsearch_accounts_unmatched_ledger(client, base_accounts):
+    response = client.get(f"/api/accounts?ledger={types.ID()}")
     print(f"{response.json()=}")
     assert response.status_code == HTTPStatus.OK
     items = response.json()
@@ -86,7 +86,7 @@ def testsearch_accounts_unmatched_tenant(client, base_accounts):
         ("?normal=FR", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?version=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?name=No@punctuation$allowed", HTTPStatus.UNPROCESSABLE_ENTITY),
-        ("?tenant=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
+        ("?ledger=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?parent=NOT_AN_ID", HTTPStatus.UNPROCESSABLE_ENTITY),
         ("?number=INTS_ONLY", HTTPStatus.UNPROCESSABLE_ENTITY),
     ],

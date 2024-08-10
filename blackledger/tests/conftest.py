@@ -10,10 +10,10 @@ json_dumps = pytest.fixture(scope="session")(fixtures.json_dumps)
 base_currencies = pytest.fixture(scope="session", autouse=True)(
     fixtures.base_currencies
 )
-base_tenant_name = pytest.fixture(scope="session", autouse=True)(
-    fixtures.base_tenant_name
+base_ledger_name = pytest.fixture(scope="session", autouse=True)(
+    fixtures.base_ledger_name
 )
-base_tenant = pytest.fixture(scope="session", autouse=True)(fixtures.base_tenant)
+base_ledger = pytest.fixture(scope="session", autouse=True)(fixtures.base_ledger)
 
 # -- Test-scoped fixtures --
 client = pytest.fixture(scope="function")(fixtures.client)

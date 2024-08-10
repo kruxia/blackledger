@@ -2,14 +2,14 @@ app: blackledger
 ts: 20231202145316665
 name: account
 depends:
-- blackledger:20231202100215741_tenant
+- blackledger:20231202100215741_ledger
 doc: >-
   account: Chart of all accounts. Fields:
 
   * id = unique primary key account identifier
-  * tenant_id = required tenant identifier
+  * ledger_id = required ledger identifier
   * name = the name of the account, unique within the parent relationship
-  * number = the (optional) account number, unique per tenant if provided
+  * number = the (optional) account number, unique per ledger if provided
   * normal = the "normal side" (debit = 'DR' or credit = 'CR') for account display
   * curr = the operating currency (code) for this account
   * version = the account version, which equals the latest transaction entry id, for
@@ -20,12 +20,12 @@ up:
   CREATE SEQUENCE account_id_seq AS smallint CYCLE;
   CREATE TABLE account (
     id          uuid      PRIMARY KEY DEFAULT gen_id('account_id_seq')
-    , tenant_id uuid      NOT NULL REFERENCES tenant(id)  -- tenant identifier
+    , ledger_id uuid      NOT NULL REFERENCES ledger(id)  -- ledger identifier
     , parent_id uuid      REFERENCES account(id)          -- optional parent account
     , name      varchar   NOT NULL                        -- name of the account
     , number    smallint                                  -- optional account number
-    , UNIQUE NULLS NOT DISTINCT (tenant_id, parent_id, name) -- unique name per context
-    , UNIQUE (tenant_id, number)                          -- unique number per tenant
+    , UNIQUE NULLS NOT DISTINCT (ledger_id, parent_id, name) -- unique name per context
+    , UNIQUE (ledger_id, number)                          -- unique number per ledger
 
     , created timestamptz(6)  NOT NULL DEFAULT now()
     , normal    varchar(2)

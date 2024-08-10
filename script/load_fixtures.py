@@ -12,8 +12,8 @@ if __name__ == "__main__":
         conninfo=settings.url.get_secret_value()
     ) as dbpool:
         fixtures.base_currencies(dbpool)
-        tenant_name = f"Sample {types.ID()}"
-        tenant = fixtures.base_tenant(dbpool, sql, tenant_name)
-        print(tenant)
-        accounts = next(fixtures.test_accounts(dbpool, sql, tenant, ""))
-        transactions = next(fixtures.test_transactions(dbpool, sql, accounts, tenant))
+        ledger_name = f"Sample {types.ID()}"
+        ledger = fixtures.base_ledger(dbpool, sql, ledger_name)
+        print(ledger)
+        accounts = next(fixtures.test_accounts(dbpool, sql, ledger, ""))
+        transactions = next(fixtures.test_transactions(dbpool, sql, accounts, ledger))

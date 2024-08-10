@@ -20,12 +20,12 @@ templates = Jinja2Templates(
 
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/{tenant_id}/{template_path:path}", response_class=HTMLResponse)
-async def home(req: Request, tenant_id: UUID4, template_path: str = "home"):
+@app.get("/{ledger_id}/{template_path:path}", response_class=HTMLResponse)
+async def home(req: Request, ledger_id: UUID4, template_path: str = "home"):
     print(f"{template_path=}")
     try:
         response = templates.TemplateResponse(
-            f"{template_path}.html", {"request": req, "tenant_id": tenant_id}
+            f"{template_path}.html", {"request": req, "ledger_id": ledger_id}
         )
     except jinja2.exceptions.TemplateNotFound:
         raise HTTPException(

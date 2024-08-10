@@ -23,7 +23,7 @@ up:
   CREATE SEQUENCE entry_id_seq AS smallint CYCLE;
   CREATE TABLE entry (
     id          uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
-    , tenant_id uuid      NOT NULL references tenant(id)
+    , ledger_id uuid      NOT NULL references ledger(id)
     , tx        uuid      NOT NULL references transaction(id)
     , acct      uuid      NOT NULL references account(id)
     , curr      varchar   NOT NULL references currency(code)
