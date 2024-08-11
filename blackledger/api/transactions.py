@@ -14,23 +14,37 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 class TransactionParams(SearchParams):
-    ledger_id: Optional[model.IDSearchField] = Field(
+    # entry fields
+    tx: Optional[model.BigIDSearchField] = None
+    ledger_id: Optional[model.BigIDSearchField] = Field(
         default=None, validation_alias="ledger"
     )
-    tx: Optional[model.IDSearchField] = None
-    acct: Optional[model.IDSearchField] = None
+    acct: Optional[model.BigIDSearchField] = None
     curr: Optional[types.CurrencyCode] = None
+    # transaction fields
     memo: Optional[str] = None
 
     def select_filters(self):
         """
-        Specify transaction.ledger_id to resolve ambiguity in where clause between
-        transaction and entry tables.
+        Specify transaction query filters by table to resolve ambiguity.
         """
-        return [
-            "transaction.ledger_id = :ledger_id" if "ledger_id" in filter else filter
-            for filter in super().select_filters()
-        ]
+        data = self.query_data()
+        entry_bigid_search = ["tx", "ledger_id", "acct"]
+        entry_str = ["curr"]
+        transaction_str = ["memo"]
+        return (
+            [
+                f"entry.{field} = ANY(:{field})"
+                for field in entry_bigid_search
+                if field in data
+            ]
+            + [f"entry.{field} ~* :{field}" for field in entry_str if field in data]
+            + [
+                f"transaction.{field} ~* :{field}"
+                for field in transaction_str
+                if field in data
+            ]
+        )
 
 
 @router.get("")

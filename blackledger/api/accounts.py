@@ -17,17 +17,17 @@ LOG = logging.getLogger(__name__)
 
 class AccountParams(SearchParams):
     # allow partial match where applicable
-    id: Optional[model.IDSearchField] = None
+    id: Optional[model.BigIDSearchField] = None
     name: Optional[types.NameFilter] = None
-    ledger_id: Optional[model.IDSearchField] = Field(
+    ledger_id: Optional[model.BigIDSearchField] = Field(
         default=None, validation_alias="ledger"
     )
-    parent_id: Optional[model.IDSearchField] = Field(
+    parent_id: Optional[model.BigIDSearchField] = Field(
         default=None, validation_alias="parent"
     )
     number: Optional[int] = None
     normal: Optional[model.NormalField] = None
-    version: Optional[model.IDSearchField] = None
+    version: Optional[model.BigIDSearchField] = None
 
 
 @router.get("", response_model=list[model.Account])

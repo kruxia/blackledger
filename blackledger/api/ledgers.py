@@ -12,7 +12,7 @@ router = APIRouter(prefix="/ledgers", tags=["ledgers"])
 
 class LedgerParams(SearchParams):
     # allow partial match where applicable
-    id: Optional[model.IDSearchField] = None
+    id: Optional[model.BigIDSearchField] = None
     name: Optional[types.NameFilter] = None
 
 

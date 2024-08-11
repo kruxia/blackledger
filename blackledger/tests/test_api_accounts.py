@@ -52,7 +52,7 @@ def base_accounts(dbpool, sql, base_ledger):
         ("?normal=CR", ["Liability", "Income", "Equity"]),
         ("?name=e", ["Asset", "Expense", "Income", "Equity"]),
         ("?name=^E", ["Expense", "Equity"]),
-        (f"?ledger={types.ID()}", []),
+        (f"?ledger={types.make_bigid()}", []),
         # -- SEARCH PARAMS --
         ("?_orderby=number", ["Asset", "Liability", "Equity", "Income", "Expense"]),
         ("?_orderby=-number", ["Expense", "Income", "Equity", "Liability", "Asset"]),
@@ -72,15 +72,12 @@ def testsearch_accounts(client, base_accounts, query, expected_names):
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     response_names = [a["name"] for a in data]
-    LOG.debug(f"{query=}")
-    LOG.debug(f"{expected_names=}")
-    LOG.debug(f"{response_names=}")
 
     assert response_names == expected_names
 
 
 def testsearch_accounts_unmatched_ledger(client, base_accounts):
-    response = client.get(f"/api/accounts?ledger={types.ID()}")
+    response = client.get(f"/api/accounts?ledger={types.make_bigid()}")
     print(f"{response.json()=}")
     assert response.status_code == HTTPStatus.OK
     items = response.json()
@@ -153,11 +150,11 @@ def test_update_account_unprocessable(client, json_dumps, base_accounts, name, u
     "name, updates",
     [
         # id cannot be changed
-        ("Asset", {"id": types.ID()}),
+        ("Asset", {"id": types.make_bigid()}),
         # normal cannot be changed
         ("Asset", {"normal": "CR"}),
         # parent_id must exist if given
-        ("Asset", {"parent_id": types.ID()}),
+        ("Asset", {"parent_id": types.make_bigid()}),
     ],
 )
 def test_update_account_conflict(client, json_dumps, base_accounts, name, updates):

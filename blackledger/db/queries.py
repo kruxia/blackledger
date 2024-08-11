@@ -11,10 +11,7 @@ def _get_where_clause(params: search.SearchParams) -> list[str]:
     select_filters = params.select_filters()
     query_filters = []
     if select_filters:
-        query_filters += [
-            "WHERE",
-            " AND ".join(select_filters),
-        ]
+        query_filters += ["WHERE"] + ["\nAND ".join(select_filters)]
     return query_filters
 
 
@@ -50,7 +47,6 @@ async def select_balances(conn, sql: SQL, params: search.SearchParams):
     ]
     query.extend(_get_where_clause(params))
     query.extend(_get_query_params(params))
-    LOG.debug(sql.render(query, params.query_data()))
 
     results = await sql.select_all(conn, query, params.query_data())
 
@@ -61,7 +57,6 @@ async def select_currencies(conn, sql: SQL, params: search.SearchParams):
     query = sql.queries.SELECT(
         "currency", filters=params.select_filters(), **params.select_params()
     )
-    LOG.debug(sql.render(query, params.query_data()))
     results = await sql.select_all(
         conn,
         query,
@@ -75,7 +70,6 @@ async def select_ledgers(conn, sql: SQL, params: search.SearchParams):
     query = sql.queries.SELECT(
         "ledger", filters=params.select_filters(), **params.select_params()
     )
-    LOG.debug(sql.render(query, params.query_data()))
     results = await sql.select_all(
         conn, query, params.query_data(), Constructor=model.Ledger
     )
@@ -84,26 +78,23 @@ async def select_ledgers(conn, sql: SQL, params: search.SearchParams):
 
 async def select_transactions(conn, sql: SQL, params: search.SearchParams):
     # select the transactions
+    where_cl = _get_where_clause(params)
     tx_query = [
-        # filter transaction ids based on transaction and entry fields
-        "WITH filtered_tr AS (",
-        "  SELECT distinct(transaction.id)",
-        "  FROM transaction",
-        "  JOIN entry",
-        "    ON transaction.id = entry.tx",
-    ]
-    tx_query.extend(_get_where_clause(params))
-    tx_query += [
-        ")",
-        # select matching transactions (only -- entries are separate)
-        "SELECT",
-        "  DISTINCT tx.*",
-        "FROM transaction tx",
-        "JOIN filtered_tr",
-        "  ON filtered_tr.id = tx.id",
+        """
+        WITH tx_ids AS (
+            SELECT distinct(transaction.id)
+            FROM transaction
+            JOIN entry ON transaction.id = entry.tx
+        """,
+        "\n            ".join(where_cl),
+        """
+        )
+        SELECT transaction.*
+        FROM transaction
+        JOIN tx_ids ON tx_ids.id = transaction.id
+        """,
     ]
     tx_query.extend(_get_query_params(params))
-    LOG.debug("\n%s\n\t%r" % sql.render(tx_query, params.query_data()))
 
     tx_results = await sql.select_all(
         conn, tx_query, params.query_data(), Constructor=model.Transaction
@@ -119,8 +110,7 @@ async def select_transactions(conn, sql: SQL, params: search.SearchParams):
         JOIN account a ON e.acct = a.id
         WHERE t.id = ANY(:tx)
     """
-    entries_params = {"tx": [str(tx_id.to_uuid()) for tx_id in transactions.keys()]}
-    LOG.debug("\n%s\n\t%r" % sql.render(entries_query, entries_params))
+    entries_params = {"tx": [tx_id for tx_id in transactions.keys()]}
 
     entries_results = await sql.select_all(
         conn, entries_query, entries_params, Constructor=model.Entry
