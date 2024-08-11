@@ -33,7 +33,23 @@ up:
                   CHECK (normal in ('DR', 'CR'))
     , version   uuid                                    -- account version (=last entry)
   );
+  CREATE FUNCTION account_no_update() RETURNS trigger AS $$
+      BEGIN
+        IF (OLD.id <> NEW.id) THEN
+          RAISE EXCEPTION 'Account id cannot be updated';
+        ELSIF (OLD.normal <> NEW.normal) THEN
+          RAISE EXCEPTION 'Account normal type cannot be updated';
+        END IF;
+        RETURN NEW;
+      END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER account_no_update BEFORE UPDATE ON account
+      FOR EACH ROW EXECUTE FUNCTION account_no_update();
+
 dn:
 - |-
+  DROP TRIGGER account_no_update on account;
+  DROP FUNCTION account_no_update;
   DROP TABLE account;
   DROP SEQUENCE account_id_seq;

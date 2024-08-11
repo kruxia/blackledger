@@ -34,8 +34,20 @@ up:
   );
   ALTER TABLE account ADD CONSTRAINT account_version_fkey
     FOREIGN KEY (version) REFERENCES entry(id);
+
+  CREATE FUNCTION entry_no_update_delete() RETURNS trigger AS $entry_no_update_delete$
+      BEGIN
+        RAISE EXCEPTION 'Entry cannot be updated or deleted';
+      END;
+  $entry_no_update_delete$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER entry_no_update_delete BEFORE UPDATE OR DELETE ON entry
+      FOR EACH ROW EXECUTE FUNCTION entry_no_update_delete();
+
 dn:
 - |-
+  DROP TRIGGER entry_no_update_delete on entry;
+  DROP FUNCTION entry_no_update_delete;
   ALTER TABLE account DROP CONSTRAINT account_version_fkey;
   UPDATE account SET version = null;
   DROP TABLE entry;
