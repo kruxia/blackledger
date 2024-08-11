@@ -5,8 +5,8 @@ depends:
 - blackledger:20231202100215741_ledger
 doc:
 up:
+- CREATE SEQUENCE transaction_id_seq AS smallint CYCLE;
 - |-
-  CREATE SEQUENCE transaction_id_seq AS smallint CYCLE;
   CREATE TABLE transaction (
     id          uuid            PRIMARY KEY DEFAULT gen_id('transaction_id_seq')
     , ledger_id uuid            NOT NULL REFERENCES ledger(id)
@@ -15,7 +15,19 @@ up:
     , memo      text
     , meta      jsonb
   );
+
+  CREATE FUNCTION transaction_no_update_delete() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'Transaction cannot be updated or deleted';
+      END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER transaction_no_update_delete BEFORE UPDATE OR DELETE ON transaction
+    FOR EACH ROW EXECUTE FUNCTION transaction_no_update_delete();
+
 dn:
 - |-
+  DROP TRIGGER transaction_no_update_delete on transaction;
+  DROP FUNCTION transaction_no_update_delete;
   DROP TABLE transaction;
   DROP SEQUENCE transaction_id_seq;
