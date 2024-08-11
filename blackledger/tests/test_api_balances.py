@@ -34,7 +34,7 @@ def test_get_balances_ok(client, test_transactions):
         # NOTE: the following succeed because we are ordering the ids desc, which selects
         # this test_transactions accounts first. See TODO below.
         ("?_orderby=-id&_limit=1&normal=CR", {"Equity"}),
-        (f"?ledger={types.ID()}", set()),
+        (f"?ledger={types.make_bigid()}", set()),
         # NOTE: the following still fails - offset is unreliable with other
         # test_transactions.
         # ("?_orderby=-id&_offset=1&_limit=1&normal=CR", {"Income"}),

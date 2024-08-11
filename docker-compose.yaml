@@ -17,12 +17,12 @@ services:
       AUTH_DISABLED: "True"
       AUTH_JWKS_URL: http://keycloak:8001/realms/blackledger/protocol/openid-connect/certs
       AUTH_ISS: http://localhost:8001/realms/blackledger
-      DATABASE_NAME: blackledger
+      DATABASE_NAME: blackledger_test
       DATABASE_USER: postgres
       DATABASE_PASSWORD: password
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger_test
       DATABASE_DIALECT: psycopg
 
   migrate:
