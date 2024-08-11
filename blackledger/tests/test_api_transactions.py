@@ -99,7 +99,47 @@ def test_post_transactions_ok(
                     "curr": "USD",
                 },
             ],
-        }
+        },
+        {
+            "memo": "amounts as ints OK",
+            "ledger_id": base_ledger.id,
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "ledger_id": base_ledger.id,
+                    "acct_version": None,
+                    "dr": 1000,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "ledger_id": base_ledger.id,
+                    "acct_version": None,
+                    "cr": 1000,
+                    "curr": "USD",
+                },
+            ],
+        },
+        {
+            "memo": "amounts as floats OK",
+            "ledger_id": base_ledger.id,
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "ledger_id": base_ledger.id,
+                    "acct_version": None,
+                    "dr": 1000.00,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "ledger_id": base_ledger.id,
+                    "acct_version": None,
+                    "cr": 1000.00,
+                    "curr": "USD",
+                },
+            ],
+        },
     ]
     acct_versions = {}
     for index, post_tx in enumerate(post_txs):
@@ -217,61 +257,21 @@ def test_post_transaction_precondition_failed(
 
     for post_tx in [
         {
-            "memo": "amounts must be strings, not ints",
-            "ledger_id": base_ledger.id,
-            "entries": [
-                {
-                    "acct": test_accounts["Asset"].id,
-                    "ledger_id": base_ledger.id,
-                    "acct_version": None,
-                    "dr": 1000,
-                    "curr": "USD",
-                },
-                {
-                    "acct": test_accounts["Income"].id,
-                    "ledger_id": base_ledger.id,
-                    "acct_version": None,
-                    "cr": 1000,
-                    "curr": "USD",
-                },
-            ],
-        },
-        {
-            "memo": "amounts must be strings, not floats",
-            "ledger_id": base_ledger.id,
-            "entries": [
-                {
-                    "acct": test_accounts["Asset"].id,
-                    "ledger_id": base_ledger.id,
-                    "acct_version": None,
-                    "dr": 1000.00,
-                    "curr": "USD",
-                },
-                {
-                    "acct": test_accounts["Income"].id,
-                    "ledger_id": base_ledger.id,
-                    "acct_version": None,
-                    "cr": 1000.00,
-                    "curr": "USD",
-                },
-            ],
-        },
-        {
-            "memo": "acct must be valid types.ID",
+            "memo": "acct must be valid types.BigID",
             "ledger_id": base_ledger.id,
             "entries": [
                 {
                     "acct": "NOT_AN_ID",
                     "ledger_id": base_ledger.id,
                     "acct_version": None,
-                    "dr": 1000,
+                    "dr": "1000",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
                     "acct_version": None,
-                    "cr": 1000,
+                    "cr": "1000",
                     "curr": "USD",
                 },
             ],
@@ -320,6 +320,5 @@ def test_post_transaction_precondition_failed(
         },
     ]:
         response = client.post("/api/transactions", content=json_dumps(post_tx))
-        response_tx = response.json()
-        print(post_tx["memo"], response.status_code, response_tx)
+        print(post_tx["memo"], response.status_code)
         assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
