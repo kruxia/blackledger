@@ -5,25 +5,24 @@ from fastapi import APIRouter, Depends, Request
 from blackledger import model, types
 from blackledger.db import queries
 
-from ._search import SearchFilters, SearchParams
+from ..search import SearchParams
 
 router = APIRouter(prefix="/currencies", tags=["currencies"])
 
 
-class CurrencyFilters(SearchFilters):
+class CurrencyParams(SearchParams):
     code: Optional[types.CurrencyFilter] = None
 
 
 @router.get("", response_model=list[model.Currency])
 async def search_currencies(
-    req: Request, filters: Annotated[CurrencyFilters, Depends(CurrencyFilters)]
+    req: Request, params: Annotated[CurrencyParams, Depends(CurrencyParams)]
 ):
     """
     Search for and list currencies.
     """
-    params = SearchParams.from_query(req.query_params)
     async with req.app.pool.connection() as conn:
-        results = await queries.select_currencies(conn, req.app.sql, filters, params)
+        results = await queries.select_currencies(conn, req.app.sql, params)
 
     return results
 
