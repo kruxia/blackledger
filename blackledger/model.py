@@ -83,12 +83,12 @@ class Entry(Model):
     curr: CurrencyField
 
     @field_validator("dr", "cr", mode="before")
-    def validate_dr_cr(cls, value):
+    def convert_dr_cr(cls, value):
+        """
+        Convert int and float amounts to Decimal
+        """
         if isinstance(value, (int, float)):
-            raise ValueError(
-                "integer and floating point amounts are not allowed: "
-                + "use string or Decimal"
-            )
+            value = Decimal(str(value))
         return value
 
     @model_validator(mode="before")
