@@ -8,13 +8,15 @@ from sqly import Q
 from blackledger import model, types
 from blackledger.db import queries
 
-from ._search import SearchFilters, SearchParams
+from ..search import SearchParams
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-class TransactionFilters(SearchFilters):
-    ledger_id: Optional[model.IDSearchField] = Field(default=None, alias="ledger")
+class TransactionParams(SearchParams):
+    ledger_id: Optional[model.IDSearchField] = Field(
+        default=None, validation_alias="ledger"
+    )
     tx: Optional[model.IDSearchField] = None
     acct: Optional[model.IDSearchField] = None
     curr: Optional[types.CurrencyCode] = None
@@ -33,16 +35,13 @@ class TransactionFilters(SearchFilters):
 
 @router.get("")
 async def search_transactions(
-    req: Request, filters: Annotated[TransactionFilters, Depends(TransactionFilters)]
+    req: Request, params: Annotated[TransactionParams, Depends(TransactionParams)]
 ):
     """
     Search for and list transactions.
     """
-    # filters = TransactionFilters.from_query(req.query_params)
-    params = SearchParams.from_query(req.query_params)
-
     async with req.app.pool.connection() as conn:
-        results = await queries.select_transactions(conn, req.app.sql, filters, params)
+        results = await queries.select_transactions(conn, req.app.sql, params)
 
     return results
 

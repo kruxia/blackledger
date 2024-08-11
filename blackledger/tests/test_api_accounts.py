@@ -1,8 +1,11 @@
+import logging
 from http import HTTPStatus
 
 import pytest
 
 from blackledger import model, types
+
+LOG = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="session")
@@ -69,6 +72,10 @@ def testsearch_accounts(client, base_accounts, query, expected_names):
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     response_names = [a["name"] for a in data]
+    LOG.debug(f"{query=}")
+    LOG.debug(f"{expected_names=}")
+    LOG.debug(f"{response_names=}")
+
     assert response_names == expected_names
 
 

@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, Request
 from blackledger import model, types
 from blackledger.db import queries
 
-from ._search import SearchFilters, SearchParams
+from ..search import SearchParams
 
 router = APIRouter(prefix="/ledgers", tags=["ledgers"])
 
 
-class LedgerFilters(SearchFilters):
+class LedgerParams(SearchParams):
     # allow partial match where applicable
     id: Optional[model.IDSearchField] = None
     name: Optional[types.NameFilter] = None
@@ -18,14 +18,13 @@ class LedgerFilters(SearchFilters):
 
 @router.get("", response_model=list[model.Ledger])
 async def search_ledgers(
-    req: Request, filters: Annotated[LedgerFilters, Depends(LedgerFilters)]
+    req: Request, params: Annotated[LedgerParams, Depends(LedgerParams)]
 ):
     """
     Search for and list ledgers.
     """
-    params = SearchParams.from_query(req.query_params)
     async with req.app.pool.connection() as conn:
-        results = await queries.select_ledgers(conn, req.app.sql, filters, params)
+        results = await queries.select_ledgers(conn, req.app.sql, params)
 
     return results
 
