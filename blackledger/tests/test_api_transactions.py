@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
             "?_orderby=id&memo=@",
             ["5 MSFT @ 377.43 USD"],
         ),
-        (f"?ledger={types.make_bigid()}", []),
+        (f"?ledger={types.new_bigid()}", []),
         # -- SELECT PARAMS --
         # orderby
         (
@@ -177,7 +177,7 @@ def test_post_transaction_not_found(
         "ledger_id": base_ledger.id,
         "entries": [
             {
-                "acct": types.make_bigid(),
+                "acct": types.new_bigid(),
                 "ledger_id": base_ledger.id,
                 "dr": "1000",
                 "curr": "USD",
@@ -201,7 +201,7 @@ def test_post_transaction_not_found(
     "acct_version, status_code",
     [
         # posting with an invalid acct_version
-        (types.make_bigid(), HTTPStatus.PRECONDITION_FAILED),
+        (types.new_bigid(), HTTPStatus.PRECONDITION_FAILED),
         # posting with no acct_version does NOT cause a conflict -- optimistic locking
         # is optional
         (None, HTTPStatus.CREATED),

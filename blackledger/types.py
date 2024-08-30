@@ -1,22 +1,30 @@
 from enum import IntEnum
 from random import random
-from typing import TypeAlias
+from typing import Annotated, TypeAlias
 
-from pydantic import constr
+from pydantic import Field
 
-CurrencyCode = constr(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$")
-CurrencyFilter = constr(pattern=r"^[\^\$\*\?A-Za-z0-9\.\-_]+$")
-NameString = constr(pattern=r"^[\w\-\. ]+$")
-NameFilter = constr(pattern=r"^[\^\$\*\?\w\-\. ]+$")
+CurrencyCode = Annotated[
+    str,
+    Field(pattern=r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$", examples=["USD", "CAD", "GOOG"]),
+]
+CurrencyFilter = Annotated[
+    str, Field(pattern=r"^[\^\$\*\?A-Za-z0-9\.\-_]+$", examples=["USD,GOOG"])
+]
+
+Name = Annotated[str, Field(pattern=r"^[\w\-\. ]+$", examples=["Black Ledger"])]
+NameFilter = Annotated[
+    str, Field(pattern=r"^[\^\$\*\?\w\-\. ]+$", examples=["Ledger,Software"])
+]
 
 BigID: TypeAlias = int
 
 
-def make_bigid():
+def new_bigid():
     return int(random() * 1_000)
 
 
-class NormalType(IntEnum):
+class Normal(IntEnum):
     DR = 1
     CR = -1
 
@@ -24,7 +32,7 @@ class NormalType(IntEnum):
     def from_str(cls, value):
         if isinstance(value, str):
             if value not in cls.__members__:
-                raise ValueError("Not a valid NormalType value")
+                raise ValueError("Not a valid Normal value")
             value = cls.__members__[value]
         return value
 
