@@ -12,7 +12,7 @@ if __name__ == "__main__":
         conninfo=settings.url.get_secret_value()
     ) as dbpool:
         fixtures.base_currencies(dbpool)
-        ledger_name = f"Sample {types.make_bigid()}"
+        ledger_name = f"Sample {types.ID()}"
         ledger = fixtures.base_ledger(dbpool, sql, ledger_name)
         print(ledger)
         accounts = next(fixtures.test_accounts(dbpool, sql, ledger, ""))

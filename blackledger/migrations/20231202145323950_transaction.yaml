@@ -2,14 +2,14 @@ app: blackledger
 ts: 20231202145323950
 name: transaction
 depends:
-- blackledger:20240811021056080_bigid
 - blackledger:20231202100215741_ledger
 doc:
 up:
+- CREATE SEQUENCE transaction_id_seq AS smallint CYCLE;
 - |-
   CREATE TABLE transaction (
-    id          bigint          PRIMARY KEY DEFAULT bigid()
-    , ledger_id bigint          NOT NULL REFERENCES ledger(id)
+    id          uuid            PRIMARY KEY DEFAULT gen_id('transaction_id_seq')
+    , ledger_id uuid            NOT NULL REFERENCES ledger(id)
     , posted    timestamptz(6)  NOT NULL DEFAULT now()
     , effective timestamptz(6)  NOT NULL DEFAULT now()
     , memo      text
@@ -30,3 +30,4 @@ dn:
   DROP TRIGGER transaction_no_update_delete on transaction;
   DROP FUNCTION transaction_no_update_delete;
   DROP TABLE transaction;
+  DROP SEQUENCE transaction_id_seq;

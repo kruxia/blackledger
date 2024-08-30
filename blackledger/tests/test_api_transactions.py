@@ -1,11 +1,8 @@
-import logging
 from http import HTTPStatus
 
 import pytest
 
 from blackledger import types
-
-LOG = logging.getLogger(__name__)
 
 # -- SEARCH TRANSACTIONS --
 
@@ -14,15 +11,9 @@ LOG = logging.getLogger(__name__)
     "query, memos",
     [
         # -- FILTERS --
-        (
-            "?_orderby=id&curr=CAD",
-            ["lunch", "dinner"],
-        ),
-        (
-            "?_orderby=id&memo=@",
-            ["5 MSFT @ 377.43 USD"],
-        ),
-        (f"?ledger={types.make_bigid()}", []),
+        ("?_orderby=id&curr=CAD", ["lunch", "dinner"]),
+        ("?_orderby=id&memo=@", ["5 MSFT @ 377.43 USD"]),
+        (f"?ledger={types.ID()}", []),
         # -- SELECT PARAMS --
         # orderby
         (
@@ -34,10 +25,7 @@ LOG = logging.getLogger(__name__)
             ["lunch", "dinner", "client2", "client1", "5 MSFT @ 377.43 USD"],
         ),
         # limit
-        (
-            "?_orderby=id&_limit=1",
-            ["client1"],
-        ),
+        ("?_orderby=id&_limit=1", ["client1"]),
         # offset
         (
             "?_orderby=id&_offset=1",
@@ -52,14 +40,14 @@ def testsearch_transactions(client, test_transactions, query, memos):
     - transactions with the given memos (from those loaded in test_transactions)
     - each transaction with all its entries listed.
     """
-    # Add to the query a filter for the test_transactions (to avoid
+    test_transaction_ids = [str(t["id"]) for t in test_transactions]
+
+    # Add to the query a filter for the first test_transaction timestamp (to avoid
     # conflict with other test cases -- because transactions cannot be deleted.)
-    test_transaction_ids = [t["id"] for t in test_transactions]
-    query += f"&tx={','.join(str(t) for t in test_transaction_ids)}"
+    query += f"&tx={','.join(test_transaction_ids)}"
 
     response = client.get(f"/api/transactions{query}")
     assert response.status_code == HTTPStatus.OK
-
     response_data = [t for t in response.json() if t["id"] in test_transaction_ids]
     response_memos = [t["memo"] for t in response_data]
     assert response_memos == memos
@@ -137,7 +125,7 @@ def test_post_transaction_not_found(
         "ledger_id": base_ledger.id,
         "entries": [
             {
-                "acct": types.make_bigid(),
+                "acct": types.ID(),
                 "ledger_id": base_ledger.id,
                 "dr": "1000",
                 "curr": "USD",
@@ -161,7 +149,7 @@ def test_post_transaction_not_found(
     "acct_version, status_code",
     [
         # posting with an invalid acct_version
-        (types.make_bigid(), HTTPStatus.PRECONDITION_FAILED),
+        (types.ID(), HTTPStatus.PRECONDITION_FAILED),
         # posting with no acct_version does NOT cause a conflict -- optimistic locking
         # is optional
         (None, HTTPStatus.CREATED),
