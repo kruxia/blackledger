@@ -17,8 +17,6 @@ from typing_extensions import Annotated
 
 from . import types
 
-CurrencyField = Annotated[types.CurrencyCode, Field(examples=["USD", "CAD", "GOOG"])]
-
 BigIDField = Annotated[
     int,
     Field(examples=randint(1001, 1_000_000)),
@@ -30,14 +28,10 @@ BigIDSearchField = Annotated[
 ]
 
 NormalField = Annotated[
-    types.NormalType,
-    Field(examples=[types.NormalType.DR.name]),
-    BeforeValidator(types.NormalType.from_str),
-    PlainSerializer(types.NormalType.to_str),
-]
-NameField = Annotated[
-    types.NameString,
-    Field(examples=["Some-Name"]),
+    types.Normal,
+    Field(examples=[types.Normal.DR.name]),
+    BeforeValidator(types.Normal.from_str),
+    PlainSerializer(types.Normal.to_str),
 ]
 
 
@@ -49,14 +43,14 @@ class Model(BaseModel):
 
 
 class Currency(Model):
-    code: CurrencyField
+    code: types.CurrencyCode
 
 
 class Account(Model):
     id: Optional[BigIDField] = None
     ledger_id: BigIDField
     parent_id: Optional[BigIDField] = None
-    name: NameField
+    name: types.Name
     normal: NormalField
     number: Optional[int] = None
     version: Optional[BigIDField] = None
@@ -70,7 +64,7 @@ class Entry(Model):
     acct_name: Optional[str] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
-    curr: CurrencyField
+    curr: types.CurrencyCode
 
     @field_validator("dr", "cr", mode="before")
     def convert_dr_cr(cls, value):
@@ -105,9 +99,9 @@ class Entry(Model):
         * Credits (CR) are negative
         """
         if self.dr:
-            return self.dr * types.NormalType.DR
+            return self.dr * types.Normal.DR
         else:
-            return self.cr * types.NormalType.CR
+            return self.cr * types.Normal.CR
 
 
 class NewEntry(Entry):
@@ -153,5 +147,5 @@ class NewTransaction(Transaction):
 
 class Ledger(Model):
     id: Optional[BigIDField] = None
-    name: NameField
+    name: types.Name
     created: Optional[datetime] = None

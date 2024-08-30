@@ -8,4 +8,4 @@ class NormalDumper(adapt.Dumper):
         return obj.name.encode()
 
 
-adapters.register_dumper(types.NormalType, NormalDumper)
+adapters.register_dumper(types.Normal, NormalDumper)

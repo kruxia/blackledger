@@ -52,7 +52,7 @@ def base_accounts(dbpool, sql, base_ledger):
         ("?normal=CR", ["Liability", "Income", "Equity"]),
         ("?name=e", ["Asset", "Expense", "Income", "Equity"]),
         ("?name=^E", ["Expense", "Equity"]),
-        (f"?ledger={types.make_bigid()}", []),
+        (f"?ledger={types.new_bigid()}", []),
         # -- SEARCH PARAMS --
         ("?_orderby=number", ["Asset", "Liability", "Equity", "Income", "Expense"]),
         ("?_orderby=-number", ["Expense", "Income", "Equity", "Liability", "Asset"]),
@@ -77,7 +77,7 @@ def testsearch_accounts(client, base_accounts, query, expected_names):
 
 
 def testsearch_accounts_unmatched_ledger(client, base_accounts):
-    response = client.get(f"/api/accounts?ledger={types.make_bigid()}")
+    response = client.get(f"/api/accounts?ledger={types.new_bigid()}")
     print(f"{response.json()=}")
     assert response.status_code == HTTPStatus.OK
     items = response.json()
@@ -126,9 +126,9 @@ def test_update_account_ok(client, json_dumps, base_accounts, name, updates):
 @pytest.mark.parametrize(
     "name, updates",
     [
-        # name must be a NameString -- not empty
+        # name must be a Name -- not empty
         ("Asset", {"name": ""}),
-        # name must be a NameString -- pattern must match
+        # name must be a Name -- pattern must match
         ("Asset", {"name": "Foo,Bar"}),
         # number must be an int or int-castable
         ("Asset", {"number": "34.5"}),
@@ -150,11 +150,11 @@ def test_update_account_unprocessable(client, json_dumps, base_accounts, name, u
     "name, updates",
     [
         # id cannot be changed
-        ("Asset", {"id": types.make_bigid()}),
+        ("Asset", {"id": types.new_bigid()}),
         # normal cannot be changed
         ("Asset", {"normal": "CR"}),
         # parent_id must exist if given
-        ("Asset", {"parent_id": types.make_bigid()}),
+        ("Asset", {"parent_id": types.new_bigid()}),
     ],
 )
 def test_update_account_conflict(client, json_dumps, base_accounts, name, updates):
@@ -174,7 +174,7 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
         # id must be int
         {"id": "abc", "name": "Foo", "normal": "DR"},
         {"id": 123, "name": "Foo", "normal": "DR"},
-        # name is required and must be model.NameString
+        # name is required and must be model.Name
         {"name": "", "normal": "CR"},
         {"name": "Foo,Bar", "normal": "CR"},
         # number must be an int or int-castable

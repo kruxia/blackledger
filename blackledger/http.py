@@ -6,7 +6,11 @@ from pathlib import Path
 import psycopg_pool
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from psycopg.errors import ForeignKeyViolation, RaiseException, UniqueViolation
+from psycopg.errors import (
+    ForeignKeyViolation,
+    RaiseException,
+    UniqueViolation,
+)
 from pydantic import ValidationError
 from sqly import ASQL
 
