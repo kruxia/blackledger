@@ -66,7 +66,7 @@ def test_post_ledger_update_ok(client, base_ledger, json_dumps):
         {"name": None},
         # name is NameString
         {"name": "Ledger,1"},
-        # id is ID
+        # id is int
         {"name": "Ledger 1", "id": "NOT_AN_ID"},
         # created is datetime
         {"name": "Ledger 1", "created": "NOT_A_TIMESTAMP"},
