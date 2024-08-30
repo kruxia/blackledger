@@ -2,7 +2,6 @@ app: blackledger
 ts: 20231202145316665
 name: account
 depends:
-- blackledger:20240811021056080_bigid
 - blackledger:20231202100215741_ledger
 doc: >-
   account: Chart of all accounts. Fields:
@@ -18,10 +17,11 @@ doc: >-
 
 up:
 - |-
+  CREATE SEQUENCE account_id_seq AS smallint CYCLE;
   CREATE TABLE account (
-    id          bigint    PRIMARY KEY DEFAULT bigid()
-    , ledger_id bigint    NOT NULL REFERENCES ledger(id)  -- ledger identifier
-    , parent_id bigint    REFERENCES account(id)          -- optional parent account
+    id          uuid      PRIMARY KEY DEFAULT gen_id('account_id_seq')
+    , ledger_id uuid      NOT NULL REFERENCES ledger(id)  -- ledger identifier
+    , parent_id uuid      REFERENCES account(id)          -- optional parent account
     , name      varchar   NOT NULL                        -- name of the account
     , number    smallint                                  -- optional account number
     , UNIQUE NULLS NOT DISTINCT (ledger_id, parent_id, name) -- unique name per context
@@ -31,7 +31,7 @@ up:
     , normal    varchar(2)
                   NOT NULL
                   CHECK (normal in ('DR', 'CR'))
-    , version   bigint                                    -- account version (=last entry)
+    , version   uuid                                    -- account version (=last entry)
   );
   CREATE FUNCTION account_no_update() RETURNS trigger AS $$
       BEGIN
@@ -52,3 +52,4 @@ dn:
   DROP TRIGGER account_no_update on account;
   DROP FUNCTION account_no_update;
   DROP TABLE account;
+  DROP SEQUENCE account_id_seq;

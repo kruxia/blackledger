@@ -2,14 +2,17 @@ app: blackledger
 ts: 20231202100215741
 name: ledger
 depends:
-- blackledger:20240811021056080_bigid
+- blackledger:20230718035300931_ulid
 doc: null
 up:
 - |-
+  CREATE SEQUENCE ledger_id_seq AS smallint CYCLE;
   CREATE TABLE ledger (
-    id        bigint          PRIMARY KEY DEFAULT bigid()
+    id        uuid            PRIMARY KEY DEFAULT gen_id('ledger_id_seq')
     , name    varchar         NOT NULL UNIQUE
     , created timestamptz(6)  NOT NULL DEFAULT now()
   );
 dn:
-- DROP TABLE ledger;
+- |-
+  DROP TABLE ledger;
+  DROP SEQUENCE ledger_id_seq;

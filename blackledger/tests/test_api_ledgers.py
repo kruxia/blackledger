@@ -14,7 +14,7 @@ from blackledger import types
         ("", ["test"]),
         ("?name=t", ["test"]),
         ("?name=foo", []),
-        (f"?id={types.make_bigid()}", []),
+        (f"?id={types.ID()}", []),
     ],
 )
 def testsearch_ledgers_ok(client, query, names):
@@ -31,7 +31,7 @@ def testsearch_ledgers_ok(client, query, names):
         {"name": "Ledger 1"},
         {"name": "Ledger-1"},
         {"name": "Ledger.1"},
-        {"name": "Ledger 2", "id": types.make_bigid()},
+        {"name": "Ledger 2", "id": types.ID()},
         {"name": "Ledger 3", "created": datetime.now(tz=timezone.utc)},
     ],
 )

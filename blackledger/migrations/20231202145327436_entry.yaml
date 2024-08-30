@@ -2,7 +2,6 @@ app: blackledger
 ts: 20231202145327436
 name: entry
 depends:
-- blackledger:20240811021056080_bigid
 - blackledger:20231110035214790_currency
 - blackledger:20231202145316665_account
 - blackledger:20231202145323950_transaction
@@ -21,11 +20,12 @@ doc: >-
       -- "Premature optimization is the root of all evil." --Sir Tony Hoare (& D. Knuth)
 up:
 - |-
+  CREATE SEQUENCE entry_id_seq AS smallint CYCLE;
   CREATE TABLE entry (
-    id          bigint    PRIMARY KEY DEFAULT bigid()
-    , ledger_id bigint    NOT NULL references ledger(id)
-    , tx        bigint    NOT NULL references transaction(id)
-    , acct      bigint    NOT NULL references account(id)
+    id          uuid      PRIMARY KEY DEFAULT gen_id('entry_id_seq')
+    , ledger_id uuid      NOT NULL references ledger(id)
+    , tx        uuid      NOT NULL references transaction(id)
+    , acct      uuid      NOT NULL references account(id)
     , curr      varchar   NOT NULL references currency(code)
     , dr        decimal
     , cr        decimal
@@ -51,3 +51,4 @@ dn:
   ALTER TABLE account DROP CONSTRAINT account_version_fkey;
   UPDATE account SET version = null;
   DROP TABLE entry;
+  DROP SEQUENCE entry_id_seq;

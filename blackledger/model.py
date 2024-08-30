@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from random import randint
 from typing import Optional
 from uuid import UUID
 
@@ -30,15 +29,6 @@ IDSearchField = Annotated[
     Field(pattern=r"^[0-9a-fA-F\-,]+$"),
     PlainSerializer(lambda val: val.split(",") if val else None),
 ]
-BigIDField = Annotated[
-    types.BigID,
-    Field(examples=randint(1001, 1_000_000)),
-]
-BigIDSearchField = Annotated[
-    str,
-    Field(pattern=r"^[0-9]+(,[0-9]+)*$"),
-    PlainSerializer(lambda val: [int(v) for v in val.split(",")] if val else None),
-]
 NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
@@ -63,20 +53,20 @@ class Currency(Model):
 
 
 class Account(Model):
-    id: Optional[BigIDField] = None
-    ledger_id: BigIDField
-    parent_id: Optional[BigIDField] = None
+    id: Optional[IDField] = None
+    ledger_id: IDField
+    parent_id: Optional[IDField] = None
     name: NameField
     normal: NormalField
     number: Optional[int] = None
-    version: Optional[BigIDField] = None
+    version: Optional[IDField] = None
 
 
 class Entry(Model):
-    id: Optional[BigIDField] = None
-    ledger_id: BigIDField
-    tx: Optional[BigIDField] = None
-    acct: BigIDField
+    id: Optional[IDField] = None
+    ledger_id: IDField
+    tx: Optional[IDField] = None
+    acct: IDField
     acct_name: Optional[str] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
@@ -121,12 +111,12 @@ class Entry(Model):
 
 
 class NewEntry(Entry):
-    acct_version: Optional[BigIDField] = None
+    acct_version: Optional[IDField] = None
 
 
 class Transaction(Model):
-    id: Optional[BigIDField] = None
-    ledger_id: BigIDField
+    id: Optional[IDField] = None
+    ledger_id: IDField
     posted: Optional[datetime] = None
     effective: Optional[datetime] = None
     memo: Optional[str] = None
@@ -162,6 +152,6 @@ class NewTransaction(Transaction):
 
 
 class Ledger(Model):
-    id: Optional[BigIDField] = None
+    id: Optional[IDField] = None
     name: NameField
     created: Optional[datetime] = None
