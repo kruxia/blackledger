@@ -39,8 +39,6 @@ def sql():
 def json_dumps():
     class TestJsonEncoder(json.JSONEncoder):
         def default(self, obj):
-            if isinstance(obj, (types.ID,)):
-                return str(obj)
             if isinstance(obj, datetime):
                 return obj.isoformat()
             return super().default(obj)

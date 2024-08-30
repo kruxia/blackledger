@@ -171,7 +171,7 @@ def test_update_account_conflict(client, json_dumps, base_accounts, name, update
 @pytest.mark.parametrize(
     "item",
     [
-        # id must be types.ID
+        # id must be int
         {"id": "abc", "name": "Foo", "normal": "DR"},
         {"id": 123, "name": "Foo", "normal": "DR"},
         # name is required and must be model.NameString

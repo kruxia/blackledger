@@ -2,7 +2,6 @@ from datetime import datetime
 from decimal import Decimal
 from random import randint
 from typing import Optional
-from uuid import UUID
 
 import orjson
 from pydantic import (
@@ -19,19 +18,9 @@ from typing_extensions import Annotated
 from . import types
 
 CurrencyField = Annotated[types.CurrencyCode, Field(examples=["USD", "CAD", "GOOG"])]
-IDField = Annotated[
-    UUID,
-    Field(examples=[str(types.ID())]),
-    BeforeValidator(types.ID.from_str),
-    PlainSerializer(types.ID.__str__, when_used="json"),  # not when going into database
-]
-IDSearchField = Annotated[
-    str,
-    Field(pattern=r"^[0-9a-fA-F\-,]+$"),
-    PlainSerializer(lambda val: val.split(",") if val else None),
-]
+
 BigIDField = Annotated[
-    types.BigID,
+    int,
     Field(examples=randint(1001, 1_000_000)),
 ]
 BigIDSearchField = Annotated[
@@ -39,6 +28,7 @@ BigIDSearchField = Annotated[
     Field(pattern=r"^[0-9]+(,[0-9]+)*$"),
     PlainSerializer(lambda val: [int(v) for v in val.split(",")] if val else None),
 ]
+
 NormalField = Annotated[
     types.NormalType,
     Field(examples=[types.NormalType.DR.name]),
