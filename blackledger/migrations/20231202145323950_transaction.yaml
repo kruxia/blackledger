@@ -4,7 +4,23 @@ name: transaction
 depends:
 - blackledger:20240811021056080_bigid
 - blackledger:20231202100215741_ledger
-doc:
+doc: |-
+  A transaction consists of a balanced set of changes (entries) to accounts seen as a
+  single change at a single point in time. Transactions must balance: The sum of debit
+  entries must equal the sum of credit entries. Transactions often include a textual
+  memo description and may include JSON-formatted metadata. The time at which the
+  transaction is `posted` to the ledger is often the same as the time at which the
+  transaction is considered to have occurred and be `effective` in the world. But
+  sometimes those times are different, such as when the transaction is posted to the
+  ledger to record a change that happened in the past (or is viewed as happening in the
+  past). One all-too common example is a transaction that adjusts a previously-recorded
+  transaction: Often it is desirable to see the adjustment transaction as being
+  `effective` at the time of the original transaction, even though it is `posted` later.
+
+  Once a transaction has been posted (inserted), it cannot be altered or deleted: The
+  transaction record and the associated entry records are protected from update or
+  delete by row-level triggers. (Once change that is possible is to add entries to an
+  existing transaction. The database does not currently protect against this.)
 up:
 - |-
   CREATE TABLE transaction (
@@ -16,6 +32,7 @@ up:
     , meta      jsonb
   );
 
+  -- Prevent update or delete to an existing transaction record.
   CREATE FUNCTION transaction_no_update_delete() RETURNS trigger AS $$
       BEGIN
         RAISE EXCEPTION 'Transaction cannot be updated or deleted';
