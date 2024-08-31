@@ -140,6 +140,24 @@ def test_post_transactions_ok(
                 },
             ],
         },
+        {
+            "memo": "Omitting entry.ledger_id uses transaction.ledger_id",
+            "ledger_id": base_ledger.id,
+            "entries": [
+                {
+                    "acct": test_accounts["Asset"].id,
+                    "version": None,
+                    "dr": 1000.00,
+                    "curr": "USD",
+                },
+                {
+                    "acct": test_accounts["Income"].id,
+                    "version": None,
+                    "cr": 1000.00,
+                    "curr": "USD",
+                },
+            ],
+        },
     ]
     acct_versions = {}
     for index, post_tx in enumerate(post_txs):

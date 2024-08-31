@@ -147,6 +147,17 @@ class NewEntry(Entry):
 class NewTransaction(Transaction):
     entries: list[NewEntry] = Field(default_factory=list)
 
+    @model_validator(mode="before")
+    @classmethod
+    def fill_ledger(cls, values):
+        """
+        If the individual entries in the transaction don't have ledger_id, fill it in.
+        """
+        for entry in filter(lambda e: not e.get("ledger_id"), values["entries"]):
+            entry["ledger_id"] = values.get("ledger_id")
+
+        return values
+
 
 class Ledger(Model):
     id: Optional[BigIDField] = None
