@@ -109,9 +109,7 @@ async def post_transaction(req: Request, item: model.NewTransaction):
                 )
 
             entry_item.tx = tx["id"]
-            entry_data = entry_item.model_dump(
-                exclude=["version"], exclude_none=True
-            )
+            entry_data = entry_item.model_dump(exclude=["version"], exclude_none=True)
             entry = await sql.select_one(
                 conn,
                 sql.queries.INSERT("entry", entry_data, returning=True),
