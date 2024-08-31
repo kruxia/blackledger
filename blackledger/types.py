@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import Enum
 from random import random
 from typing import Annotated, TypeAlias
 
@@ -24,18 +24,15 @@ def new_bigid():
     return int(random() * 1_000)
 
 
-class Normal(IntEnum):
-    DR = 1
-    CR = -1
+class Normal(Enum):
+    DR = "DR"
+    CR = "CR"
 
-    @classmethod
-    def from_str(cls, value):
-        if isinstance(value, str):
-            if value not in cls.__members__:
-                raise ValueError("Not a valid Normal value")
-            value = cls.__members__[value]
-        return value
-
-    @classmethod
-    def to_str(cls, value):
-        return value.name
+    def __int__(self):
+        """
+        Provide the Normal value as an integer for calculations. Requires explicit cast.
+        """
+        if self == self.DR:
+            return 1
+        elif self == self.CR:
+            return -1

@@ -12,7 +12,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 
 from . import types
@@ -30,8 +29,7 @@ BigIDSearchField = Annotated[
 NormalField = Annotated[
     types.Normal,
     Field(examples=[types.Normal.DR.name]),
-    BeforeValidator(types.Normal.from_str),
-    PlainSerializer(types.Normal.to_str),
+    PlainSerializer(lambda val: val.name),
 ]
 
 
@@ -104,9 +102,9 @@ class Entry(Model):
         * Credits (CR) are negative
         """
         if self.dr:
-            return self.dr * types.Normal.DR
+            return self.dr * int(types.Normal.DR)
         else:
-            return self.cr * types.Normal.CR
+            return self.cr * int(types.Normal.CR)
 
 
 class Transaction(Model):

@@ -16,7 +16,6 @@ from pydantic import ValidationError
 from sqly import ASQL
 
 from blackledger import api
-from blackledger.db import type_adapters  # noqa - provides psycopg type registrations.
 from blackledger.response import JSONResponse
 from blackledger.settings import Settings
 
