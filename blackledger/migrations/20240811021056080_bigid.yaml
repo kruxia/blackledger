@@ -10,7 +10,7 @@ up:
   - |- 
     CREATE OR REPLACE FUNCTION bigid() RETURNS bigint AS $$
       SELECT (
-        (nextval('bigid_seq'))*1e3 + (random()*1e3)::bigint
+        (nextval('bigid_seq'))*1e5 + (random()*1e5)::bigint
       )::bigint;
     $$ LANGUAGE SQL;
 dn: 
