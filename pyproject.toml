@@ -43,7 +43,7 @@ packages = ["blackledger"]
 # write_to = "blackledger/__version__.py"
 
 [tool.coverage.run]
-omit = ["blackledger/tests/*"]
+omit = ["blackledger/tests/*", "blackledger/ui/**"]
 
 [tool.coverage.report]
 skip_covered = true
