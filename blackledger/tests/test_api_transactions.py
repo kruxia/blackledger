@@ -75,10 +75,10 @@ def test_post_transactions_ok(
     client, base_ledger, base_currencies, test_accounts, json_dumps
 ):
     """
-    The first transaction posted to an account should not have an 'acct_version' because
+    The first transaction posted to an account should not have an 'version' because
     it doesn't yet exist.
 
-    Following transactions to an account should have the correct 'acct_version', which
+    Following transactions to an account should have the correct 'version', which
     is the last entry.id
     """
     post_txs = [
@@ -107,14 +107,14 @@ def test_post_transactions_ok(
                 {
                     "acct": test_accounts["Asset"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "dr": 1000,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "cr": 1000,
                     "curr": "USD",
                 },
@@ -127,14 +127,14 @@ def test_post_transactions_ok(
                 {
                     "acct": test_accounts["Asset"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "dr": 1000.00,
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "cr": 1000.00,
                     "curr": "USD",
                 },
@@ -144,15 +144,15 @@ def test_post_transactions_ok(
     acct_versions = {}
     for index, post_tx in enumerate(post_txs):
         for entry in post_tx["entries"]:
-            # update the entry acct_version
+            # update the entry version
             if entry["acct"] in acct_versions:
-                entry["acct_version"] = acct_versions[entry["acct"]]
+                entry["version"] = acct_versions[entry["acct"]]
 
-            # validate the entry acct_version
+            # validate the entry version
             if index == 0:
-                assert entry.get("acct_version") is None
+                assert entry.get("version") is None
             else:
-                assert entry.get("acct_version") is not None
+                assert entry.get("version") is not None
 
         response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
@@ -195,11 +195,11 @@ def test_post_transaction_not_found(
 
 
 @pytest.mark.parametrize(
-    "acct_version, status_code",
+    "version, status_code",
     [
-        # posting with an invalid acct_version
+        # posting with an invalid version
         (types.new_bigid(), HTTPStatus.PRECONDITION_FAILED),
-        # posting with no acct_version does NOT cause a conflict -- optimistic locking
+        # posting with no version does NOT cause a conflict -- optimistic locking
         # is optional
         (None, HTTPStatus.CREATED),
     ],
@@ -209,13 +209,13 @@ def test_post_transaction_optimistic_locking(
     base_ledger,
     test_accounts,
     test_transactions,
-    acct_version,
+    version,
     status_code,
     json_dumps,
 ):
     """
     When posting a transaction to an account that already has transactions, the
-    'acct_version' field, if not null, must match the latest entry.id.
+    'version' field, if not null, must match the latest entry.id.
     """
     post_tx = {
         "memo": "not the first tx",
@@ -224,14 +224,14 @@ def test_post_transaction_optimistic_locking(
             {
                 "acct": test_accounts["Asset"].id,
                 "ledger_id": base_ledger.id,
-                "acct_version": acct_version,
+                "version": version,
                 "dr": "1000",
                 "curr": "USD",
             },
             {
                 "acct": test_accounts["Income"].id,
                 "ledger_id": base_ledger.id,
-                "acct_version": acct_version,
+                "version": version,
                 "cr": "1000",
                 "curr": "USD",
             },
@@ -258,14 +258,14 @@ def test_post_transaction_precondition_failed(
                 {
                     "acct": "NOT_AN_ID",
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "dr": "1000",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "cr": "1000",
                     "curr": "USD",
                 },
@@ -278,14 +278,14 @@ def test_post_transaction_precondition_failed(
                 {
                     "acct": test_accounts["Asset"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     # "dr": "",
                     "curr": "USD",
                 },
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     # "cr": "1000",
                     "curr": "USD",
                 },
@@ -298,7 +298,7 @@ def test_post_transaction_precondition_failed(
                 {
                     "acct": test_accounts["Asset"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "dr": "1000",
                     "cr": "1000",
                     "curr": "USD",
@@ -306,7 +306,7 @@ def test_post_transaction_precondition_failed(
                 {
                     "acct": test_accounts["Income"].id,
                     "ledger_id": base_ledger.id,
-                    "acct_version": None,
+                    "version": None,
                     "dr": "1000",
                     "cr": "1000",
                     "curr": "USD",

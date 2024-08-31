@@ -141,7 +141,7 @@ class Transaction(Model):
 
 
 class NewEntry(Entry):
-    acct_version: Optional[BigIDField] = None
+    version: Optional[BigIDField] = None
 
 
 class NewTransaction(Transaction):

@@ -95,14 +95,14 @@ async def post_transaction(req: Request, item: model.NewTransaction):
                     detail=f"Account not found: {entry_item.acct}",
                 )
 
-            # if we've updated the acct_version in this transaction, use it (we know the
+            # if we've updated the version in this transaction, use it (we know the
             # earlier account version was correct because it has been updated.)
             if entry_item.acct in entry_accts_versions:
-                entry_item.acct_version = entry_accts_versions[entry_item.acct]
+                entry_item.version = entry_accts_versions[entry_item.acct]
 
             # ensure that each entry's account.version, if given, is equal to the latest
             # entry for that account (OPTIONAL optimistic locking / concurrency control)
-            if entry_item.acct_version and acct["version"] != entry_item.acct_version:
+            if entry_item.version and acct["version"] != entry_item.version:
                 raise HTTPException(
                     status_code=HTTPStatus.PRECONDITION_FAILED,
                     detail="Entry account_version is out of date",
@@ -110,7 +110,7 @@ async def post_transaction(req: Request, item: model.NewTransaction):
 
             entry_item.tx = tx["id"]
             entry_data = entry_item.model_dump(
-                exclude=["acct_version"], exclude_none=True
+                exclude=["version"], exclude_none=True
             )
             entry = await sql.select_one(
                 conn,
