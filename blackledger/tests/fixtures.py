@@ -39,8 +39,6 @@ def sql():
 def json_dumps():
     class TestJsonEncoder(json.JSONEncoder):
         def default(self, obj):
-            if isinstance(obj, (types.ID,)):
-                return str(obj)
             if isinstance(obj, datetime):
                 return obj.isoformat()
             return super().default(obj)
@@ -73,7 +71,7 @@ def base_ledger(dbpool, sql, base_ledger_name):
 
 
 def run_id():
-    return types.make_bigid()
+    return types.new_bigid()
 
 
 def test_accounts(dbpool, sql, base_ledger, run_id):

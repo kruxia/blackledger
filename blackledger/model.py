@@ -2,7 +2,6 @@ from datetime import datetime
 from decimal import Decimal
 from random import randint
 from typing import Optional
-from uuid import UUID
 
 import orjson
 from pydantic import (
@@ -18,36 +17,21 @@ from typing_extensions import Annotated
 
 from . import types
 
-CurrencyField = Annotated[types.CurrencyCode, Field(examples=["USD", "CAD", "GOOG"])]
-IDField = Annotated[
-    UUID,
-    Field(examples=[str(types.ID())]),
-    BeforeValidator(types.ID.from_str),
-    PlainSerializer(types.ID.__str__, when_used="json"),  # not when going into database
-]
-IDSearchField = Annotated[
-    str,
-    Field(pattern=r"^[0-9a-fA-F\-,]+$"),
-    PlainSerializer(lambda val: val.split(",") if val else None),
-]
 BigIDField = Annotated[
-    types.BigID,
-    Field(examples=randint(1001, 1_000_000)),
+    int,
+    Field(examples=[randint(1001, 1_000_000)]),
 ]
 BigIDSearchField = Annotated[
     str,
-    Field(pattern=r"^[0-9]+(,[0-9]+)*$"),
+    Field(pattern=r"^[0-9]+(,[0-9]+)*$", examples=[f"{randint(1001, 1_000_000)}"]),
     PlainSerializer(lambda val: [int(v) for v in val.split(",")] if val else None),
 ]
+
 NormalField = Annotated[
-    types.NormalType,
-    Field(examples=[types.NormalType.DR.name]),
-    BeforeValidator(types.NormalType.from_str),
-    PlainSerializer(types.NormalType.to_str),
-]
-NameField = Annotated[
-    types.NameString,
-    Field(examples=["Some-Name"]),
+    types.Normal,
+    Field(examples=[types.Normal.DR.name]),
+    BeforeValidator(types.Normal.from_str),
+    PlainSerializer(types.Normal.to_str),
 ]
 
 
@@ -59,14 +43,14 @@ class Model(BaseModel):
 
 
 class Currency(Model):
-    code: CurrencyField
+    code: types.CurrencyCode
 
 
 class Account(Model):
     id: Optional[BigIDField] = None
     ledger_id: BigIDField
     parent_id: Optional[BigIDField] = None
-    name: NameField
+    name: types.Name
     normal: NormalField
     number: Optional[int] = None
     version: Optional[BigIDField] = None
@@ -80,7 +64,7 @@ class Entry(Model):
     acct_name: Optional[str] = None
     dr: Optional[Decimal] = None
     cr: Optional[Decimal] = None
-    curr: CurrencyField
+    curr: types.CurrencyCode
 
     @field_validator("dr", "cr", mode="before")
     def convert_dr_cr(cls, value):
@@ -115,13 +99,9 @@ class Entry(Model):
         * Credits (CR) are negative
         """
         if self.dr:
-            return self.dr * types.NormalType.DR
+            return self.dr * types.Normal.DR
         else:
-            return self.cr * types.NormalType.CR
-
-
-class NewEntry(Entry):
-    acct_version: Optional[BigIDField] = None
+            return self.cr * types.Normal.CR
 
 
 class Transaction(Model):
@@ -157,11 +137,15 @@ class Transaction(Model):
         return self
 
 
+class NewEntry(Entry):
+    acct_version: Optional[BigIDField] = None
+
+
 class NewTransaction(Transaction):
     entries: list[NewEntry] = Field(default_factory=list)
 
 
 class Ledger(Model):
     id: Optional[BigIDField] = None
-    name: NameField
+    name: types.Name
     created: Optional[datetime] = None

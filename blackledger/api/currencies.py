@@ -28,7 +28,7 @@ async def search_currencies(
 
 
 @router.post("", response_model=model.Currency)
-async def edit_currencies(req: Request, item: model.Currency):
+async def save_currency(req: Request, item: model.Currency):
     """
     Insert/update currency.
     """

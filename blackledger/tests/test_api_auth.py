@@ -11,7 +11,7 @@ def test_home_auth_unauthorized(auth_client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-@patch("blackledger.api.jwt_authorization_dependency.client", MockPyJWKClient())
+@patch("blackledger.api.router.jwt_authorization_dependency.client", MockPyJWKClient())
 @patch("jwt.decode", MagicMock(return_value={}))
 def test_home_auth_authorized(auth_client):
     response = auth_client.get("/api", headers={"Authorization": "CAN_HAZ"})

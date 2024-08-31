@@ -1,6 +1,7 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import Field
 
 from blackledger import model, types
 from blackledger.db import queries
@@ -12,8 +13,8 @@ router = APIRouter(prefix="/ledgers", tags=["ledgers"])
 
 class LedgerParams(SearchParams):
     # allow partial match where applicable
-    id: Optional[model.BigIDSearchField] = None
-    name: Optional[types.NameFilter] = None
+    id: Optional[model.BigIDSearchField] = Field(default=None)
+    name: Optional[types.NameFilter] = Field(default=None)
 
 
 @router.get("", response_model=list[model.Ledger])
@@ -30,7 +31,7 @@ async def search_ledgers(
 
 
 @router.post("", response_model=model.Ledger)
-async def edit_ledgers(req: Request, item: model.Ledger):
+async def save_ledger(req: Request, item: model.Ledger):
     """
     Insert/update ledger.
     """

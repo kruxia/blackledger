@@ -54,7 +54,7 @@ async def search_accounts(
 
 
 @router.post("", response_model=model.Account)
-async def edit_account(req: Request, item: model.Account):
+async def save_account(req: Request, item: model.Account):
     """
     Insert/update account.
     """
@@ -66,7 +66,7 @@ async def edit_account(req: Request, item: model.Account):
     return result
 
 
-@router.get("/balances")
+@router.get("/balances", response_model=list[dict])  # TODO: AccountBalance model
 async def get_balances(
     req: Request, params: Annotated[AccountParams, Depends(AccountParams)]
 ):
