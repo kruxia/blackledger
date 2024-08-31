@@ -83,7 +83,7 @@ async def search_account_balances(
             )
         amount = (
             (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
-        ) * account.normal
+        ) * int(account.normal)
         balances[account.id].balances[result["curr"]] = amount
 
     return list(balances.values())
