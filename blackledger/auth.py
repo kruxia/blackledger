@@ -27,7 +27,7 @@ class JWTAuthorization(APIKeyHeader):
             assert bearer is not None, "Authorization header not found"
             request.state.auth_claims = self.decode(bearer)
         except Exception as exc:
-            LOG.warn(traceback.format_exc())
+            LOG.warning(traceback.format_exc())
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED,
                 detail=f"Unauthorized: {exc.__class__.__name__}: {str(exc)}",

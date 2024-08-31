@@ -66,8 +66,8 @@ async def save_account(req: Request, item: model.Account):
     return result
 
 
-@router.get("/balances", response_model=list[dict])  # TODO: AccountBalance model
-async def get_balances(
+@router.get("/balances", response_model=list[model.AccountBalances])
+async def search_account_balances(
     req: Request, params: Annotated[AccountParams, Depends(AccountParams)]
 ):
     async with req.app.pool.connection() as conn:
@@ -77,13 +77,13 @@ async def get_balances(
     for result in results:
         account = model.Account(**result)
         if account.id not in balances:
-            balances[account.id] = {
-                "account": account.model_dump(exclude_none=True),
-                "balances": {},
-            }
+            balances[account.id] = model.AccountBalances(
+                account=account,
+                balances={},
+            )
         amount = (
             (result.get("dr") or Decimal(0)) - (result.get("cr") or Decimal(0))
         ) * account.normal
-        balances[account.id]["balances"][result["curr"]] = str(amount)
+        balances[account.id].balances[result["curr"]] = amount
 
     return list(balances.values())

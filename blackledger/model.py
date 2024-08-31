@@ -56,6 +56,11 @@ class Account(Model):
     version: Optional[BigIDField] = None
 
 
+class AccountBalances(Model):
+    account: Account
+    balances: dict[types.CurrencyCode, Decimal]
+
+
 class Entry(Model):
     id: Optional[BigIDField] = None
     ledger_id: BigIDField
