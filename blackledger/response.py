@@ -1,15 +1,14 @@
 import json
+from datetime import datetime
 from typing import Any
 
 import fastapi.responses
 
-from blackledger import types
-
 
 class JsonEncoder(json.JSONEncoder):
     def default(self, obj: Any):
-        if isinstance(obj, (types.ID,)):
-            return str(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
         else:
             return super().default(obj)
 
