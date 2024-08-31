@@ -37,26 +37,20 @@ async def search_accounts(
     """
     Search for and list accounts.
     """
-    print(f"{req.url=}")
-    print(f"{params=}")
-    print(f"{params.select_filters()=}")
-    print(f"{params.select_params()=}")
     query = req.app.sql.queries.SELECT(
         "account", filters=params.select_filters(), **params.select_params()
     )
-    print("%s\n\t%r" % req.app.sql.render(query, params.query_data()))
     async with req.app.pool.connection() as conn:
         results = await req.app.sql.select_all(
             conn, query, params.query_data(), Constructor=model.Account
         )
-    print(results)
     return [account.model_dump(exclude_none=True) for account in results]
 
 
 @router.post("", response_model=model.Account)
 async def save_account(req: Request, item: model.Account):
     """
-    Insert/update account.
+    Save (insert or update) an account.
     """
     sql = req.app.sql
     data = item.model_dump(exclude_unset=True)
@@ -70,6 +64,9 @@ async def save_account(req: Request, item: model.Account):
 async def search_account_balances(
     req: Request, params: Annotated[AccountParams, Depends(AccountParams)]
 ):
+    """
+    Search for accounts and list their balances.
+    """
     async with req.app.pool.connection() as conn:
         results = await queries.select_balances(conn, req.app.sql, params)
 

@@ -3,7 +3,11 @@ ts: 20231202100215741
 name: ledger
 depends:
 - blackledger:20240811021056080_bigid
-doc: null
+doc: |-
+  The ledger is the fundamental tenancy unit of the database. Each ledger is a separate
+  chart of accounts -- Each account, transaction, and entry belongs to a single ledger,
+  with the intent that there be no cross-ledger transactions (transactions with entries
+  in two different ledgers) -- although this is possible at the database level.
 up:
 - |-
   CREATE TABLE ledger (

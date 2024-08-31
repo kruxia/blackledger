@@ -19,7 +19,7 @@ from blackledger import api
 from blackledger.response import JSONResponse
 from blackledger.settings import Settings
 
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -49,7 +49,7 @@ logging.basicConfig(level=10 if app.settings.debug else 20)
 
 @app.exception_handler(NotImplementedError)
 async def not_implemented_error_handler(_, exc: NotImplementedError):
-    logger.critical(traceback.format_exc())
+    LOG.critical(traceback.format_exc())
     return JSONResponse(
         status_code=HTTPStatus.NOT_FOUND,
         content={"message": f"{str(exc)}: Not implemented"},
@@ -58,17 +58,17 @@ async def not_implemented_error_handler(_, exc: NotImplementedError):
 
 @app.exception_handler(ValidationError)
 async def validation_error_handler(_, exc: ValidationError):
-    logger.warning(traceback.format_exc())
+    LOG.warning(traceback.format_exc())
     errors = exc.errors()
     for error in errors:
         for key in error.get("ctx", {}):
             error["ctx"][key] = str(error["ctx"][key])
+
     return JSONResponse(
         status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         content={
+            "message": str(exc),
             "errors": errors,
-            "exception": str(exc),
-            "traceback": traceback.format_exc(),
         },
     )
 
@@ -77,7 +77,7 @@ async def validation_error_handler(_, exc: ValidationError):
 @app.exception_handler(ForeignKeyViolation)
 @app.exception_handler(RaiseException)  # immutable fields raise this
 async def unique_violation_error_handler(_, exc: Exception):
-    logger.warning(traceback.format_exc())
+    LOG.warning(traceback.format_exc())
     return JSONResponse(
         status_code=HTTPStatus.CONFLICT,
         content={"message": str(exc)},

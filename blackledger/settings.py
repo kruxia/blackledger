@@ -12,11 +12,11 @@ class DatabaseSettings(BaseSettings):
 
 
 class AuthSettings(BaseSettings):
-    disabled: bool = False
+    disabled: bool = False  # If True, authentication is disabled
     jwks_url: str
-    iss: str
-    alg: str = "RS256"
-    aud: Optional[str] = None
+    issuer: str
+    algorithm: str = "RS256"
+    audience: Optional[str] = None  # If set, authentication will validate the audience.
 
     model_config = SettingsConfigDict(env_prefix="AUTH_")
 

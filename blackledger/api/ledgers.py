@@ -33,7 +33,7 @@ async def search_ledgers(
 @router.post("", response_model=model.Ledger)
 async def save_ledger(req: Request, item: model.Ledger):
     """
-    Insert/update ledger.
+    Save (insert or update) a ledger.
     """
     sql = req.app.sql
     data = item.model_dump(exclude_unset=True)

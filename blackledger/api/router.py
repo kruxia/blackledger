@@ -17,6 +17,9 @@ router.include_router(transactions.router)
 
 @router.get("", tags=["home"])
 async def home():
+    """
+    Display information about the API and its version. Also serves as a healthcheck.
+    """
     return {
         "name": __name__,
         "version": __version__,

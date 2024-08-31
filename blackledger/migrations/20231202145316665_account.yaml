@@ -5,11 +5,19 @@ depends:
 - blackledger:20240811021056080_bigid
 - blackledger:20231202100215741_ledger
 doc: >-
-  account: Chart of all accounts. Fields:
+  The account table holds the chart of all accounts, with each account being an
+  identifiable store of value through associated transaction entries. Each account has
+  several identifiers -- id, name, (optional) number -- the ledger it belongs to, and
+  the "normal" balance of the account, whether debit (DR) or credit (CR).
+  
+  * Debit-normal accounts: Assets, Expenses
+  * Credit-normal accounts: Liabilities, Income, Equity
+
+  Fields:
 
   * id = unique primary key account identifier
   * ledger_id = required ledger identifier
-  * name = the name of the account, unique within the parent relationship
+  * name = the name of the account, unique within the parent + ledger relationship
   * number = the (optional) account number, unique per ledger if provided
   * normal = the "normal side" (debit = 'DR' or credit = 'CR') for account display
   * curr = the operating currency (code) for this account
@@ -33,6 +41,8 @@ up:
                   CHECK (normal in ('DR', 'CR'))
     , version   bigint                                    -- account version (=last entry)
   );
+
+  -- Prevent the account "id" and "normal" columns being changed.
   CREATE FUNCTION account_no_update() RETURNS trigger AS $$
       BEGIN
         IF (OLD.id <> NEW.id) THEN

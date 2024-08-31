@@ -7,7 +7,10 @@ depends:
 - blackledger:20231202145316665_account
 - blackledger:20231202145323950_transaction
 doc: >-
-  Transaction entries: one per leg. Fields:
+  Transaction entries: one per leg of the transaction. Entries are immutable: Once
+  inserted, they cannot be updated or deleted; this is enforced by a row-level trigger.
+  
+  Fields:
 
   * id = unique primary key entry identifier
   * tx = id of the transaction this entry is a part of
@@ -35,6 +38,7 @@ up:
   ALTER TABLE account ADD CONSTRAINT account_version_fkey
     FOREIGN KEY (version) REFERENCES entry(id);
 
+  -- Prevent any update or delete to an existing entry record.
   CREATE FUNCTION entry_no_update_delete() RETURNS trigger AS $entry_no_update_delete$
       BEGIN
         RAISE EXCEPTION 'Entry cannot be updated or deleted';

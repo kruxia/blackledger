@@ -63,7 +63,9 @@ async def search_transactions(
 @router.post("", status_code=HTTPStatus.CREATED, response_model=model.Transaction)
 async def post_transaction(req: Request, item: model.NewTransaction):
     """
-    Post transaction.
+    Post a transaction. (Once a transaction has been posted, BlackLedger provides no
+    means to alter it: Transaction and Entry records are immutable in the database. To
+    change a transaction, issue a new transaction that adjusts or reverses it.)
     """
     # the input item has been validated -- just post it
     sql = req.app.sql
