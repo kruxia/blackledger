@@ -1,7 +1,7 @@
 [project]
 description = "Fast, Immutable, Transactional: Pick three."
 name = "blackledger"
-version = "0.0.1"
+version = "0.1.0"
 authors = [{ name = "Sean Harrison", email = "sah@kruxia.com" }]
 license = { text = "MPL 2.0" }
 classifiers = [

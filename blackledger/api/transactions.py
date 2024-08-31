@@ -15,14 +15,14 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 class TransactionParams(SearchParams):
     # entry fields
-    tx: Optional[model.BigIDSearchField] = None
+    tx: Optional[model.BigIDSearchField] = Field(default=None)
     ledger_id: Optional[model.BigIDSearchField] = Field(
         default=None, validation_alias="ledger"
     )
-    acct: Optional[model.BigIDSearchField] = None
-    curr: Optional[types.CurrencyCode] = None
+    acct: Optional[model.BigIDSearchField] = Field(default=None)
+    curr: Optional[types.CurrencyCode] = Field(default=None)
     # transaction fields
-    memo: Optional[str] = None
+    memo: Optional[str] = Field(default=None)
 
     def select_filters(self):
         """
@@ -47,7 +47,7 @@ class TransactionParams(SearchParams):
         )
 
 
-@router.get("")
+@router.get("", response_model=list[model.Transaction])
 async def search_transactions(
     req: Request, params: Annotated[TransactionParams, Depends(TransactionParams)]
 ):
@@ -60,7 +60,7 @@ async def search_transactions(
     return results
 
 
-@router.post("", status_code=HTTPStatus.CREATED)
+@router.post("", status_code=HTTPStatus.CREATED, response_model=model.Transaction)
 async def post_transaction(req: Request, item: model.NewTransaction):
     """
     Post transaction.

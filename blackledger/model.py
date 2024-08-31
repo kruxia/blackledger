@@ -19,11 +19,11 @@ from . import types
 
 BigIDField = Annotated[
     int,
-    Field(examples=randint(1001, 1_000_000)),
+    Field(examples=[randint(1001, 1_000_000)]),
 ]
 BigIDSearchField = Annotated[
     str,
-    Field(pattern=r"^[0-9]+(,[0-9]+)*$"),
+    Field(pattern=r"^[0-9]+(,[0-9]+)*$", examples=[f"{randint(1001, 1_000_000)}"]),
     PlainSerializer(lambda val: [int(v) for v in val.split(",")] if val else None),
 ]
 
@@ -104,10 +104,6 @@ class Entry(Model):
             return self.cr * types.Normal.CR
 
 
-class NewEntry(Entry):
-    acct_version: Optional[BigIDField] = None
-
-
 class Transaction(Model):
     id: Optional[BigIDField] = None
     ledger_id: BigIDField
@@ -139,6 +135,10 @@ class Transaction(Model):
             e.ledger_id == self.ledger_id for e in self.entries
         ), "transaction entries must belong to the same ledger as the transaction"
         return self
+
+
+class NewEntry(Entry):
+    acct_version: Optional[BigIDField] = None
 
 
 class NewTransaction(Transaction):

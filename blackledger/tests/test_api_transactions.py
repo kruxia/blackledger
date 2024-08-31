@@ -156,7 +156,6 @@ def test_post_transactions_ok(
 
         response = client.post("/api/transactions", content=json_dumps(post_tx))
         response_tx = response.json()
-        print(response.status_code, response_tx)
         assert response.status_code == HTTPStatus.CREATED
 
         # update acct_versions for following transactions
@@ -192,8 +191,6 @@ def test_post_transaction_not_found(
     }
 
     response = client.post("/api/transactions", content=json_dumps(post_tx))
-    response_tx = response.json()
-    print(response.status_code, response_tx)
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
@@ -242,8 +239,6 @@ def test_post_transaction_optimistic_locking(
     }
 
     response = client.post("/api/transactions", content=json_dumps(post_tx))
-    response_tx = response.json()
-    print(response.status_code, response_tx)
     assert response.status_code == status_code
 
 
@@ -320,5 +315,4 @@ def test_post_transaction_precondition_failed(
         },
     ]:
         response = client.post("/api/transactions", content=json_dumps(post_tx))
-        print(post_tx["memo"], response.status_code)
         assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
