@@ -8,7 +8,10 @@ from blackledger.model import Model
 
 class SearchParams(Model):
     orderby: Optional[str] = Field(
-        default=None, pattern=r"^-?\w+(,\-?\w+)*$", alias="_orderby"
+        default=None,
+        pattern=r"^-?\w+(,\-?\w+)*$",
+        alias="_orderby",
+        examples=["FIELD_NAME"],
     )
     limit: Optional[int] = Field(default=100, le=100, alias="_limit")
     offset: Optional[int] = Field(default=None, alias="_offset")

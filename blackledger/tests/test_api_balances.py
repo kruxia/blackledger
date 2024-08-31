@@ -16,12 +16,12 @@ def test_get_balances_ok(client, test_transactions):
         "Equity": {"CAD": "48", "MSFT": "5", "USD": "-1923"},
     }
     response = client.get("/api/accounts/balances")
+    assert response.status_code == HTTPStatus.OK
     response_accounts = {
         # key is basename
         item["account"]["name"].split("-")[0]: item
         for item in response.json()
     }
-    assert response.status_code == HTTPStatus.OK
     for name, item in response_accounts.items():
         assert expected_balances[name] == item["balances"]
 
@@ -49,14 +49,11 @@ def test_get_balances_filters_ok(client, test_transactions, query, keys):
     # transaction_account_ids = set(
     #     str(e["acct"]) for t in test_transactions for e in t["entries"]
     # )
-    # print(transaction_account_ids)
     # query += f"&id={','.join(transaction_account_ids)}"
 
-    print(f"{query=}")
     response = client.get(f"/api/accounts/balances{query}")
-    print(response.json())
+    assert response.status_code == HTTPStatus.OK
     response_account_keys = {
         item["account"]["name"].split("-")[0] for item in response.json()
     }
-    assert response.status_code == HTTPStatus.OK
     assert response_account_keys == keys

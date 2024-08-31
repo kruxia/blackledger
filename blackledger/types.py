@@ -14,7 +14,7 @@ CurrencyFilter = Annotated[
 
 Name = Annotated[str, Field(pattern=r"^[\w\-\. ]+$", examples=["Black Ledger"])]
 NameFilter = Annotated[
-    str, Field(pattern=r"^[\^\$\*\?\w\-\. ]+$", examples=["Ledger,Software"])
+    str, Field(pattern=r"^[\^\$\*\?\w\-\. ]+$", examples=["Black Ledger,Kruxia"])
 ]
 
 BigID: TypeAlias = int
