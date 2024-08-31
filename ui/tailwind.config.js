@@ -1,13 +1,12 @@
-// tailwind.config.js
 const defaultTheme = require('tailwindcss/defaultTheme')
-
-module.exports = {
-  content: ["./src/**/*.{html,js,vue}"],
+export default {
+  content: ['./index.html', './src/**/*.{html,js,vue}'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter var', ...defaultTheme.fontFamily.sans],
-      },
-    },
+        sans: ['Inter var', ...defaultTheme.fontFamily.sans]
+      }
+    }
   },
+  plugins: []
 }
