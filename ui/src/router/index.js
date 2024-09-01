@@ -10,7 +10,7 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/ledger',
+      path: '/ledger/:ledger_id',
       name: 'ledger',
       // route level code-splitting
       // this generates a separate chunk (Ledger.[hash].js) for this route
