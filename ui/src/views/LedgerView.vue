@@ -99,7 +99,9 @@
   
       <header class="bg-white shadow">
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <h1 class="text-lg font-semibold leading-6 text-gray-900">Dashboard</h1>
+          <h1 class="text-lg font-semibold leading-6 text-gray-900">
+            Ledger: {{ $route.params.ledger_id }}
+          </h1>
         </div>
       </header>
       <main>
@@ -123,10 +125,10 @@
   }
   const navigation = [
     { name: 'Dashboard', href: '#', current: true },
-    { name: 'Team', href: '#', current: false },
-    { name: 'Projects', href: '#', current: false },
-    { name: 'Calendar', href: '#', current: false },
-    { name: 'Reports', href: '#', current: false },
+    // { name: 'Team', href: '#', current: false },
+    // { name: 'Projects', href: '#', current: false },
+    // { name: 'Calendar', href: '#', current: false },
+    // { name: 'Reports', href: '#', current: false },
   ]
   const userNavigation = [
     { name: 'Your Profile', href: '#' },
