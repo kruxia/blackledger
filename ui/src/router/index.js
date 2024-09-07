@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      components: { default: HomeView }
     },
     {
       path: '/ledger/:ledger_id',
@@ -15,7 +15,19 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (Ledger.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/LedgerView.vue')
+      components: {
+        default: () => import('../views/LedgerView.vue')
+      }
+    },
+    {
+      path: '/ledger/:ledger_id/accounts/:account_id/register',
+      name: 'account-register',
+      // route level code-splitting
+      // this generates a separate chunk (Ledger.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      components: {
+        default: () => import('../views/AccountView.vue')
+      }
     }
   ]
 })
