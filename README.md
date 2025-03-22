@@ -11,4 +11,4 @@ docker compose logs -f
 
 Then browse to <http://localhost:8000/docs> and try out the API.
 
-![API Docs running locally](docs/local-api-docs.png)
+![API Docs running locally](https://github.com/user-attachments/assets/32ac70c1-27e8-4047-99eb-05510e4f944e)
