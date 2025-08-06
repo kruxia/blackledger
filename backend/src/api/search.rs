@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SearchParams {
@@ -26,8 +25,8 @@ impl Default for SortOrder {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountSearchParams {
-    pub ledger_id: Option<Uuid>,
-    pub parent_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
+    pub parent_id: Option<i64>,
     pub number: Option<String>,
     pub name: Option<String>,
     #[serde(flatten)]
@@ -36,8 +35,8 @@ pub struct AccountSearchParams {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TransactionSearchParams {
-    pub ledger_id: Option<Uuid>,
-    pub account_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
+    pub account_id: Option<i64>,
     pub description: Option<String>,
     pub from_amount: Option<rust_decimal::Decimal>,
     pub to_amount: Option<rust_decimal::Decimal>,
@@ -48,9 +47,9 @@ pub struct TransactionSearchParams {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EntrySearchParams {
-    pub ledger_id: Option<Uuid>,
-    pub account_id: Option<Uuid>,
-    pub transaction_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
+    pub account_id: Option<i64>,
+    pub transaction_id: Option<i64>,
     pub currency_code: Option<String>,
     pub from_amount: Option<rust_decimal::Decimal>,
     pub to_amount: Option<rust_decimal::Decimal>,

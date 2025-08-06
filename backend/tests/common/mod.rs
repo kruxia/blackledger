@@ -15,19 +15,20 @@ pub fn setup_test_logging() {
 
 pub async fn setup_test_db() -> PgPool {
     setup_test_logging();
-    
-    let database_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://blackledger_test:test@localhost:5434/blackledger_test".to_string());
-    
+
+    let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+        "postgresql://blackledger_test:test@localhost:5434/blackledger_test".to_string()
+    });
+
     let pool = db::create_pool(&database_url)
         .await
         .expect("Failed to create test database pool");
-    
+
     // Run migrations
-    sqlx::migrate!("../migrations")
+    sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
-    
+
     pool
 }

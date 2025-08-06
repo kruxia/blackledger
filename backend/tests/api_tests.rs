@@ -4,10 +4,9 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use blackledger::{api, models::*};
+use blackledger::api;
 use serde_json::{json, Value};
 use tower::ServiceExt;
-use uuid::Uuid;
 
 #[tokio::test]
 async fn test_create_and_get_currency() {
@@ -24,9 +23,7 @@ async fn test_create_and_get_currency() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "code": "USD",
-                        "name": "US Dollar",
-                        "minor_units": 2
+                        "code": "USD"
                     })
                     .to_string(),
                 ))
@@ -74,8 +71,7 @@ async fn test_ledger_crud_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": "Test Ledger",
-                        "description": "A test ledger for integration tests"
+                        "name": "Test Ledger CRUD"
                     })
                     .to_string(),
                 ))
@@ -90,7 +86,7 @@ async fn test_ledger_crud_operations() {
         .await
         .unwrap();
     let ledger: Value = serde_json::from_slice(&body).unwrap();
-    let ledger_id = ledger["id"].as_str().unwrap();
+    let ledger_id = ledger["id"].as_i64().unwrap();
 
     // Get ledger by ID
     let get_response = app
@@ -150,7 +146,11 @@ async fn test_account_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": "Account Test Ledger"
+                        "name": format!("Account Test Ledger {}", 
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_nanos())
                     })
                     .to_string(),
                 ))
@@ -163,7 +163,7 @@ async fn test_account_operations() {
         .await
         .unwrap();
     let ledger: Value = serde_json::from_slice(&body).unwrap();
-    let ledger_id = ledger["id"].as_str().unwrap();
+    let ledger_id = ledger["id"].as_i64().unwrap();
 
     // Create an account
     let account_response = app
@@ -176,9 +176,9 @@ async fn test_account_operations() {
                 .body(Body::from(
                     json!({
                         "ledger_id": ledger_id,
-                        "number": "1000",
+                        "number": 1000,
                         "name": "Cash",
-                        "normal_balance": "DR"
+                        "normal": "DR"
                     })
                     .to_string(),
                 ))
@@ -193,7 +193,7 @@ async fn test_account_operations() {
         .await
         .unwrap();
     let account: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(account["number"], "1000");
+    assert_eq!(account["number"], 1000);
     assert_eq!(account["name"], "Cash");
 }
 
@@ -205,8 +205,8 @@ async fn test_transaction_posting() {
     // Setup: Create ledger, currency, and accounts
     let ledger_id = create_test_ledger(&app).await;
     create_test_currency(&app, "USD").await;
-    let cash_account_id = create_test_account(&app, &ledger_id, "1000", "Cash", "DR").await;
-    let revenue_account_id = create_test_account(&app, &ledger_id, "4000", "Revenue", "CR").await;
+    let cash_account_id = create_test_account(&app, ledger_id, "1000", "Cash", "DR").await;
+    let revenue_account_id = create_test_account(&app, ledger_id, "4000", "Revenue", "CR").await;
 
     // Post a transaction
     let transaction_response = app
@@ -220,17 +220,17 @@ async fn test_transaction_posting() {
                     json!({
                         "ledger_id": ledger_id,
                         "effective": "2024-01-01T00:00:00Z",
-                        "description": "Test transaction",
+                        "memo": "Test transaction",
                         "entries": [
                             {
                                 "account_id": cash_account_id,
                                 "currency_code": "USD",
-                                "dr": "100.00"
+                                "debit": "100.00"
                             },
                             {
                                 "account_id": revenue_account_id,
                                 "currency_code": "USD",
-                                "cr": "100.00"
+                                "credit": "100.00"
                             }
                         ]
                     })
@@ -241,7 +241,14 @@ async fn test_transaction_posting() {
         .await
         .unwrap();
 
-    assert_eq!(transaction_response.status(), StatusCode::CREATED);
+    let status = transaction_response.status();
+    if status != StatusCode::CREATED {
+        let body = axum::body::to_bytes(transaction_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        eprintln!("Transaction creation failed with status {}: {}", status, String::from_utf8_lossy(&body));
+    }
+    assert_eq!(status, StatusCode::CREATED);
 }
 
 #[tokio::test]
@@ -252,8 +259,8 @@ async fn test_unbalanced_transaction_rejection() {
     // Setup
     let ledger_id = create_test_ledger(&app).await;
     create_test_currency(&app, "USD").await;
-    let cash_account_id = create_test_account(&app, &ledger_id, "1000", "Cash", "DR").await;
-    let revenue_account_id = create_test_account(&app, &ledger_id, "4000", "Revenue", "CR").await;
+    let cash_account_id = create_test_account(&app, ledger_id, "1000", "Cash", "DR").await;
+    let revenue_account_id = create_test_account(&app, ledger_id, "4000", "Revenue", "CR").await;
 
     // Try to post an unbalanced transaction
     let transaction_response = app
@@ -267,17 +274,17 @@ async fn test_unbalanced_transaction_rejection() {
                     json!({
                         "ledger_id": ledger_id,
                         "effective": "2024-01-01T00:00:00Z",
-                        "description": "Unbalanced transaction",
+                        "memo": "Unbalanced transaction",
                         "entries": [
                             {
                                 "account_id": cash_account_id,
                                 "currency_code": "USD",
-                                "dr": "100.00"
+                                "debit": "100.00"
                             },
                             {
                                 "account_id": revenue_account_id,
                                 "currency_code": "USD",
-                                "cr": "50.00"  // Doesn't balance!
+                                "credit": "50.00"  // Doesn't balance!
                             }
                         ]
                     })
@@ -292,7 +299,14 @@ async fn test_unbalanced_transaction_rejection() {
 }
 
 // Helper functions
-async fn create_test_ledger(app: &axum::Router) -> String {
+async fn create_test_ledger(app: &axum::Router) -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let ledger_name = format!("Test Ledger {}", timestamp);
+    
     let response = app
         .clone()
         .oneshot(
@@ -301,7 +315,7 @@ async fn create_test_ledger(app: &axum::Router) -> String {
                 .uri("/ledgers")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({"name": "Test Ledger"}).to_string(),
+                    json!({"name": ledger_name}).to_string(),
                 ))
                 .unwrap(),
         )
@@ -312,7 +326,7 @@ async fn create_test_ledger(app: &axum::Router) -> String {
         .await
         .unwrap();
     let ledger: Value = serde_json::from_slice(&body).unwrap();
-    ledger["id"].as_str().unwrap().to_string()
+    ledger["id"].as_i64().unwrap()
 }
 
 async fn create_test_currency(app: &axum::Router, code: &str) {
@@ -324,9 +338,7 @@ async fn create_test_currency(app: &axum::Router, code: &str) {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "code": code,
-                        "name": format!("{} Currency", code),
-                        "minor_units": 2
+                        "code": code
                     })
                     .to_string(),
                 ))
@@ -338,11 +350,11 @@ async fn create_test_currency(app: &axum::Router, code: &str) {
 
 async fn create_test_account(
     app: &axum::Router,
-    ledger_id: &str,
+    ledger_id: i64,
     number: &str,
     name: &str,
     normal_balance: &str,
-) -> String {
+) -> i64 {
     let response = app
         .clone()
         .oneshot(
@@ -353,9 +365,9 @@ async fn create_test_account(
                 .body(Body::from(
                     json!({
                         "ledger_id": ledger_id,
-                        "number": number,
+                        "number": number.parse::<i16>().ok(),
                         "name": name,
-                        "normal_balance": normal_balance
+                        "normal": normal_balance
                     })
                     .to_string(),
                 ))
@@ -368,5 +380,5 @@ async fn create_test_account(
         .await
         .unwrap();
     let account: Value = serde_json::from_slice(&body).unwrap();
-    account["id"].as_str().unwrap().to_string()
+    account["id"].as_i64().unwrap()
 }

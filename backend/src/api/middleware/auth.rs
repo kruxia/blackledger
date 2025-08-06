@@ -12,7 +12,7 @@ use crate::error::ApiError;
 
 pub async fn auth_middleware(
     State(validator): State<Arc<JwtValidator>>,
-    mut request: Request<Body>,
+    request: Request<Body>,
     next: Next,
 ) -> Result<Response, ApiError> {
     // If auth is disabled, just pass through

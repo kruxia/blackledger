@@ -1,37 +1,33 @@
-use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Entry {
-    pub id: Uuid,
-    pub transaction_id: Uuid,
-    pub account_id: Uuid,
+    pub id: i64,
+    pub ledger_id: i64,
+    pub transaction_id: i64,
+    pub account_id: i64,
     pub currency_code: String,
     #[serde(with = "rust_decimal::serde::str_option")]
-    pub dr: Option<Decimal>,
+    pub debit: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
-    pub cr: Option<Decimal>,
-    pub description: Option<String>,
-    pub metadata: Option<serde_json::Value>,
-    pub created: DateTime<Utc>,
+    pub credit: Option<Decimal>,
 }
 
 impl Entry {
     pub fn amount(&self) -> Decimal {
-        match (self.dr, self.cr) {
-            (Some(dr), None) => dr,
-            (None, Some(cr)) => -cr,
+        match (self.debit, self.credit) {
+            (Some(debit), None) => debit,
+            (None, Some(credit)) => -credit,
             _ => Decimal::ZERO,
         }
     }
 
     pub fn is_valid(&self) -> bool {
-        match (self.dr, self.cr) {
-            (Some(dr), None) => dr > Decimal::ZERO,
-            (None, Some(cr)) => cr > Decimal::ZERO,
+        match (self.debit, self.credit) {
+            (Some(debit), None) => debit > Decimal::ZERO,
+            (None, Some(credit)) => credit > Decimal::ZERO,
             _ => false,
         }
     }
@@ -45,58 +41,54 @@ mod tests {
     #[test]
     fn test_entry_amount() {
         let mut entry = Entry {
-            id: Uuid::new_v4(),
-            transaction_id: Uuid::new_v4(),
-            account_id: Uuid::new_v4(),
+            id: 1,
+            ledger_id: 1,
+            transaction_id: 1,
+            account_id: 1,
             currency_code: "USD".to_string(),
-            dr: Some(dec!(100.00)),
-            cr: None,
-            description: None,
-            metadata: None,
-            created: Utc::now(),
+            debit: Some(dec!(100.00)),
+            credit: None,
         };
 
         assert_eq!(entry.amount(), dec!(100.00));
 
-        entry.dr = None;
-        entry.cr = Some(dec!(50.00));
+        entry.debit = None;
+        entry.credit = Some(dec!(50.00));
         assert_eq!(entry.amount(), dec!(-50.00));
 
-        entry.dr = None;
-        entry.cr = None;
+        entry.debit = None;
+        entry.credit = None;
         assert_eq!(entry.amount(), dec!(0));
     }
 
     #[test]
     fn test_entry_is_valid() {
         let mut entry = Entry {
-            id: Uuid::new_v4(),
-            transaction_id: Uuid::new_v4(),
-            account_id: Uuid::new_v4(),
+            id: 1,
+            ledger_id: 1,
+            transaction_id: 1,
+            account_id: 1,
             currency_code: "USD".to_string(),
-            dr: Some(dec!(100.00)),
-            cr: None,
-            description: None,
-            metadata: None,
-            created: Utc::now(),
+            debit: Some(dec!(100.00)),
+            credit: None,
         };
 
         assert!(entry.is_valid());
 
-        entry.dr = None;
-        entry.cr = Some(dec!(50.00));
+        entry.debit = None;
+        entry.credit = Some(dec!(50.00));
         assert!(entry.is_valid());
 
-        entry.dr = Some(dec!(100.00));
-        entry.cr = Some(dec!(50.00));
+        entry.debit = Some(dec!(100.00));
+        entry.credit = Some(dec!(50.00));
         assert!(!entry.is_valid());
 
-        entry.dr = None;
-        entry.cr = None;
+        entry.debit = None;
+        entry.credit = None;
         assert!(!entry.is_valid());
 
-        entry.dr = Some(dec!(0));
-        entry.cr = None;
+        entry.debit = Some(dec!(0));
+        entry.credit = None;
         assert!(!entry.is_valid());
     }
 }

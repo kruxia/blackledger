@@ -5,7 +5,6 @@ use axum::{
 };
 use serde::Deserialize;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::db::queries::ledger::{create_ledger, get_ledger_by_id, list_ledgers, update_ledger};
 use crate::error::ApiResult;
@@ -27,7 +26,7 @@ pub async fn handle_create_ledger(
 
 pub async fn handle_get_ledger(
     State(pool): State<PgPool>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
 ) -> ApiResult<Json<Ledger>> {
     let ledger = get_ledger_by_id(&pool, id).await?;
     Ok(Json(ledger))
@@ -35,7 +34,7 @@ pub async fn handle_get_ledger(
 
 pub async fn handle_update_ledger(
     State(pool): State<PgPool>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
     Json(input): Json<UpdateLedger>,
 ) -> ApiResult<Json<Ledger>> {
     let ledger = update_ledger(&pool, id, &input).await?;

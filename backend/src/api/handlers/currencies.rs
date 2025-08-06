@@ -13,8 +13,6 @@ use crate::models::currency::Currency;
 #[derive(Debug, Deserialize)]
 pub struct CreateCurrencyRequest {
     pub code: String,
-    pub name: Option<String>,
-    pub minor_units: Option<i32>,
 }
 
 pub async fn handle_create_currency(
@@ -31,8 +29,6 @@ pub async fn handle_create_currency(
     let currency = create_currency(
         &pool,
         &input.code,
-        input.name.as_deref(),
-        input.minor_units,
     )
     .await?;
 

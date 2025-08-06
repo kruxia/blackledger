@@ -5,7 +5,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::db::queries::transaction::{create_transaction, get_transaction_by_id, list_transactions};
 use crate::db::queries::entry::{get_entries_by_transaction, list_entries};
@@ -15,16 +14,16 @@ use crate::models::entry::Entry;
 
 #[derive(Debug, Deserialize)]
 pub struct ListTransactionsQuery {
-    pub ledger_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListEntriesQuery {
-    pub ledger_id: Option<Uuid>,
-    pub account_id: Option<Uuid>,
-    pub transaction_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
+    pub account_id: Option<i64>,
+    pub transaction_id: Option<i64>,
     pub currency_code: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -47,7 +46,7 @@ pub async fn handle_create_transaction(
 
 pub async fn handle_get_transaction(
     State(pool): State<PgPool>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
 ) -> ApiResult<Json<TransactionWithEntries>> {
     let transaction = get_transaction_by_id(&pool, id).await?;
     let entries = get_entries_by_transaction(&pool, id).await?;

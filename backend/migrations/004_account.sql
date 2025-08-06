@@ -1,6 +1,7 @@
 -- Account table
+CREATE SEQUENCE account_id_seq AS bigint;
 CREATE TABLE account (
-    id          bigint    PRIMARY KEY DEFAULT bigid(),
+    id          bigint    PRIMARY KEY DEFAULT bigid('account_id_seq'),
     ledger_id   bigint    NOT NULL REFERENCES ledger(id),
     parent_id   bigint    REFERENCES account(id),
     name        varchar   NOT NULL,

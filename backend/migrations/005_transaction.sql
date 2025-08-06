@@ -1,6 +1,7 @@
 -- Transaction table
+CREATE SEQUENCE transaction_id_seq AS bigint;
 CREATE TABLE transaction (
-    id          bigint          PRIMARY KEY DEFAULT bigid(),
+    id          bigint          PRIMARY KEY DEFAULT bigid('transaction_id_seq'),
     ledger_id   bigint          NOT NULL REFERENCES ledger(id),
     posted      timestamptz(6)  NOT NULL DEFAULT now(),
     effective   timestamptz(6)  NOT NULL DEFAULT now(),

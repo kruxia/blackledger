@@ -1,37 +1,34 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Transaction {
-    pub id: Uuid,
-    pub ledger_id: Uuid,
+    pub id: i64,
+    pub ledger_id: i64,
     pub posted: DateTime<Utc>,
     pub effective: DateTime<Utc>,
-    pub description: String,
-    pub metadata: Option<serde_json::Value>,
-    pub created: DateTime<Utc>,
+    pub memo: Option<String>,
+    pub meta: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTransaction {
-    pub ledger_id: Uuid,
+    pub ledger_id: i64,
     pub effective: DateTime<Utc>,
-    pub description: String,
-    pub metadata: Option<serde_json::Value>,
+    pub memo: Option<String>,
+    pub meta: Option<serde_json::Value>,
     pub entries: Vec<CreateEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateEntry {
-    pub account_id: Uuid,
+    pub account_id: i64,
     pub currency_code: String,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub dr: Option<rust_decimal::Decimal>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub cr: Option<rust_decimal::Decimal>,
-    pub description: Option<String>,
-    pub metadata: Option<serde_json::Value>,
-    pub account_version: Option<Uuid>,
+    #[serde(default, with = "rust_decimal::serde::str_option")]
+    pub debit: Option<rust_decimal::Decimal>,
+    #[serde(default, with = "rust_decimal::serde::str_option")]
+    pub credit: Option<rust_decimal::Decimal>,
+    #[serde(default)]
+    pub account_version: Option<i64>,
 }

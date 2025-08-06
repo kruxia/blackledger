@@ -5,7 +5,6 @@ use axum::{
 };
 use serde::Deserialize;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::db::queries::account::{
     create_account, get_account_balances, get_account_by_id, list_accounts, update_account,
@@ -15,16 +14,16 @@ use crate::models::account::{Account, AccountBalance, CreateAccount, UpdateAccou
 
 #[derive(Debug, Deserialize)]
 pub struct ListAccountsQuery {
-    pub ledger_id: Option<Uuid>,
-    pub parent_id: Option<Uuid>,
+    pub ledger_id: Option<i64>,
+    pub parent_id: Option<i64>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct GetBalancesQuery {
-    pub ledger_id: Uuid,
-    pub account_ids: Option<Vec<Uuid>>,
+    pub ledger_id: i64,
+    pub account_ids: Option<Vec<i64>>,
 }
 
 pub async fn handle_create_account(
@@ -37,7 +36,7 @@ pub async fn handle_create_account(
 
 pub async fn handle_get_account(
     State(pool): State<PgPool>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
 ) -> ApiResult<Json<Account>> {
     let account = get_account_by_id(&pool, id).await?;
     Ok(Json(account))
@@ -45,7 +44,7 @@ pub async fn handle_get_account(
 
 pub async fn handle_update_account(
     State(pool): State<PgPool>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i64>,
     Json(input): Json<UpdateAccount>,
 ) -> ApiResult<Json<Account>> {
     let account = update_account(&pool, id, &input).await?;

@@ -1,11 +1,10 @@
 use sqlx::PgPool;
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
 use crate::error::ApiResult;
 use crate::models::entry::Entry;
 
-pub async fn get_entries_by_transaction(pool: &PgPool, transaction_id: Uuid) -> ApiResult<Vec<Entry>> {
+pub async fn get_entries_by_transaction(pool: &PgPool, transaction_id: i64) -> ApiResult<Vec<Entry>> {
     let entries = sqlx::query_as::<_, Entry>(
         r#"
         SELECT * FROM entry 
@@ -22,7 +21,7 @@ pub async fn get_entries_by_transaction(pool: &PgPool, transaction_id: Uuid) -> 
 
 pub async fn get_entries_by_account(
     pool: &PgPool,
-    account_id: Uuid,
+    account_id: i64,
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> ApiResult<Vec<Entry>> {
@@ -46,9 +45,9 @@ pub async fn get_entries_by_account(
 
 pub async fn list_entries(
     pool: &PgPool,
-    ledger_id: Option<Uuid>,
-    account_id: Option<Uuid>,
-    transaction_id: Option<Uuid>,
+    ledger_id: Option<i64>,
+    account_id: Option<i64>,
+    transaction_id: Option<i64>,
     _currency_code: Option<String>,
     _from_date: Option<DateTime<Utc>>,
     _to_date: Option<DateTime<Utc>>,

@@ -1,5 +1,4 @@
 use sqlx::{PgPool, Row};
-use uuid::Uuid;
 use chrono::Utc;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
@@ -18,21 +17,19 @@ pub async fn create_transaction(
     let mut tx = pool.begin().await?;
 
     // Create the transaction
-    let transaction_id = Uuid::new_v4();
     let posted = Utc::now();
     let transaction = sqlx::query_as::<_, Transaction>(
         r#"
-        INSERT INTO transaction (id, ledger_id, posted, effective, description, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         "#
     )
-    .bind(transaction_id)
     .bind(input.ledger_id)
     .bind(posted)
     .bind(input.effective)
-    .bind(&input.description)
-    .bind(&input.metadata)
+    .bind(&input.memo)
+    .bind(&input.meta)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -41,44 +38,43 @@ pub async fn create_transaction(
         // Validate account version if provided
         if let Some(expected_version) = entry.account_version {
             let row = sqlx::query(
-                r#"SELECT latest_entry_id FROM account WHERE id = $1"#
+                r#"SELECT version FROM account WHERE id = $1"#
             )
             .bind(entry.account_id)
             .fetch_one(&mut *tx)
             .await?;
             
-            let current_version: Option<Uuid> = row.get("latest_entry_id");
+            let current_version: Option<i64> = row.get("version");
 
             if current_version != Some(expected_version) {
                 return Err(ApiError::OptimisticLockError);
             }
         }
 
-        // Create the entry
-        let entry_id = Uuid::new_v4();
-        sqlx::query(
+        // Create the entry and get its generated ID
+        let entry_row = sqlx::query(
             r#"
-            INSERT INTO entry (id, transaction_id, account_id, currency_code, dr, cr, description, metadata)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id
             "#
         )
-        .bind(entry_id)
-        .bind(transaction_id)
+        .bind(input.ledger_id)
+        .bind(transaction.id)
         .bind(entry.account_id)
         .bind(&entry.currency_code)
-        .bind(entry.dr)
-        .bind(entry.cr)
-        .bind(&entry.description)
-        .bind(&entry.metadata)
-        .execute(&mut *tx)
+        .bind(entry.debit)
+        .bind(entry.credit)
+        .fetch_one(&mut *tx)
         .await?;
+        
+        let entry_id: i64 = entry_row.get("id");
 
-        // Update account's latest_entry_id
+        // Update account's version
         sqlx::query(
             r#"
             UPDATE account
-            SET latest_entry_id = $1,
-                updated = CURRENT_TIMESTAMP
+            SET version = $1
             WHERE id = $2
             "#
         )
@@ -94,7 +90,7 @@ pub async fn create_transaction(
     Ok(transaction)
 }
 
-pub async fn get_transaction_by_id(pool: &PgPool, id: Uuid) -> ApiResult<Transaction> {
+pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transaction> {
     let transaction = sqlx::query_as::<_, Transaction>(
         r#"SELECT * FROM transaction WHERE id = $1"#
     )
@@ -111,7 +107,7 @@ pub async fn get_transaction_by_id(pool: &PgPool, id: Uuid) -> ApiResult<Transac
 
 pub async fn list_transactions(
     pool: &PgPool,
-    ledger_id: Option<Uuid>,
+    ledger_id: Option<i64>,
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> ApiResult<Vec<Transaction>> {
@@ -155,12 +151,12 @@ fn validate_transaction_balance(entries: &[crate::models::transaction::CreateEnt
     for entry in entries {
         let balance = balances.entry(entry.currency_code.clone()).or_insert(Decimal::ZERO);
         
-        if let Some(dr) = entry.dr {
-            *balance += dr;
+        if let Some(debit) = entry.debit {
+            *balance += debit;
         }
         
-        if let Some(cr) = entry.cr {
-            *balance -= cr;
+        if let Some(credit) = entry.credit {
+            *balance -= credit;
         }
     }
 

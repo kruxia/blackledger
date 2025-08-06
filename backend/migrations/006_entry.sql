@@ -1,14 +1,15 @@
 -- Entry table
+CREATE SEQUENCE entry_id_seq AS bigint;
 CREATE TABLE entry (
-    id          bigint    PRIMARY KEY DEFAULT bigid(),
-    ledger_id   bigint    NOT NULL REFERENCES ledger(id),
-    tx          bigint    NOT NULL REFERENCES transaction(id),
-    acct        bigint    NOT NULL REFERENCES account(id),
-    curr        varchar   NOT NULL REFERENCES currency(code),
-    dr          decimal,
-    cr          decimal,
-    CHECK ((dr IS NOT NULL AND dr > 0 AND cr IS NULL)
-        OR (cr IS NOT NULL AND cr > 0 AND dr IS NULL))
+    id              bigint    PRIMARY KEY DEFAULT bigid('entry_id_seq'),
+    ledger_id       bigint    NOT NULL REFERENCES ledger(id),
+    transaction_id  bigint    NOT NULL REFERENCES transaction(id),
+    account_id      bigint    NOT NULL REFERENCES account(id),
+    curr            varchar   NOT NULL REFERENCES currency(code),
+    debit           decimal,
+    credit          decimal,
+    CHECK ((debit IS NOT NULL AND debit > 0 AND credit IS NULL)
+        OR (credit IS NOT NULL AND credit > 0 AND debit IS NULL))
 );
 
 -- Add foreign key constraint from account.version to entry.id
