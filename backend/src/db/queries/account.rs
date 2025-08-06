@@ -1,0 +1,195 @@
+use sqlx::{PgPool, Row};
+use uuid::Uuid;
+
+use crate::error::{ApiError, ApiResult};
+use crate::models::account::{Account, CreateAccount, UpdateAccount, AccountBalance, NormalBalance};
+
+pub async fn create_account(pool: &PgPool, input: &CreateAccount) -> ApiResult<Account> {
+    let id = Uuid::new_v4();
+    let normal_balance_str = match input.normal_balance {
+        NormalBalance::Debit => "DR",
+        NormalBalance::Credit => "CR",
+    };
+
+    let account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (id, ledger_id, parent_id, number, name, normal_balance, description, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+        "#
+    )
+    .bind(id)
+    .bind(input.ledger_id)
+    .bind(input.parent_id)
+    .bind(&input.number)
+    .bind(&input.name)
+    .bind(normal_balance_str)
+    .bind(&input.description)
+    .bind(&input.metadata)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(account)
+}
+
+pub async fn get_account_by_id(pool: &PgPool, id: Uuid) -> ApiResult<Account> {
+    let account = sqlx::query_as::<_, Account>(
+        r#"SELECT * FROM account WHERE id = $1"#
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => ApiError::NotFound(format!("Account {} not found", id)),
+        _ => ApiError::Database(e),
+    })?;
+
+    Ok(account)
+}
+
+pub async fn update_account(pool: &PgPool, id: Uuid, input: &UpdateAccount) -> ApiResult<Account> {
+    let account = sqlx::query_as::<_, Account>(
+        r#"
+        UPDATE account
+        SET name = COALESCE($2, name),
+            description = COALESCE($3, description),
+            metadata = COALESCE($4, metadata),
+            updated = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING *
+        "#
+    )
+    .bind(id)
+    .bind(&input.name)
+    .bind(&input.description)
+    .bind(&input.metadata)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => ApiError::NotFound(format!("Account {} not found", id)),
+        _ => ApiError::Database(e),
+    })?;
+
+    Ok(account)
+}
+
+pub async fn list_accounts(
+    pool: &PgPool,
+    ledger_id: Option<Uuid>,
+    parent_id: Option<Uuid>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> ApiResult<Vec<Account>> {
+    // Due to SQLx limitations with dynamic queries, we'll use a simpler approach
+    let accounts = if ledger_id.is_some() && parent_id.is_some() {
+        sqlx::query_as::<_, Account>(
+            r#"
+            SELECT * FROM account
+            WHERE ledger_id = $1 AND parent_id = $2
+            ORDER BY number
+            LIMIT $3 OFFSET $4
+            "#
+        )
+        .bind(ledger_id.unwrap())
+        .bind(parent_id.unwrap())
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await?
+    } else if ledger_id.is_some() {
+        sqlx::query_as::<_, Account>(
+            r#"
+            SELECT * FROM account
+            WHERE ledger_id = $1
+            ORDER BY number
+            LIMIT $2 OFFSET $3
+            "#
+        )
+        .bind(ledger_id.unwrap())
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await?
+    } else if parent_id.is_some() {
+        sqlx::query_as::<_, Account>(
+            r#"
+            SELECT * FROM account
+            WHERE parent_id = $1
+            ORDER BY number
+            LIMIT $2 OFFSET $3
+            "#
+        )
+        .bind(parent_id.unwrap())
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await?
+    } else {
+        sqlx::query_as::<_, Account>(
+            r#"
+            SELECT * FROM account
+            ORDER BY number
+            LIMIT $1 OFFSET $2
+            "#
+        )
+        .bind(limit.unwrap_or(100))
+        .bind(offset.unwrap_or(0))
+        .fetch_all(pool)
+        .await?
+    };
+
+    Ok(accounts)
+}
+
+pub async fn get_account_balances(
+    pool: &PgPool,
+    ledger_id: Uuid,
+    account_ids: Option<Vec<Uuid>>,
+) -> ApiResult<Vec<AccountBalance>> {
+    let balances = if let Some(ids) = account_ids {
+        sqlx::query(
+            r#"
+            SELECT 
+                e.account_id,
+                e.currency_code,
+                SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
+            FROM entry e
+            INNER JOIN transaction t ON e.transaction_id = t.id
+            WHERE t.ledger_id = $1 AND e.account_id = ANY($2)
+            GROUP BY e.account_id, e.currency_code
+            "#
+        )
+        .bind(ledger_id)
+        .bind(&ids)
+        .map(|row: sqlx::postgres::PgRow| AccountBalance {
+            account_id: row.get("account_id"),
+            currency_code: row.get("currency_code"),
+            balance: row.get("balance"),
+        })
+        .fetch_all(pool)
+        .await?
+    } else {
+        sqlx::query(
+            r#"
+            SELECT 
+                e.account_id,
+                e.currency_code,
+                SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
+            FROM entry e
+            INNER JOIN transaction t ON e.transaction_id = t.id
+            WHERE t.ledger_id = $1
+            GROUP BY e.account_id, e.currency_code
+            "#
+        )
+        .bind(ledger_id)
+        .map(|row: sqlx::postgres::PgRow| AccountBalance {
+            account_id: row.get("account_id"),
+            currency_code: row.get("currency_code"),
+            balance: row.get("balance"),
+        })
+        .fetch_all(pool)
+        .await?
+    };
+
+    Ok(balances)
+}

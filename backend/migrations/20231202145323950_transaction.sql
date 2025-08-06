@@ -1,0 +1,19 @@
+-- Transaction table
+CREATE TABLE transaction (
+    id          bigint          PRIMARY KEY DEFAULT bigid(),
+    ledger_id   bigint          NOT NULL REFERENCES ledger(id),
+    posted      timestamptz(6)  NOT NULL DEFAULT now(),
+    effective   timestamptz(6)  NOT NULL DEFAULT now(),
+    memo        text,
+    meta        jsonb
+);
+
+-- Prevent update or delete to an existing transaction record
+CREATE FUNCTION transaction_no_update_delete() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'Transaction cannot be updated or deleted';
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER transaction_no_update_delete BEFORE UPDATE OR DELETE ON transaction
+    FOR EACH ROW EXECUTE FUNCTION transaction_no_update_delete();
