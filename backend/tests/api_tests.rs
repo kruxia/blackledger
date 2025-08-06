@@ -10,8 +10,8 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_create_and_get_currency() {
-    let pool = common::setup_test_db().await;
-    let app = api::router().with_state(pool);
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     // Create a currency
     let response = app
@@ -58,8 +58,8 @@ async fn test_create_and_get_currency() {
 
 #[tokio::test]
 async fn test_ledger_crud_operations() {
-    let pool = common::setup_test_db().await;
-    let app = api::router().with_state(pool);
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     // Create a ledger
     let create_response = app
@@ -71,7 +71,11 @@ async fn test_ledger_crud_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": "Test Ledger CRUD"
+                        "name": format!("Test Ledger CRUD {}", 
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_nanos())
                     })
                     .to_string(),
                 ))
@@ -113,7 +117,11 @@ async fn test_ledger_crud_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": "Updated Test Ledger"
+                        "name": format!("Updated Test Ledger {}", 
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_nanos())
                     })
                     .to_string(),
                 ))
@@ -128,13 +136,17 @@ async fn test_ledger_crud_operations() {
         .await
         .unwrap();
     let updated_ledger: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(updated_ledger["name"], "Updated Test Ledger");
+    assert!(updated_ledger["name"]
+        .as_str()
+        .unwrap()
+        .starts_with("Updated Test Ledger"));
 }
 
 #[tokio::test]
 async fn test_account_operations() {
-    let pool = common::setup_test_db().await;
-    let app = api::router().with_state(pool.clone());
+    let app_state = common::setup_test_app_state().await;
+    let pool = app_state.pool.clone();
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     // First create a ledger
     let ledger_response = app
@@ -199,8 +211,9 @@ async fn test_account_operations() {
 
 #[tokio::test]
 async fn test_transaction_posting() {
-    let pool = common::setup_test_db().await;
-    let app = api::router().with_state(pool.clone());
+    let app_state = common::setup_test_app_state().await;
+    let pool = app_state.pool.clone();
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     // Setup: Create ledger, currency, and accounts
     let ledger_id = create_test_ledger(&app).await;
@@ -253,8 +266,9 @@ async fn test_transaction_posting() {
 
 #[tokio::test]
 async fn test_unbalanced_transaction_rejection() {
-    let pool = common::setup_test_db().await;
-    let app = api::router().with_state(pool.clone());
+    let app_state = common::setup_test_app_state().await;
+    let pool = app_state.pool.clone();
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     // Setup
     let ledger_id = create_test_ledger(&app).await;

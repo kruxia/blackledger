@@ -400,3 +400,95 @@ async fn test_post_transaction(pool: PgPool) {
 3. Create initial database models
 4. Set up CI/CD pipeline
 5. Begin incremental migration
+
+## Dead Code Analysis Report (2025-08-06)
+
+### Executive Summary
+
+The Rust backend port has 8 categories of "dead code" warnings, but **none should be removed**. These represent essential infrastructure for a production accounting system that hasn't been fully integrated yet. The project appears to be in early stages of porting from Python to Rust.
+
+### Detailed Analysis
+
+#### 1. Authentication & Authorization Components
+
+**`optional_auth_middleware` (src/api/middleware/auth.rs:42)**
+- **Purpose**: Validates JWT tokens without requiring authentication
+- **Status**: Unused but complete implementation
+- **Recommendation**: **KEEP** - Essential for mixed public/private endpoints
+- **Next Step**: Apply to GET endpoints that should work without auth
+
+**`AuthUser` & `OptionalAuthUser` (src/auth/mod.rs)**
+- **Purpose**: Axum extractors for accessing authenticated user context
+- **Status**: Defined but not integrated into handlers
+- **Recommendation**: **KEEP** - Required for user-scoped operations
+- **Next Step**: Update handlers to use these extractors for audit trails
+
+#### 2. API Infrastructure
+
+**Pagination System (src/api/pagination.rs)**
+- **Components**: `PaginationParams`, `PaginatedResponse::new()`, limit/offset methods
+- **Purpose**: Standardized pagination across all list endpoints
+- **Status**: Complete but unused; handlers use raw limit/offset
+- **Recommendation**: **KEEP** - Critical for production API
+- **Next Step**: Refactor list handlers to use pagination infrastructure
+
+**Search System (src/api/search.rs)**
+- **Components**: `SearchParams`, `AccountSearchParams`, `TransactionSearchParams`, `EntrySearchParams`
+- **Purpose**: Comprehensive search/filter capabilities
+- **Status**: Defined but not integrated
+- **Recommendation**: **KEEP** - Essential for accounting queries
+- **Next Step**: Implement search in list handlers
+
+#### 3. Business Logic Components
+
+**Entry Model Methods (src/models/entry.rs)**
+- **Methods**: `amount()`, `is_valid()`
+- **Purpose**: Core accounting validation and calculations
+- **Status**: Tested but unused in application logic
+- **Recommendation**: **KEEP** - Fundamental to double-entry accounting
+- **Next Step**: Use in transaction posting validation
+
+**Error Variants (src/error.rs)**
+- **Variants**: `UnbalancedTransaction`, `DuplicateKey`
+- **Purpose**: Business rule violations and database constraints
+- **Status**: Defined with tests but never constructed
+- **Recommendation**: **KEEP** - Core to accounting integrity
+- **Next Step**: Use in transaction validation logic
+
+#### 4. Database Layer
+
+**`get_currency_by_code()` (src/db/queries/currency.rs:27)**
+- **Purpose**: Validate currency codes during transaction posting
+- **Status**: Implemented but unused
+- **Recommendation**: **KEEP** - Required for referential integrity
+- **Next Step**: Use in transaction/entry creation
+
+### Root Cause Analysis
+
+The "dead code" exists because:
+1. **Incomplete Port**: The Rust implementation is missing core business logic
+2. **Bottom-up Development**: Infrastructure built before integration
+3. **Good Architecture**: Proper separation of concerns created reusable components awaiting integration
+
+### Recommendations
+
+#### Priority 1: Complete Core Business Logic
+1. Implement transaction posting with balance validation
+2. Add currency validation to entry creation
+3. Integrate user context from auth extractors
+
+#### Priority 2: Enhance API Functionality
+1. Replace raw limit/offset with pagination infrastructure
+2. Implement search/filter capabilities using search params
+3. Add optional authentication to appropriate endpoints
+
+#### Priority 3: Documentation
+1. Add doc comments explaining intended usage
+2. Create integration examples
+3. Document the roadmap for completing the port
+
+### Conclusion
+
+**No code should be removed.** The warnings indicate an incomplete implementation rather than unnecessary code. All identified components follow accounting principles and REST best practices. The focus should be on completing the business logic implementation that will naturally consume these well-designed building blocks.
+
+The presence of comprehensive tests for "unused" code confirms these are intentional, planned features awaiting integration.

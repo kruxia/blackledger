@@ -1,6 +1,6 @@
-use blackledger::db;
+use blackledger::{api::AppState, auth, db};
 use sqlx::PgPool;
-use std::sync::Once;
+use std::sync::{Arc, Once};
 
 static INIT: Once = Once::new();
 
@@ -24,6 +24,9 @@ pub async fn setup_test_db() -> PgPool {
         .await
         .expect("Failed to create test database pool");
 
+    // Clean the database before running tests
+    clean_database(&pool).await;
+
     // Run migrations
     sqlx::migrate!("./migrations")
         .run(&pool)
@@ -31,4 +34,51 @@ pub async fn setup_test_db() -> PgPool {
         .expect("Failed to run migrations");
 
     pool
+}
+
+async fn clean_database(pool: &PgPool) {
+    // Delete all data in reverse order of dependencies
+    sqlx::query("DELETE FROM entry")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM transaction")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM account")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM ledger")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM currency")
+        .execute(pool)
+        .await
+        .ok();
+}
+
+pub async fn setup_test_app_state() -> AppState {
+    let pool = setup_test_db().await;
+    
+    // Create a mock JWT validator with auth disabled for tests
+    let auth_config = auth::AuthConfig {
+        enabled: false,
+        jwks_url: None,
+        audience: None,
+        issuer: None,
+    };
+    
+    let jwt_validator = Arc::new(
+        auth::JwtValidator::new(auth_config)
+            .await
+            .expect("Failed to create JWT validator")
+    );
+    
+    AppState {
+        pool,
+        jwt_validator,
+    }
 }

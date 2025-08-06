@@ -4,11 +4,13 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 
-use crate::db::queries::ledger::{create_ledger, get_ledger_by_id, list_ledgers, update_ledger};
-use crate::error::ApiResult;
-use crate::models::ledger::{CreateLedger, Ledger, UpdateLedger};
+use crate::{
+    api::AppState,
+    db::queries::ledger::{create_ledger, get_ledger_by_id, list_ledgers, update_ledger},
+    error::ApiResult,
+    models::ledger::{CreateLedger, Ledger, UpdateLedger},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct ListQuery {
@@ -17,34 +19,34 @@ pub struct ListQuery {
 }
 
 pub async fn handle_create_ledger(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Json(input): Json<CreateLedger>,
 ) -> ApiResult<(StatusCode, Json<Ledger>)> {
-    let ledger = create_ledger(&pool, &input).await?;
+    let ledger = create_ledger(&state.pool, &input).await?;
     Ok((StatusCode::CREATED, Json(ledger)))
 }
 
 pub async fn handle_get_ledger(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<Ledger>> {
-    let ledger = get_ledger_by_id(&pool, id).await?;
+    let ledger = get_ledger_by_id(&state.pool, id).await?;
     Ok(Json(ledger))
 }
 
 pub async fn handle_update_ledger(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(input): Json<UpdateLedger>,
 ) -> ApiResult<Json<Ledger>> {
-    let ledger = update_ledger(&pool, id, &input).await?;
+    let ledger = update_ledger(&state.pool, id, &input).await?;
     Ok(Json(ledger))
 }
 
 pub async fn handle_list_ledgers(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Query(query): Query<ListQuery>,
 ) -> ApiResult<Json<Vec<Ledger>>> {
-    let ledgers = list_ledgers(&pool, query.limit, query.offset).await?;
+    let ledgers = list_ledgers(&state.pool, query.limit, query.offset).await?;
     Ok(Json(ledgers))
 }

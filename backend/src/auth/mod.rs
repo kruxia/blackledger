@@ -6,8 +6,8 @@ use axum::{
 };
 use jsonwebtoken::{decode, decode_header, jwk::JwkSet, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use crate::error::ApiError;
 
@@ -19,10 +19,10 @@ pub struct AuthConfig {
     pub issuer: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JwtValidator {
     pub config: AuthConfig,
-    pub jwks: Arc<RwLock<Option<JwkSet>>>,
+    pub decoding_keys: Arc<HashMap<String, DecodingKey>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,15 +45,16 @@ pub struct AuthUser {
 
 impl JwtValidator {
     pub async fn new(config: AuthConfig) -> Result<Self, Box<dyn std::error::Error>> {
-        let jwks = if config.enabled && config.jwks_url.is_some() {
+        let decoding_keys = if config.enabled && config.jwks_url.is_some() {
             let jwks_url = config.jwks_url.as_ref().unwrap();
             let jwks = fetch_jwks(jwks_url).await?;
-            Arc::new(RwLock::new(Some(jwks)))
+            let keys = precompute_decoding_keys(jwks)?;
+            Arc::new(keys)
         } else {
-            Arc::new(RwLock::new(None))
+            Arc::new(HashMap::new())
         };
 
-        Ok(Self { config, jwks })
+        Ok(Self { config, decoding_keys })
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<Claims, ApiError> {
@@ -76,15 +77,9 @@ impl JwtValidator {
         let kid = header.kid
             .ok_or_else(|| ApiError::Unauthorized)?;
 
-        let jwks = self.jwks.read().await;
-        let jwks = jwks.as_ref()
+        let decoding_key = self.decoding_keys
+            .get(&kid)
             .ok_or_else(|| ApiError::Unauthorized)?;
-
-        let jwk = jwks.find(&kid)
-            .ok_or_else(|| ApiError::Unauthorized)?;
-
-        let decoding_key = DecodingKey::from_jwk(jwk)
-            .map_err(|_| ApiError::Unauthorized)?;
 
         let mut validation = Validation::default();
         
@@ -96,20 +91,36 @@ impl JwtValidator {
             validation.set_issuer(&[iss]);
         }
 
-        let token_data = decode::<Claims>(token, &decoding_key, &validation)
+        let token_data = decode::<Claims>(token, decoding_key, &validation)
             .map_err(|_| ApiError::Unauthorized)?;
 
         Ok(token_data.claims)
     }
 
-    pub async fn refresh_jwks(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some(ref jwks_url) = self.config.jwks_url {
-            let new_jwks = fetch_jwks(jwks_url).await?;
-            let mut jwks = self.jwks.write().await;
-            *jwks = Some(new_jwks);
+}
+
+fn precompute_decoding_keys(jwks: JwkSet) -> Result<HashMap<String, DecodingKey>, Box<dyn std::error::Error>> {
+    let mut keys = HashMap::new();
+    
+    for jwk in jwks.keys {
+        if let Some(kid) = &jwk.common.key_id {
+            match DecodingKey::from_jwk(&jwk) {
+                Ok(decoding_key) => {
+                    keys.insert(kid.clone(), decoding_key);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to create decoding key for kid {}: {}", kid, e);
+                }
+            }
         }
-        Ok(())
     }
+    
+    if keys.is_empty() {
+        return Err("No valid keys found in JWKS".into());
+    }
+    
+    tracing::info!("Precomputed {} decoding keys from JWKS", keys.len());
+    Ok(keys)
 }
 
 async fn fetch_jwks(url: &str) -> Result<JwkSet, Box<dyn std::error::Error>> {

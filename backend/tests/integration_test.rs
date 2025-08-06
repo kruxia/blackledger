@@ -8,12 +8,12 @@ use blackledger::api;
 use serde_json::Value;
 use tower::ServiceExt;
 
-use common::setup_test_db;
+use common::{setup_test_app_state, setup_test_db};
 
 #[tokio::test]
 async fn test_health_check_endpoint() {
-    let pool = setup_test_db().await;
-    let app = api::router().with_state(pool);
+    let app_state = setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
 
     let response = app
         .oneshot(

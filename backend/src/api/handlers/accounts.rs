@@ -4,13 +4,15 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 
-use crate::db::queries::account::{
-    create_account, get_account_balances, get_account_by_id, list_accounts, update_account,
+use crate::{
+    api::AppState,
+    db::queries::account::{
+        create_account, get_account_balances, get_account_by_id, list_accounts, update_account,
+    },
+    error::ApiResult,
+    models::account::{Account, AccountBalance, CreateAccount, UpdateAccount},
 };
-use crate::error::ApiResult;
-use crate::models::account::{Account, AccountBalance, CreateAccount, UpdateAccount};
 
 #[derive(Debug, Deserialize)]
 pub struct ListAccountsQuery {
@@ -27,36 +29,36 @@ pub struct GetBalancesQuery {
 }
 
 pub async fn handle_create_account(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Json(input): Json<CreateAccount>,
 ) -> ApiResult<(StatusCode, Json<Account>)> {
-    let account = create_account(&pool, &input).await?;
+    let account = create_account(&state.pool, &input).await?;
     Ok((StatusCode::CREATED, Json(account)))
 }
 
 pub async fn handle_get_account(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<Account>> {
-    let account = get_account_by_id(&pool, id).await?;
+    let account = get_account_by_id(&state.pool, id).await?;
     Ok(Json(account))
 }
 
 pub async fn handle_update_account(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(input): Json<UpdateAccount>,
 ) -> ApiResult<Json<Account>> {
-    let account = update_account(&pool, id, &input).await?;
+    let account = update_account(&state.pool, id, &input).await?;
     Ok(Json(account))
 }
 
 pub async fn handle_list_accounts(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Query(query): Query<ListAccountsQuery>,
 ) -> ApiResult<Json<Vec<Account>>> {
     let accounts = list_accounts(
-        &pool,
+        &state.pool,
         query.ledger_id,
         query.parent_id,
         query.limit,
@@ -67,9 +69,9 @@ pub async fn handle_list_accounts(
 }
 
 pub async fn handle_get_balances(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Query(query): Query<GetBalancesQuery>,
 ) -> ApiResult<Json<Vec<AccountBalance>>> {
-    let balances = get_account_balances(&pool, query.ledger_id, query.account_ids).await?;
+    let balances = get_account_balances(&state.pool, query.ledger_id, query.account_ids).await?;
     Ok(Json(balances))
 }

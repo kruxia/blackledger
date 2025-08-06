@@ -42,18 +42,24 @@ async fn main() -> Result<()> {
         issuer: None,
     };
     
-    let _jwt_validator = Arc::new(
+    let jwt_validator = Arc::new(
         auth::JwtValidator::new(auth_config)
             .await
             .expect("Failed to create JWT validator")
     );
+    
+    // Create app state
+    let app_state = api::AppState {
+        pool: pool.clone(),
+        jwt_validator,
+    };
 
     // Build application
     let app = Router::new()
-        .nest("/api", api::router())
+        .nest("/api", api::router(app_state.clone()))
         .layer(TraceLayer::new_for_http())
         .layer(api::cors::cors_layer())
-        .with_state(pool);
+        .with_state(app_state);
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));

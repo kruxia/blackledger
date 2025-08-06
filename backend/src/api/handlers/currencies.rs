@@ -4,11 +4,13 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 
-use crate::db::queries::currency::{create_currency, list_currencies};
-use crate::error::ApiResult;
-use crate::models::currency::Currency;
+use crate::{
+    api::AppState,
+    db::queries::currency::{create_currency, list_currencies},
+    error::ApiResult,
+    models::currency::Currency,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateCurrencyRequest {
@@ -16,7 +18,7 @@ pub struct CreateCurrencyRequest {
 }
 
 pub async fn handle_create_currency(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Json(input): Json<CreateCurrencyRequest>,
 ) -> ApiResult<(StatusCode, Json<Currency>)> {
     // Validate currency code
@@ -27,7 +29,7 @@ pub async fn handle_create_currency(
     }
 
     let currency = create_currency(
-        &pool,
+        &state.pool,
         &input.code,
     )
     .await?;
@@ -36,8 +38,8 @@ pub async fn handle_create_currency(
 }
 
 pub async fn handle_list_currencies(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> ApiResult<Json<Vec<Currency>>> {
-    let currencies = list_currencies(&pool).await?;
+    let currencies = list_currencies(&state.pool).await?;
     Ok(Json(currencies))
 }
