@@ -1,7 +1,7 @@
 [package]
 name = "blackledger"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 # Web framework
@@ -42,8 +42,6 @@ reqwest = { version = "0.12", features = ["json"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Configuration
-dotenvy = "0.15"
 
 [dev-dependencies]
 # Testing

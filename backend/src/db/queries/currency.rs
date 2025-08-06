@@ -8,27 +8,30 @@ pub async fn create_currency(
     code: &str,
 ) -> ApiResult<Currency> {
     // Try to insert, and if it already exists, fetch it
-    let currency = sqlx::query_as::<_, Currency>(
+    let record = sqlx::query!(
         r#"
         INSERT INTO currency (code)
         VALUES ($1)
         ON CONFLICT (code) DO UPDATE 
         SET code = EXCLUDED.code  -- No-op update to trigger RETURNING
-        RETURNING *
-        "#
+        RETURNING code, created
+        "#,
+        code
     )
-    .bind(code)
     .fetch_one(pool)
     .await?;
 
-    Ok(currency)
+    Ok(Currency {
+        code: record.code,
+        created: record.created,
+    })
 }
 
 pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Currency> {
-    let currency = sqlx::query_as::<_, Currency>(
-        r#"SELECT * FROM currency WHERE code = $1"#
+    let record = sqlx::query!(
+        r#"SELECT code, created FROM currency WHERE code = $1"#,
+        code
     )
-    .bind(code)
     .fetch_one(pool)
     .await
     .map_err(|e| match e {
@@ -36,15 +39,24 @@ pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Curren
         _ => ApiError::Database(e),
     })?;
 
-    Ok(currency)
+    Ok(Currency {
+        code: record.code,
+        created: record.created,
+    })
 }
 
 pub async fn list_currencies(pool: &PgPool) -> ApiResult<Vec<Currency>> {
-    let currencies = sqlx::query_as::<_, Currency>(
-        r#"SELECT * FROM currency ORDER BY code"#
+    let records = sqlx::query!(
+        r#"SELECT code, created FROM currency ORDER BY code"#
     )
     .fetch_all(pool)
     .await?;
 
-    Ok(currencies)
+    Ok(records
+        .into_iter()
+        .map(|r| Currency {
+            code: r.code,
+            created: r.created,
+        })
+        .collect())
 }

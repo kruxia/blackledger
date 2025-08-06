@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit \n        FROM entry \n        WHERE transaction_id = $1 \n        ORDER BY id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "ledger_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "transaction_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "account_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "curr",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "debit",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "credit",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "89d660676fbabce753d5f673be799a4edcb6d63cf3f42c67d8b458fa693a9f7e"
+}

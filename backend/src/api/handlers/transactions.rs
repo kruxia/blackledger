@@ -3,33 +3,22 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::{
-    api::AppState,
-    db::queries::transaction::{create_transaction, get_transaction_by_id, list_transactions},
-    db::queries::entry::{get_entries_by_transaction, list_entries},
+    api::{
+        AppState,
+        pagination::{PaginationParams, PaginatedResponse},
+        search::{TransactionSearchParams, EntrySearchParams},
+    },
+    auth::OptionalAuthUser,
+    db::queries::transaction::{get_transaction_by_id, search_transactions, count_transactions},
+    db::queries::entry::{get_entries_by_transaction, search_entries, count_entries},
     error::ApiResult,
     models::transaction::{CreateTransaction, Transaction},
     models::entry::Entry,
 };
-
-#[derive(Debug, Deserialize)]
-pub struct ListTransactionsQuery {
-    pub ledger_id: Option<i64>,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListEntriesQuery {
-    pub ledger_id: Option<i64>,
-    pub account_id: Option<i64>,
-    pub transaction_id: Option<i64>,
-    pub currency_code: Option<String>,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
+use crate::services::posting::post_transaction;
 
 #[derive(Debug, Serialize)]
 pub struct TransactionWithEntries {
@@ -40,10 +29,16 @@ pub struct TransactionWithEntries {
 
 pub async fn handle_create_transaction(
     State(state): State<AppState>,
+    OptionalAuthUser(auth_user): OptionalAuthUser,
     Json(input): Json<CreateTransaction>,
-) -> ApiResult<(StatusCode, Json<Transaction>)> {
-    let transaction = create_transaction(&state.pool, &input).await?;
-    Ok((StatusCode::CREATED, Json(transaction)))
+) -> ApiResult<(StatusCode, Json<TransactionWithEntries>)> {
+    let user_id = auth_user.as_ref().map(|u| u.sub.as_str());
+    let (transaction, entries) = post_transaction(&state.pool, &input, user_id).await?;
+    
+    Ok((StatusCode::CREATED, Json(TransactionWithEntries {
+        transaction,
+        entries,
+    })))
 }
 
 pub async fn handle_get_transaction(
@@ -61,27 +56,32 @@ pub async fn handle_get_transaction(
 
 pub async fn handle_list_transactions(
     State(state): State<AppState>,
-    Query(query): Query<ListTransactionsQuery>,
-) -> ApiResult<Json<Vec<Transaction>>> {
-    let transactions = list_transactions(&state.pool, query.ledger_id, query.limit, query.offset).await?;
-    Ok(Json(transactions))
+    Query(params): Query<TransactionSearchParams>,
+) -> ApiResult<Json<PaginatedResponse<Transaction>>> {
+    let transactions = search_transactions(&state.pool, &params).await?;
+    let total = count_transactions(&state.pool, &params).await?;
+    
+    let pagination = PaginationParams {
+        page: params.common.page.unwrap_or(1),
+        page_size: params.common.page_size.unwrap_or(20),
+    };
+    
+    let response = PaginatedResponse::new(transactions, &pagination, Some(total));
+    Ok(Json(response))
 }
 
 pub async fn handle_list_entries(
     State(state): State<AppState>,
-    Query(query): Query<ListEntriesQuery>,
-) -> ApiResult<Json<Vec<Entry>>> {
-    let entries = list_entries(
-        &state.pool,
-        query.ledger_id,
-        query.account_id,
-        query.transaction_id,
-        query.currency_code,
-        None,
-        None,
-        query.limit,
-        query.offset,
-    )
-    .await?;
-    Ok(Json(entries))
+    Query(params): Query<EntrySearchParams>,
+) -> ApiResult<Json<PaginatedResponse<Entry>>> {
+    let entries = search_entries(&state.pool, &params).await?;
+    let total = count_entries(&state.pool, &params).await?;
+    
+    let pagination = PaginationParams {
+        page: params.common.page.unwrap_or(1),
+        page_size: params.common.page_size.unwrap_or(20),
+    };
+    
+    let response = PaginatedResponse::new(entries, &pagination, Some(total));
+    Ok(Json(response))
 }

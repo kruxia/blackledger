@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "ledger_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "number",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 5,
+        "name": "normal",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "version",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e64dab7cb7a9cc14ca650d3effa00e979db6044f5c2094fc8f3afee425adeaef"
+}

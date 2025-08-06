@@ -3,6 +3,12 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+/// The normal balance side of an account (Debit or Credit)
+///
+/// This determines whether increases to the account are recorded
+/// as debits or credits:
+/// - Assets and Expenses normally have Debit balances
+/// - Liabilities, Equity, and Revenue normally have Credit balances
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "varchar")]
 #[sqlx(rename_all = "UPPERCASE")]
@@ -15,6 +21,15 @@ pub enum NormalBalance {
     Credit,
 }
 
+/// An account in the chart of accounts
+///
+/// Accounts are organized hierarchically and track balances for specific
+/// categories of assets, liabilities, equity, revenue, or expenses.
+///
+/// # Versioning
+///
+/// The `version` field contains the ID of the last entry posted to this account,
+/// enabling optimistic locking for concurrent transaction posting.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Account {
     pub id: i64,
@@ -41,6 +56,10 @@ pub struct UpdateAccount {
     pub name: Option<String>,
 }
 
+/// Balance information for an account in a specific currency
+///
+/// Since accounts can have entries in multiple currencies,
+/// balances are calculated per currency.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccountBalance {
     pub account_id: i64,

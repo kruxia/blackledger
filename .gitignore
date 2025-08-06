@@ -6,3 +6,13 @@ blackledger.egg-info/
 blackledger/__pycache__/__init__.cpython-311.pyc
 target/
 backend/.env
+
+# Code coverage artifacts
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+coverage.json
+backend/tarpaulin-report.html
+backend/cobertura.xml
+backend/lcov.info
+backend/coverage.json

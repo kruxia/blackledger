@@ -8,6 +8,7 @@ pub struct Entry {
     pub ledger_id: i64,
     pub transaction_id: i64,
     pub account_id: i64,
+    #[sqlx(rename = "curr")]
     pub currency_code: String,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub debit: Option<Decimal>,

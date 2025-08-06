@@ -6,21 +6,18 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::AppState,
+    api::{
+        AppState,
+        pagination::{PaginationParams, PaginatedResponse},
+        search::AccountSearchParams,
+    },
     db::queries::account::{
-        create_account, get_account_balances, get_account_by_id, list_accounts, update_account,
+        create_account, get_account_balances, get_account_by_id, update_account,
+        search_accounts, count_accounts,
     },
     error::ApiResult,
     models::account::{Account, AccountBalance, CreateAccount, UpdateAccount},
 };
-
-#[derive(Debug, Deserialize)]
-pub struct ListAccountsQuery {
-    pub ledger_id: Option<i64>,
-    pub parent_id: Option<i64>,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
 
 #[derive(Debug, Deserialize)]
 pub struct GetBalancesQuery {
@@ -55,17 +52,18 @@ pub async fn handle_update_account(
 
 pub async fn handle_list_accounts(
     State(state): State<AppState>,
-    Query(query): Query<ListAccountsQuery>,
-) -> ApiResult<Json<Vec<Account>>> {
-    let accounts = list_accounts(
-        &state.pool,
-        query.ledger_id,
-        query.parent_id,
-        query.limit,
-        query.offset,
-    )
-    .await?;
-    Ok(Json(accounts))
+    Query(params): Query<AccountSearchParams>,
+) -> ApiResult<Json<PaginatedResponse<Account>>> {
+    let accounts = search_accounts(&state.pool, &params).await?;
+    let total = count_accounts(&state.pool, &params).await?;
+    
+    let pagination = PaginationParams {
+        page: params.common.page.unwrap_or(1),
+        page_size: params.common.page_size.unwrap_or(20),
+    };
+    
+    let response = PaginatedResponse::new(accounts, &pagination, Some(total));
+    Ok(Json(response))
 }
 
 pub async fn handle_get_balances(

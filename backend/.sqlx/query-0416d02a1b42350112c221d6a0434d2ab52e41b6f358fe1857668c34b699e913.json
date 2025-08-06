@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO currency (code)\n        VALUES ($1)\n        ON CONFLICT (code) DO UPDATE \n        SET code = EXCLUDED.code  -- No-op update to trigger RETURNING\n        RETURNING code, created\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "0416d02a1b42350112c221d6a0434d2ab52e41b6f358fe1857668c34b699e913"
+}

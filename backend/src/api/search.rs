@@ -8,6 +8,8 @@ pub struct SearchParams {
     pub to_date: Option<DateTime<Utc>>,
     pub sort_by: Option<String>,
     pub sort_order: Option<SortOrder>,
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -3,20 +3,13 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::Deserialize;
 
 use crate::{
-    api::AppState,
-    db::queries::ledger::{create_ledger, get_ledger_by_id, list_ledgers, update_ledger},
+    api::{AppState, pagination::{PaginationParams, PaginatedResponse}},
+    db::queries::ledger::{create_ledger, get_ledger_by_id, list_ledgers, update_ledger, count_ledgers},
     error::ApiResult,
     models::ledger::{CreateLedger, Ledger, UpdateLedger},
 };
-
-#[derive(Debug, Deserialize)]
-pub struct ListQuery {
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
 
 pub async fn handle_create_ledger(
     State(state): State<AppState>,
@@ -45,8 +38,11 @@ pub async fn handle_update_ledger(
 
 pub async fn handle_list_ledgers(
     State(state): State<AppState>,
-    Query(query): Query<ListQuery>,
-) -> ApiResult<Json<Vec<Ledger>>> {
-    let ledgers = list_ledgers(&state.pool, query.limit, query.offset).await?;
-    Ok(Json(ledgers))
+    Query(params): Query<PaginationParams>,
+) -> ApiResult<Json<PaginatedResponse<Ledger>>> {
+    let ledgers = list_ledgers(&state.pool, Some(params.limit()), Some(params.offset())).await?;
+    let total = count_ledgers(&state.pool).await?;
+    
+    let response = PaginatedResponse::new(ledgers, &params, Some(total));
+    Ok(Json(response))
 }

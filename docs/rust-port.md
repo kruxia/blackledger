@@ -411,12 +411,6 @@ The Rust backend port has 8 categories of "dead code" warnings, but **none shoul
 
 #### 1. Authentication & Authorization Components
 
-**`optional_auth_middleware` (src/api/middleware/auth.rs:42)**
-- **Purpose**: Validates JWT tokens without requiring authentication
-- **Status**: Unused but complete implementation
-- **Recommendation**: **KEEP** - Essential for mixed public/private endpoints
-- **Next Step**: Apply to GET endpoints that should work without auth
-
 **`AuthUser` & `OptionalAuthUser` (src/auth/mod.rs)**
 - **Purpose**: Axum extractors for accessing authenticated user context
 - **Status**: Defined but not integrated into handlers
@@ -480,7 +474,6 @@ The "dead code" exists because:
 #### Priority 2: Enhance API Functionality
 1. Replace raw limit/offset with pagination infrastructure
 2. Implement search/filter capabilities using search params
-3. Add optional authentication to appropriate endpoints
 
 #### Priority 3: Documentation
 1. Add doc comments explaining intended usage

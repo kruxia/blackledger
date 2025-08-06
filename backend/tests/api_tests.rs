@@ -145,7 +145,7 @@ async fn test_ledger_crud_operations() {
 #[tokio::test]
 async fn test_account_operations() {
     let app_state = common::setup_test_app_state().await;
-    let pool = app_state.pool.clone();
+    let _pool = app_state.pool.clone();
     let app = api::router(app_state.clone()).with_state(app_state);
 
     // First create a ledger
@@ -212,7 +212,7 @@ async fn test_account_operations() {
 #[tokio::test]
 async fn test_transaction_posting() {
     let app_state = common::setup_test_app_state().await;
-    let pool = app_state.pool.clone();
+    let _pool = app_state.pool.clone();
     let app = api::router(app_state.clone()).with_state(app_state);
 
     // Setup: Create ledger, currency, and accounts
@@ -267,7 +267,7 @@ async fn test_transaction_posting() {
 #[tokio::test]
 async fn test_unbalanced_transaction_rejection() {
     let app_state = common::setup_test_app_state().await;
-    let pool = app_state.pool.clone();
+    let _pool = app_state.pool.clone();
     let app = api::router(app_state.clone()).with_state(app_state);
 
     // Setup

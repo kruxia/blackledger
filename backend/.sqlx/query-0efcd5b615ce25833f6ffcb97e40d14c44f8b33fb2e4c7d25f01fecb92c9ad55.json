@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE account\n        SET name = COALESCE($2, name)\n        WHERE id = $1\n        RETURNING id, ledger_id, parent_id, name, number, normal, version, created\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "ledger_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "number",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 5,
+        "name": "normal",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "version",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "0efcd5b615ce25833f6ffcb97e40d14c44f8b33fb2e4c7d25f01fecb92c9ad55"
+}

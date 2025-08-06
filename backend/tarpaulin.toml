@@ -1,0 +1,50 @@
+# Tarpaulin configuration file
+# https://github.com/xd009642/tarpaulin
+
+[default]
+# Coverage options
+ignore-tests = true
+ignore-panics = true
+branch = true
+forward = true
+count = true
+
+# Output formats
+out = ["Html", "Lcov", "Json"]
+
+# Exclude patterns
+exclude-files = [
+    "*/tests/*",
+    "*/examples/*",
+    "*/target/*",
+    "*/migrations/*",
+    "*/.cargo/*"
+]
+
+# Test options
+timeout = "120s"
+skip-clean = true
+target-dir = "target/tarpaulin"
+
+# Features and workspace
+all-features = true
+workspace = true
+
+# Engine (llvm is more accurate than ptrace)
+engine = "Llvm"
+
+# Coverage thresholds (optional, will warn if not met)
+# fail-under = 80.0
+
+[report]
+# Generate detailed report
+verbose = true
+
+# Show uncovered lines
+print-summary = true
+print-uncovered-lines = true
+
+[html]
+# HTML report settings
+output-dir = "."
+title = "Blackledger Code Coverage Report"

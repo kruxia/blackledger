@@ -281,7 +281,6 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
- "dotenvy",
  "jsonwebtoken",
  "pretty_assertions",
  "reqwest",

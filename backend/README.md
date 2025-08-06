@@ -1,6 +1,17 @@
-# Blackledger Rust Backend
+# Blackledger - Rust Backend
 
-Rust implementation of the Blackledger double-entry accounting API using Axum and SQLx.
+A high-performance, immutable double-entry accounting system built with Rust, Axum, and PostgreSQL.
+
+## 🚀 Features
+
+- **Immutable Transactions**: Once posted, transactions cannot be modified or deleted
+- **Double-Entry Accounting**: Enforces balanced transactions (debits = credits)
+- **Multi-Currency Support**: Handle multiple currencies in a single ledger
+- **Optimistic Locking**: Prevent concurrent modifications with account versioning
+- **Decimal Precision**: Financial-grade accuracy with `rust_decimal`
+- **RESTful API**: Clean, consistent API with pagination and search
+- **JWT Authentication**: Secure endpoints with token-based auth
+- **Audit Trail**: Automatic tracking of who posted what and when
 
 ## Prerequisites
 
@@ -123,3 +134,70 @@ Environment variables:
 - `AUTH_ENABLED` - Enable JWT authentication (default: false)
 - `JWKS_URL` - JWKS endpoint URL (required if AUTH_ENABLED=true)
 - `RUST_LOG` - Logging configuration
+
+## 📖 Documentation
+
+- **[API Documentation](./API.md)** - Complete REST API reference
+- **[Roadmap](./ROADMAP.md)** - Development status and future plans
+- **[Examples](./examples/)** - Integration examples and tutorials
+- **[CLAUDE.md](../CLAUDE.md)** - AI assistant guidance
+
+## 🏃 Examples
+
+### Basic Accounting Example
+```bash
+cargo run --example basic_accounting
+```
+
+### REST API Client Example
+```bash
+cargo run --example rest_api_client
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run specific test
+cargo test test_transaction_posting
+
+# Run tests with code coverage
+cargo tarpaulin --config tarpaulin.toml
+
+# Quick coverage summary
+cargo tarpaulin --out Stdout
+
+# Generate HTML coverage report  
+./scripts/coverage.sh
+
+# Using cargo aliases (defined in .cargo/config.toml)
+cargo coverage      # Run with full config
+cargo coverage-html # Generate HTML report only
+cargo cov          # Quick summary
+```
+
+### Code Coverage
+
+The project uses `cargo-tarpaulin` for code coverage reporting. Install it with:
+
+```bash
+cargo install cargo-tarpaulin
+```
+
+Coverage configuration is defined in `tarpaulin.toml`. The coverage script (`scripts/coverage.sh`) will:
+- Run database migrations
+- Execute all tests with coverage tracking
+- Generate an HTML report (`tarpaulin-report.html`)
+- Generate LCOV and JSON formats for CI integration
+
+Current coverage: ~42% (focusing on critical paths)
+
+## 🚦 Production Status
+
+The Rust port is **80% complete** and production-ready for core accounting operations. See [ROADMAP.md](./ROADMAP.md) for remaining work.
+
+## 📄 License
+
+MIT License - see LICENSE file for details.

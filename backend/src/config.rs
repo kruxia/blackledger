@@ -10,8 +10,6 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        dotenvy::dotenv().ok();
-
         let database_url = std::env::var("DATABASE_URL")
             .context("DATABASE_URL must be set")?;
         

@@ -5,12 +5,7 @@ use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod api;
-mod auth;
-mod config;
-mod db;
-mod error;
-mod models;
+use blackledger::{api, auth, config, db};
 
 #[tokio::main]
 async fn main() -> Result<()> {

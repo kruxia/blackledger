@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, ledger_id, posted, effective, memo, meta FROM transaction\n            ORDER BY posted DESC\n            LIMIT $1\n            OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "ledger_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "posted",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "effective",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "memo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "meta",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "7a5c2beaef5c9be2f96e7bc3665d5c2f6013a9a30f9b8e5eec8297ded472e452"
+}

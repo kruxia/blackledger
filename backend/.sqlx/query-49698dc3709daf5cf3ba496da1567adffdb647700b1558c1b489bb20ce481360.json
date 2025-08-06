@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit \n        FROM entry\n        ORDER BY id DESC\n        LIMIT $1\n        OFFSET $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "ledger_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "transaction_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "account_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "curr",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "debit",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "credit",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "49698dc3709daf5cf3ba496da1567adffdb647700b1558c1b489bb20ce481360"
+}

@@ -20,8 +20,8 @@ pub struct AppState {
 pub mod cors;
 mod handlers;
 mod middleware;
-mod pagination;
-mod search;
+pub mod pagination;
+pub mod search;
 
 
 pub fn router(state: AppState) -> Router<AppState> {

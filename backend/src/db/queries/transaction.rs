@@ -1,100 +1,25 @@
-use sqlx::{PgPool, Row};
-use chrono::Utc;
-use rust_decimal::Decimal;
-use std::collections::HashMap;
+use sqlx::PgPool;
 
 use crate::error::{ApiError, ApiResult};
-use crate::models::transaction::{Transaction, CreateTransaction};
+use crate::models::transaction::Transaction;
+use crate::services::posting;
 
+// Note: This function is deprecated in favor of services::posting::post_transaction
+// which includes proper validation and user context
 pub async fn create_transaction(
     pool: &PgPool,
-    input: &CreateTransaction,
+    input: &crate::models::transaction::CreateTransaction,
 ) -> ApiResult<Transaction> {
-    // Validate that the transaction balances
-    validate_transaction_balance(&input.entries)?;
-
-    // Start a database transaction
-    let mut tx = pool.begin().await?;
-
-    // Create the transaction
-    let posted = Utc::now();
-    let transaction = sqlx::query_as::<_, Transaction>(
-        r#"
-        INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING *
-        "#
-    )
-    .bind(input.ledger_id)
-    .bind(posted)
-    .bind(input.effective)
-    .bind(&input.memo)
-    .bind(&input.meta)
-    .fetch_one(&mut *tx)
-    .await?;
-
-    // Create entries and update account versions
-    for entry in &input.entries {
-        // Validate account version if provided
-        if let Some(expected_version) = entry.account_version {
-            let row = sqlx::query(
-                r#"SELECT version FROM account WHERE id = $1"#
-            )
-            .bind(entry.account_id)
-            .fetch_one(&mut *tx)
-            .await?;
-            
-            let current_version: Option<i64> = row.get("version");
-
-            if current_version != Some(expected_version) {
-                return Err(ApiError::OptimisticLockError);
-            }
-        }
-
-        // Create the entry and get its generated ID
-        let entry_row = sqlx::query(
-            r#"
-            INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id
-            "#
-        )
-        .bind(input.ledger_id)
-        .bind(transaction.id)
-        .bind(entry.account_id)
-        .bind(&entry.currency_code)
-        .bind(entry.debit)
-        .bind(entry.credit)
-        .fetch_one(&mut *tx)
-        .await?;
-        
-        let entry_id: i64 = entry_row.get("id");
-
-        // Update account's version
-        sqlx::query(
-            r#"
-            UPDATE account
-            SET version = $1
-            WHERE id = $2
-            "#
-        )
-        .bind(entry_id)
-        .bind(entry.account_id)
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    // Commit the transaction
-    tx.commit().await?;
-
+    // Use the posting service instead
+    let (transaction, _entries) = posting::post_transaction(pool, input, None).await?;
     Ok(transaction)
 }
 
 pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transaction> {
-    let transaction = sqlx::query_as::<_, Transaction>(
-        r#"SELECT * FROM transaction WHERE id = $1"#
+    let record = sqlx::query!(
+        r#"SELECT id, ledger_id, posted, effective, memo, meta FROM transaction WHERE id = $1"#,
+        id
     )
-    .bind(id)
     .fetch_one(pool)
     .await
     .map_err(|e| match e {
@@ -102,7 +27,14 @@ pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transact
         _ => ApiError::Database(e),
     })?;
 
-    Ok(transaction)
+    Ok(Transaction {
+        id: record.id,
+        ledger_id: record.ledger_id,
+        posted: record.posted,
+        effective: record.effective,
+        memo: record.memo,
+        meta: record.meta,
+    })
 }
 
 pub async fn list_transactions(
@@ -112,62 +44,84 @@ pub async fn list_transactions(
     offset: Option<i64>,
 ) -> ApiResult<Vec<Transaction>> {
     let transactions = if let Some(lid) = ledger_id {
-        sqlx::query_as::<_, Transaction>(
+        let records = sqlx::query!(
             r#"
-            SELECT * FROM transaction
+            SELECT id, ledger_id, posted, effective, memo, meta FROM transaction
             WHERE ledger_id = $1
             ORDER BY posted DESC
             LIMIT $2
             OFFSET $3
-            "#
+            "#,
+            lid,
+            limit.unwrap_or(100),
+            offset.unwrap_or(0)
         )
-        .bind(lid)
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
         .fetch_all(pool)
-        .await?
+        .await?;
+        
+        records.into_iter().map(|r| Transaction {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            posted: r.posted,
+            effective: r.effective,
+            memo: r.memo,
+            meta: r.meta,
+        }).collect()
     } else {
-        sqlx::query_as::<_, Transaction>(
+        let records = sqlx::query!(
             r#"
-            SELECT * FROM transaction
+            SELECT id, ledger_id, posted, effective, memo, meta FROM transaction
             ORDER BY posted DESC
             LIMIT $1
             OFFSET $2
-            "#
+            "#,
+            limit.unwrap_or(100),
+            offset.unwrap_or(0)
         )
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
         .fetch_all(pool)
-        .await?
+        .await?;
+        
+        records.into_iter().map(|r| Transaction {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            posted: r.posted,
+            effective: r.effective,
+            memo: r.memo,
+            meta: r.meta,
+        }).collect()
     };
 
     Ok(transactions)
 }
 
-fn validate_transaction_balance(entries: &[crate::models::transaction::CreateEntry]) -> ApiResult<()> {
-    // Group entries by currency
-    let mut balances: HashMap<String, Decimal> = HashMap::new();
+pub async fn search_transactions(
+    pool: &PgPool,
+    params: &crate::api::search::TransactionSearchParams,
+) -> ApiResult<Vec<Transaction>> {
+    let page = params.common.page.unwrap_or(1) as i64;
+    let page_size = params.common.page_size.unwrap_or(20) as i64;
+    let offset = (page - 1) * page_size;
+    
+    // For now, using simplified search based on ledger_id
+    // In production, you'd build a dynamic query with all search parameters
+    list_transactions(pool, params.ledger_id, Some(page_size), Some(offset)).await
+}
 
-    for entry in entries {
-        let balance = balances.entry(entry.currency_code.clone()).or_insert(Decimal::ZERO);
-        
-        if let Some(debit) = entry.debit {
-            *balance += debit;
-        }
-        
-        if let Some(credit) = entry.credit {
-            *balance -= credit;
-        }
-    }
-
-    // Check that each currency balances to zero
-    for (currency, balance) in balances {
-        if balance != Decimal::ZERO {
-            return Err(ApiError::Validation(
-                format!("Transaction does not balance for currency {}: {}", currency, balance)
-            ));
-        }
-    }
-
-    Ok(())
+pub async fn count_transactions(
+    pool: &PgPool,
+    params: &crate::api::search::TransactionSearchParams,
+) -> ApiResult<i64> {
+    let count = if let Some(ledger_id) = params.ledger_id {
+        let record = sqlx::query!("SELECT COUNT(*) as count FROM transaction WHERE ledger_id = $1", ledger_id)
+            .fetch_one(pool)
+            .await?;
+        record.count.unwrap_or(0)
+    } else {
+        let record = sqlx::query!("SELECT COUNT(*) as count FROM transaction")
+            .fetch_one(pool)
+            .await?;
+        record.count.unwrap_or(0)
+    };
+    
+    Ok(count)
 }

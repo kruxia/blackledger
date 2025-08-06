@@ -38,26 +38,3 @@ pub async fn auth_middleware(
     // Token is valid, proceed with the request
     Ok(next.run(request).await)
 }
-
-pub async fn optional_auth_middleware(
-    State(validator): State<Arc<JwtValidator>>,
-    request: Request<Body>,
-    next: Next,
-) -> Result<Response, ApiError> {
-    // If auth is disabled, just pass through
-    if !validator.config.enabled {
-        return Ok(next.run(request).await);
-    }
-
-    // Extract the Authorization header if present
-    if let Some(auth_header) = request.headers().get(AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                // Validate the token
-                let _claims = validator.validate_token(token).await?;
-            }
-        }
-    }
-
-    Ok(next.run(request).await)
-}
