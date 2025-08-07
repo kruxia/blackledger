@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Row, QueryBuilder, Postgres};
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::account::{
@@ -233,66 +233,161 @@ pub async fn search_accounts(
     let limit = params.base.get_limit() as i64;
     let offset = params.base.get_offset() as i64;
 
-    // Build dynamic query based on search parameters
-    let mut query = String::from("SELECT * FROM account WHERE 1=1");
-    let mut bindings = vec![];
-    let mut bind_count = 0;
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE 1=1"
+    );
 
-    if let Some(ledger_id) = params.ledger_id {
-        bind_count += 1;
-        query.push_str(&format!(" AND ledger_id = ${}", bind_count));
-        bindings.push(ledger_id.to_string());
+    // Handle comma-delimited list of IDs
+    if let Some(ref id_list) = params.id {
+        let ids: Vec<i64> = id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            query_builder.push(" AND id IN (");
+            let mut separated = query_builder.separated(", ");
+            for id in ids {
+                separated.push_bind(id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    if let Some(parent_id) = params.parent_id {
-        bind_count += 1;
-        query.push_str(&format!(" AND parent_id = ${}", bind_count));
-        bindings.push(parent_id.to_string());
+    // Handle comma-delimited list of ledger IDs  
+    if let Some(ref ledger_id_list) = params.ledger_id {
+        let ledger_ids: Vec<i64> = ledger_id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ledger_ids.is_empty() {
+            query_builder.push(" AND ledger_id IN (");
+            let mut separated = query_builder.separated(", ");
+            for ledger_id in ledger_ids {
+                separated.push_bind(ledger_id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    if let Some(ref name) = params.name {
-        bind_count += 1;
-        query.push_str(&format!(" AND name ILIKE ${}", bind_count));
-        bindings.push(format!("%{}%", name));
+    // Handle comma-delimited list of parent IDs
+    if let Some(ref parent_id_list) = params.parent_id {
+        let parent_ids: Vec<i64> = parent_id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !parent_ids.is_empty() {
+            query_builder.push(" AND parent_id IN (");
+            let mut separated = query_builder.separated(", ");
+            for parent_id in parent_ids {
+                separated.push_bind(parent_id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    if let Some(ref number) = params.number {
-        bind_count += 1;
-        query.push_str(&format!(" AND number::text LIKE ${}", bind_count));
-        bindings.push(format!("%{}%", number));
+    // Handle comma-delimited list of version IDs
+    if let Some(ref version_list) = params.version {
+        let versions: Vec<i64> = version_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !versions.is_empty() {
+            query_builder.push(" AND version IN (");
+            let mut separated = query_builder.separated(", ");
+            for version in versions {
+                separated.push_bind(version);
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle comma-delimited list of account numbers
+    if let Some(ref number_list) = params.number {
+        let numbers: Vec<i16> = number_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i16>().ok())
+            .collect();
+        if !numbers.is_empty() {
+            query_builder.push(" AND number IN (");
+            let mut separated = query_builder.separated(", ");
+            for number in numbers {
+                separated.push_bind(number);
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle comma-delimited list of name patterns (regex patterns)
+    if let Some(ref name_patterns) = params.name {
+        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("name ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle normal balance type (DR/CR, case-insensitive, also accepts debit/credit)
+    if let Some(ref normal) = params.normal {
+        let normal_upper = normal.to_uppercase();
+        let normal_value = match normal_upper.as_str() {
+            "DR" | "DEBIT" => Some("DR"),
+            "CR" | "CREDIT" => Some("CR"),
+            _ => None,
+        };
+        
+        if let Some(normal_val) = normal_value {
+            query_builder.push(" AND normal = ");
+            query_builder.push_bind(normal_val);
+        }
     }
 
     // Add sorting based on SearchParams
     if let Some(order_clause) = params.base.parse_order_by() {
-        query.push_str(&format!(" ORDER BY {}", order_clause));
+        query_builder.push(" ORDER BY ");
+        query_builder.push(order_clause);
     } else {
         // Default ordering
-        query.push_str(" ORDER BY created DESC");
+        query_builder.push(" ORDER BY created DESC");
     }
 
     // Add pagination
-    bind_count += 1;
-    query.push_str(&format!(" LIMIT ${}", bind_count));
-    bindings.push(limit.to_string());
+    query_builder.push(" LIMIT ");
+    query_builder.push_bind(limit);
+    query_builder.push(" OFFSET ");
+    query_builder.push_bind(offset);
 
-    bind_count += 1;
-    query.push_str(&format!(" OFFSET ${}", bind_count));
-    bindings.push(offset.to_string());
+    // Execute the query
+    let query = query_builder.build();
+    let rows = query.fetch_all(pool).await?;
 
-    // For simplicity, we'll use the existing list_accounts function with filters
-    // In a production system, you'd build a dynamic query
-    let accounts = if let Some(ledger_id) = params.ledger_id {
-        list_accounts(
-            pool,
-            Some(ledger_id),
-            params.parent_id,
-            Some(limit),
-            Some(offset),
-        )
-        .await?
-    } else {
-        list_accounts(pool, None, params.parent_id, Some(limit), Some(offset)).await?
-    };
+    let mut accounts = Vec::new();
+    for row in rows {
+        let account = Account {
+            id: row.try_get("id")?,
+            ledger_id: row.try_get("ledger_id")?,
+            parent_id: row.try_get("parent_id")?,
+            name: row.try_get("name")?,
+            number: row.try_get("number")?,
+            normal: match row.try_get::<String, _>("normal")?.as_str() {
+                "DR" => NormalBalance::Debit,
+                "CR" => NormalBalance::Credit,
+                _ => NormalBalance::Debit,
+            },
+            version: row.try_get("version")?,
+            created: row.try_get("created")?,
+        };
+        accounts.push(account);
+    }
 
     Ok(accounts)
 }
@@ -301,31 +396,128 @@ pub async fn count_accounts(
     pool: &PgPool,
     params: &crate::api::search::AccountSearchParams,
 ) -> ApiResult<i64> {
-    let mut query = String::from("SELECT COUNT(*) FROM account WHERE 1=1");
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT COUNT(*) as count FROM account WHERE 1=1"
+    );
 
-    if let Some(ledger_id) = params.ledger_id {
-        query.push_str(&format!(" AND ledger_id = {}", ledger_id));
+    // Handle comma-delimited list of IDs
+    if let Some(ref id_list) = params.id {
+        let ids: Vec<i64> = id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            query_builder.push(" AND id IN (");
+            let mut separated = query_builder.separated(", ");
+            for id in ids {
+                separated.push_bind(id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    if let Some(parent_id) = params.parent_id {
-        query.push_str(&format!(" AND parent_id = {}", parent_id));
+    // Handle comma-delimited list of ledger IDs  
+    if let Some(ref ledger_id_list) = params.ledger_id {
+        let ledger_ids: Vec<i64> = ledger_id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ledger_ids.is_empty() {
+            query_builder.push(" AND ledger_id IN (");
+            let mut separated = query_builder.separated(", ");
+            for ledger_id in ledger_ids {
+                separated.push_bind(ledger_id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    if let Some(ref name) = params.name {
-        query.push_str(&format!(" AND name ILIKE '%{}%'", name));
+    // Handle comma-delimited list of parent IDs
+    if let Some(ref parent_id_list) = params.parent_id {
+        let parent_ids: Vec<i64> = parent_id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !parent_ids.is_empty() {
+            query_builder.push(" AND parent_id IN (");
+            let mut separated = query_builder.separated(", ");
+            for parent_id in parent_ids {
+                separated.push_bind(parent_id);
+            }
+            query_builder.push(")");
+        }
     }
 
-    // For simplicity, using a basic count
-    let count: (i64,) = if let Some(ledger_id) = params.ledger_id {
-        sqlx::query_as("SELECT COUNT(*) FROM account WHERE ledger_id = $1")
-            .bind(ledger_id)
-            .fetch_one(pool)
-            .await?
-    } else {
-        sqlx::query_as("SELECT COUNT(*) FROM account")
-            .fetch_one(pool)
-            .await?
-    };
+    // Handle comma-delimited list of version IDs
+    if let Some(ref version_list) = params.version {
+        let versions: Vec<i64> = version_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !versions.is_empty() {
+            query_builder.push(" AND version IN (");
+            let mut separated = query_builder.separated(", ");
+            for version in versions {
+                separated.push_bind(version);
+            }
+            query_builder.push(")");
+        }
+    }
 
-    Ok(count.0)
+    // Handle comma-delimited list of account numbers
+    if let Some(ref number_list) = params.number {
+        let numbers: Vec<i16> = number_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i16>().ok())
+            .collect();
+        if !numbers.is_empty() {
+            query_builder.push(" AND number IN (");
+            let mut separated = query_builder.separated(", ");
+            for number in numbers {
+                separated.push_bind(number);
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle comma-delimited list of name patterns (regex patterns)
+    if let Some(ref name_patterns) = params.name {
+        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("name ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle normal balance type (DR/CR, case-insensitive, also accepts debit/credit)
+    if let Some(ref normal) = params.normal {
+        let normal_upper = normal.to_uppercase();
+        let normal_value = match normal_upper.as_str() {
+            "DR" | "DEBIT" => Some("DR"),
+            "CR" | "CREDIT" => Some("CR"),
+            _ => None,
+        };
+        
+        if let Some(normal_val) = normal_value {
+            query_builder.push(" AND normal = ");
+            query_builder.push_bind(normal_val);
+        }
+    }
+
+    // Execute the query
+    let query = query_builder.build();
+    let row = query.fetch_one(pool).await?;
+    let count: i64 = row.try_get("count")?;
+
+    Ok(count)
 }

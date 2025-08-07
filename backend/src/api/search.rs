@@ -6,6 +6,13 @@ use serde_with::{DisplayFromStr, serde_as};
 static ORDERBY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^-?\w+(,-?\w+)*$").expect("Invalid orderby regex pattern"));
 
+// Regex pattern for name filters - allows word chars, hyphens, dots, spaces, and regex special chars (^, $, *, ?)
+// Also allows commas for multiple patterns
+static NAME_FILTER_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^[\^\$\*\?\w\-\. ]+(,[\^\$\*\?\w\-\. ]+)*$")
+        .expect("Invalid name filter regex pattern")
+});
+
 fn deserialize_orderby<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
@@ -16,6 +23,26 @@ where
         if !ORDERBY_REGEX.is_match(s) {
             return Err(serde::de::Error::custom(format!(
                 "Invalid orderby format: '{}'. Must match pattern: ^-?\\w+(,-?\\w+)*$",
+                s
+            )));
+        }
+    }
+
+    Ok(opt_str)
+}
+
+fn deserialize_name_filter<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt_str: Option<String> = Option::deserialize(deserializer)?;
+
+    if let Some(ref s) = opt_str {
+        // Validate that the name filter matches our allowed pattern
+        // This prevents SQL injection by ensuring only safe characters are used
+        if !NAME_FILTER_REGEX.is_match(s) {
+            return Err(serde::de::Error::custom(format!(
+                "Invalid name filter format: '{}'. Must contain only letters, numbers, spaces, hyphens, dots, and regex metacharacters (^, $, *, ?). Multiple patterns can be separated by commas.",
                 s
             )));
         }
@@ -96,7 +123,8 @@ pub struct LedgerSearchParams {
     /// Comma-delimited list of ledger IDs (e.g., "1,2,3")
     #[serde(default, deserialize_with = "deserialize_id_list")]
     pub id: Option<String>,
-    /// Comma-delimited list of name regex patterns
+    /// Comma-delimited list of name regex patterns (validated for safety)
+    #[serde(default, deserialize_with = "deserialize_name_filter")]
     pub name: Option<String>,
     #[serde(flatten)]
     pub base: SearchParams,
@@ -124,10 +152,25 @@ where
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountSearchParams {
-    pub ledger_id: Option<i64>,
-    pub parent_id: Option<i64>,
+    /// Comma-delimited list of account IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list")]
+    pub id: Option<String>,
+    /// Comma-delimited list of ledger IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list", alias = "ledger")]
+    pub ledger_id: Option<String>,
+    /// Comma-delimited list of parent IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list", alias = "parent")]
+    pub parent_id: Option<String>,
+    /// Comma-delimited list of version IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list")]
+    pub version: Option<String>,
+    /// Comma-delimited list of account numbers (e.g., "100,200,300")
     pub number: Option<String>,
+    /// Comma-delimited list of name patterns (regex patterns, validated for safety)
+    #[serde(default, deserialize_with = "deserialize_name_filter")]
     pub name: Option<String>,
+    /// Normal balance type: DR/CR (case-insensitive, also accepts debit/credit)
+    pub normal: Option<String>,
     #[serde(flatten)]
     pub base: SearchParams,
 }

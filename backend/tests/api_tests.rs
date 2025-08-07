@@ -337,7 +337,7 @@ async fn test_currency_pagination_and_sorting() {
     let sorted_desc: Vec<Value> = serde_json::from_slice(&body).unwrap();
     // Verify we got currencies
     assert!(!sorted_desc.is_empty());
-    let codes: Vec<String> = sorted_desc
+    let _codes: Vec<String> = sorted_desc
         .iter()
         .map(|c| c["code"].as_str().unwrap().to_string())
         .collect();
@@ -381,6 +381,145 @@ async fn test_currency_pagination_and_sorting() {
             code.starts_with('A') || code.starts_with('C'),
             "Currency {} doesn't start with A or C",
             code
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_name_filter_validation() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create a test ledger
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let ledger_name = format!("Name Filter Test Ledger {}", timestamp);
+    
+    let ledger_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/ledgers")
+                .header("content-type", "application/json")
+                .body(Body::from(json!({"name": ledger_name}).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let ledger_body = axum::body::to_bytes(ledger_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledger: Value = serde_json::from_slice(&ledger_body).unwrap();
+    let ledger_id = ledger["id"].as_i64().unwrap();
+
+    // Test valid name patterns
+    let valid_patterns = vec![
+        "^Cash",           // Starts with
+        "Account$",        // Ends with
+        "Bank.*Account",   // Contains pattern
+        "Asset,Liability", // Multiple patterns
+        "Test-Account",    // With hyphen
+        "Account.Name",    // With dot
+        "My Account",      // With space
+    ];
+
+    for pattern in valid_patterns {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(&format!("/accounts?ledger={}&name={}", ledger_id, urlencoding::encode(pattern)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "Valid pattern '{}' should be accepted",
+            pattern
+        );
+    }
+
+    // Test invalid/dangerous patterns that should be rejected
+    let invalid_patterns = vec![
+        "'; DROP TABLE account; --",  // SQL injection attempt
+        "name' OR '1'='1",            // SQL injection attempt
+        "UNION SELECT * FROM users",  // SQL injection with UNION
+        "Robert'); DROP TABLE Students;--", // Bobby Tables
+        "name/*comment*/",             // SQL comment injection
+        "name--comment",               // SQL line comment
+        "0x41424344",                  // Hex encoding attempt
+        "\\x41\\x42\\x43",             // Escape sequence
+        "'; EXEC xp_cmdshell('cmd')", // Command execution attempt
+    ];
+
+    for pattern in invalid_patterns {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(&format!("/accounts?ledger={}&name={}", ledger_id, urlencoding::encode(pattern)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // When deserialization fails, Axum returns 400 BAD_REQUEST with a plain text error
+        // We should get either BAD_REQUEST (400) or UNPROCESSABLE_ENTITY (422)
+        assert!(
+            response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            "Dangerous pattern '{}' should be rejected with 400 or 422, got {}",
+            pattern,
+            response.status()
+        );
+
+        // Verify error message mentions invalid format
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        
+        // The error might be plain text or JSON, depending on where it's caught
+        let body_str = String::from_utf8_lossy(&body);
+        assert!(
+            body_str.contains("Invalid name filter") 
+                || body_str.contains("dangerous pattern")
+                || body_str.contains("Failed to deserialize"),
+            "Error message should indicate invalid name filter for pattern: {}, got: {}",
+            pattern,
+            body_str
+        );
+    }
+
+    // Test the same for ledger search
+    for pattern in &["'; DROP TABLE ledger; --", "UNION SELECT * FROM users"] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(&format!("/ledgers?name={}", urlencoding::encode(pattern)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            response.status(),
+            StatusCode::BAD_REQUEST,
+            "Ledger search should also reject dangerous pattern '{}'",
+            pattern
         );
     }
 }
@@ -686,6 +825,219 @@ async fn test_ledger_crud_operations() {
             .unwrap()
             .starts_with("Updated Test Ledger")
     );
+}
+
+#[tokio::test]
+async fn test_account_search_parameters() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create a ledger first with a unique name using timestamp
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let ledger_name = format!("Account Search Test Ledger {}", timestamp);
+    
+    let ledger_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/ledgers")
+                .header("content-type", "application/json")
+                .body(Body::from(json!({"name": ledger_name}).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let ledger_body = axum::body::to_bytes(ledger_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledger: Value = serde_json::from_slice(&ledger_body).unwrap();
+    let ledger_id = ledger["id"].as_i64().unwrap();
+
+    // Create multiple accounts with different attributes
+    let accounts_data = vec![
+        json!({"ledger_id": ledger_id, "name": "Assets", "number": 100, "normal": "DR"}),
+        json!({"ledger_id": ledger_id, "name": "Cash", "number": 110, "normal": "DR", "parent_id": null}),
+        json!({"ledger_id": ledger_id, "name": "Bank Account", "number": 120, "normal": "DR"}),
+        json!({"ledger_id": ledger_id, "name": "Liabilities", "number": 200, "normal": "CR"}),
+        json!({"ledger_id": ledger_id, "name": "Accounts Payable", "number": 210, "normal": "CR"}),
+        json!({"ledger_id": ledger_id, "name": "Revenue", "number": 300, "normal": "CR"}),
+    ];
+
+    let mut created_account_ids = Vec::new();
+    for account_data in accounts_data {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/accounts")
+                    .header("content-type", "application/json")
+                    .body(Body::from(account_data.to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let account: Value = serde_json::from_slice(&body).unwrap();
+        created_account_ids.push(account["id"].as_i64().unwrap());
+    }
+
+    // Test comma-delimited ID list
+    let ids_param = format!("{},{}", created_account_ids[0], created_account_ids[2]);
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?id={}", ids_param))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 2);
+
+    // Test comma-delimited number list with ledger_id filter to avoid picking up accounts from other tests
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&number=100,200,300", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 3);
+
+    // Test name pattern matching (regex)
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&name=^Cash,Account$", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 2); // "Cash" and "Bank Account"
+
+    // Test normal balance filter (DR)
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&normal=DR", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 3); // Assets, Cash, Bank Account
+
+    // Test normal balance filter with "debit" alias
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&normal=debit", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 3); // Assets, Cash, Bank Account
+
+    // Test normal balance filter (CR)
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&normal=credit", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 3); // Liabilities, Accounts Payable, Revenue
+
+    // Test combined filters
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/accounts?ledger={}&normal=DR&number=110,120", ledger_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let result: Value = serde_json::from_slice(&body).unwrap();
+    let accounts = result["data"].as_array().unwrap();
+    assert_eq!(accounts.len(), 2); // Cash and Bank Account
 }
 
 #[tokio::test]
