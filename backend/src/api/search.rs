@@ -1,5 +1,29 @@
-use serde::Deserialize;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use serde::{Deserialize, Deserializer};
 use serde_with::{serde_as, DisplayFromStr};
+
+static ORDERBY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^-?\w+(,-?\w+)*$").expect("Invalid orderby regex pattern")
+});
+
+fn deserialize_orderby<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt_str: Option<String> = Option::deserialize(deserializer)?;
+    
+    if let Some(ref s) = opt_str {
+        if !ORDERBY_REGEX.is_match(s) {
+            return Err(serde::de::Error::custom(format!(
+                "Invalid orderby format: '{}'. Must match pattern: ^-?\\w+(,-?\\w+)*$",
+                s
+            )));
+        }
+    }
+    
+    Ok(opt_str)
+}
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize)]
@@ -10,7 +34,12 @@ pub struct SearchParams {
     #[serde(rename = "_offset")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub offset: Option<i32>,
-    #[serde(rename = "_orderby")]
+    #[serde(
+        rename = "_orderby",
+        default,
+        deserialize_with = "deserialize_orderby",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub orderby: Option<String>,
 }
 
@@ -27,6 +56,7 @@ impl Default for SearchParams {
 impl SearchParams {
     /// Parse the orderby field into SQL ORDER BY clause components
     /// e.g., "name,-created" becomes "name ASC, created DESC"
+    /// The orderby field is pre-validated against SQL injection
     pub fn parse_order_by(&self) -> Option<String> {
         self.orderby.as_ref().map(|orderby| {
             orderby

@@ -297,6 +297,92 @@ async fn test_currency_pagination_and_sorting() {
 }
 
 #[tokio::test]
+async fn test_sql_injection_prevention() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create a few currencies for testing
+    for code in &["USD", "EUR", "GBP"] {
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/currencies")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"code": code}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+
+    // Test SQL injection attempt in orderby field
+    let malicious_inputs = vec![
+        "code; DROP TABLE currency;--",
+        "code' OR '1'='1",
+        "code UNION SELECT * FROM users",
+        "code/**/OR/**/1=1",
+        "code\"; DROP TABLE currency;--",
+        "1; DELETE FROM currency",
+    ];
+
+    for malicious_input in malicious_inputs {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(&format!("/currencies?_orderby={}", urlencoding::encode(malicious_input)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // Should reject with 400
+        assert_eq!(
+            response.status(),
+            StatusCode::BAD_REQUEST,
+            "Expected 400 for SQL injection attempt '{}', got {}",
+            malicious_input,
+            response.status()
+        );
+    }
+
+    // Test valid orderby patterns
+    let valid_inputs = vec![
+        "code",
+        "-code",
+        "created",
+        "-created",
+        "code,created",
+        "-code,-created",
+    ];
+
+    for valid_input in valid_inputs {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(&format!("/currencies?_orderby={}", valid_input))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "Expected OK for valid orderby '{}', got {}",
+            valid_input,
+            response.status()
+        );
+    }
+}
+
+#[tokio::test]
 async fn test_ledger_crud_operations() {
     let app_state = common::setup_test_app_state().await;
     let app = api::router(app_state.clone()).with_state(app_state);
