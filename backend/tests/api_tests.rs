@@ -13,28 +13,73 @@ async fn test_create_and_get_currency() {
     let app_state = common::setup_test_app_state().await;
     let app = api::router(app_state.clone()).with_state(app_state);
 
-    // Create a currency
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/currencies")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    json!({
-                        "code": "USD"
-                    })
-                    .to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    // Test various valid currency code formats
+    let valid_codes = vec![
+        "USD",     // Standard 3-letter
+        "GOOG",    // Stock symbol
+        "BTC",     // Cryptocurrency
+        "US-D",    // With hyphen
+        "US_D",    // With underscore
+        "US.D",    // With dot
+        "USD2",    // With number at end
+        "A1",      // Letter and number
+    ];
 
-    assert_eq!(response.status(), StatusCode::CREATED);
+    for code in &valid_codes {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/currencies")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"code": code}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-    // List currencies
+        assert_eq!(
+            response.status(),
+            StatusCode::CREATED,
+            "Failed to create currency with code: {}",
+            code
+        );
+    }
+
+    // Test invalid currency codes are rejected
+    let invalid_codes = vec![
+        "usd",     // Lowercase
+        "1USD",    // Starts with number
+        "-USD",    // Starts with special char
+        "USD-",    // Ends with special char
+        "U",       // Too short
+        "US$D",    // Invalid character
+    ];
+
+    for code in &invalid_codes {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/currencies")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"code": code}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            response.status(),
+            StatusCode::BAD_REQUEST,
+            "Should have rejected invalid currency code: {}",
+            code
+        );
+    }
+
+    // List currencies and verify they were created
     let response = app
         .oneshot(
             Request::builder()
@@ -54,6 +99,7 @@ async fn test_create_and_get_currency() {
 
     let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
     assert!(currencies.iter().any(|c| c["code"] == "USD"));
+    assert!(currencies.iter().any(|c| c["code"] == "GOOG"));
 }
 
 #[tokio::test]
