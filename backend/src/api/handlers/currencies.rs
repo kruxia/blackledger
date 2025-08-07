@@ -24,7 +24,7 @@ pub async fn handle_create_currency(
     // Validate currency code
     if !Currency::is_valid_code(&input.code) {
         return Err(crate::error::ApiError::Validation(
-            "Currency code must be 3 uppercase letters".to_string(),
+            "Invalid currency code".to_string(),
         ));
     }
 

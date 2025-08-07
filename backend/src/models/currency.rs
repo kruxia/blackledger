@@ -15,7 +15,7 @@ static CURRENCY_CODE_REGEX: OnceLock<Regex> = OnceLock::new();
 impl Currency {
     pub fn is_valid_code(code: &str) -> bool {
         let regex = CURRENCY_CODE_REGEX.get_or_init(|| {
-            Regex::new(r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$").expect("Invalid regex pattern")
+            Regex::new(r"^[A-Z][A-Z0-9\.\-_]*[A-Z0-9]$").expect("Invalid currency code")
         });
         regex.is_match(code)
     }
