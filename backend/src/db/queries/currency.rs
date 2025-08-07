@@ -25,6 +25,38 @@ pub async fn create_currency(pool: &PgPool, code: &str) -> ApiResult<Currency> {
     })
 }
 
+pub async fn create_currencies_batch(pool: &PgPool, codes: &[String]) -> ApiResult<Vec<Currency>> {
+    // Start a transaction to ensure atomicity
+    let mut tx = pool.begin().await?;
+    
+    let mut currencies = Vec::new();
+    
+    for code in codes {
+        let record = sqlx::query!(
+            r#"
+            INSERT INTO currency (code)
+            VALUES ($1)
+            ON CONFLICT (code) DO UPDATE 
+            SET code = EXCLUDED.code  -- No-op update to trigger RETURNING
+            RETURNING code, created
+            "#,
+            code
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        
+        currencies.push(Currency {
+            code: record.code,
+            created: record.created,
+        });
+    }
+    
+    // Commit the transaction
+    tx.commit().await?;
+    
+    Ok(currencies)
+}
+
 pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Currency> {
     let record = sqlx::query!(
         r#"SELECT code, created FROM currency WHERE code = $1"#,

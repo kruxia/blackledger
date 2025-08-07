@@ -210,3 +210,118 @@ pub async fn reverse_transaction(
 
     post_transaction(pool, &reversal_input, user_id).await
 }
+
+/// Posts multiple transactions in a single atomic database transaction
+///
+/// All transactions must succeed or the entire batch will be rolled back.
+///
+/// # Arguments
+///
+/// * `pool` - Database connection pool
+/// * `inputs` - Transactions to post
+/// * `user_id` - Optional user ID for audit trail
+///
+/// # Returns
+///
+/// Vector of posted transactions and their entries
+///
+/// # Errors
+///
+/// - `ApiError::Validation` - Any transaction is invalid
+/// - `ApiError::OptimisticLockError` - Account version mismatch in any transaction
+/// - `ApiError::Database` - Database operation failed
+pub async fn post_transactions_batch(
+    pool: &PgPool,
+    inputs: &[CreateTransaction],
+    user_id: Option<&str>,
+) -> ApiResult<Vec<(Transaction, Vec<Entry>)>> {
+    // Validate all transactions first
+    for input in inputs {
+        validate_transaction(pool, input).await?;
+    }
+
+    // Start a single database transaction for all operations
+    let mut tx = pool.begin().await?;
+    let mut results = Vec::new();
+
+    for input in inputs {
+        // Validate account versions with row locking
+        validate_account_versions(pool, &input.entries, &mut tx).await?;
+
+        let posted = Utc::now();
+        let mut meta = input.meta.clone();
+
+        if let Some(uid) = user_id {
+            let user_meta = serde_json::json!({
+                "posted_by": uid,
+                "posted_at": posted.to_rfc3339(),
+            });
+
+            if let Some(ref mut existing_meta) = meta {
+                if let serde_json::Value::Object(map) = existing_meta {
+                    map.insert("audit".to_string(), user_meta);
+                }
+            } else {
+                meta = Some(serde_json::json!({
+                    "audit": user_meta
+                }));
+            }
+        }
+
+        let transaction = sqlx::query_as::<_, Transaction>(
+            r#"
+            INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(input.ledger_id)
+        .bind(posted)
+        .bind(input.effective)
+        .bind(&input.memo)
+        .bind(&meta)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let mut entries = Vec::new();
+
+        for entry_input in &input.entries {
+            let entry = sqlx::query_as::<_, Entry>(
+                r#"
+                INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *
+                "#,
+            )
+            .bind(input.ledger_id)
+            .bind(transaction.id)
+            .bind(entry_input.account_id)
+            .bind(&entry_input.currency_code)
+            .bind(entry_input.debit)
+            .bind(entry_input.credit)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE account
+                SET version = $1
+                WHERE id = $2
+                "#,
+            )
+            .bind(entry.id)
+            .bind(entry_input.account_id)
+            .execute(&mut *tx)
+            .await?;
+
+            entries.push(entry);
+        }
+
+        results.push((transaction, entries));
+    }
+
+    // Commit all transactions together
+    tx.commit().await?;
+
+    Ok(results)
+}

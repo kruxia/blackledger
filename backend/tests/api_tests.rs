@@ -25,27 +25,29 @@ async fn test_create_and_get_currency() {
         "A1",   // Letter and number
     ];
 
-    for code in &valid_codes {
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/currencies")
-                    .header("content-type", "application/json")
-                    .body(Body::from(json!({"code": code}).to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+    // Create all valid currencies at once
+    let currency_requests: Vec<_> = valid_codes.iter()
+        .map(|code| json!({"code": code}))
+        .collect();
+    
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/currencies")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&currency_requests).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(
-            response.status(),
-            StatusCode::CREATED,
-            "Failed to create currency with code: {}",
-            code
-        );
-    }
+    assert_eq!(
+        response.status(),
+        StatusCode::CREATED,
+        "Failed to create currencies"
+    );
 
     // Test invalid currency codes are rejected
     let invalid_codes = vec![
@@ -57,7 +59,13 @@ async fn test_create_and_get_currency() {
         "US$D", // Invalid character
     ];
 
+    // Test that any invalid code in the batch causes rejection
     for code in &invalid_codes {
+        let invalid_request = vec![
+            json!({"code": "EUR"}),  // Valid
+            json!({"code": code}),    // Invalid
+        ];
+        
         let response = app
             .clone()
             .oneshot(
@@ -65,7 +73,7 @@ async fn test_create_and_get_currency() {
                     .method("POST")
                     .uri("/currencies")
                     .header("content-type", "application/json")
-                    .body(Body::from(json!({"code": code}).to_string()))
+                    .body(Body::from(serde_json::to_string(&invalid_request).unwrap()))
                     .unwrap(),
             )
             .await
@@ -74,7 +82,7 @@ async fn test_create_and_get_currency() {
         assert_eq!(
             response.status(),
             StatusCode::BAD_REQUEST,
-            "Should have rejected invalid currency code: {}",
+            "Should have rejected batch with invalid currency code: {}",
             code
         );
     }
@@ -108,19 +116,22 @@ async fn test_currency_search_with_regex() {
     let app = api::router(app_state.clone()).with_state(app_state);
 
     // Create multiple currencies with unique codes for this test
-    for code in &["XYZ", "EUR", "GBP", "JPY", "CAD", "AUD"] {
-        app.clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/currencies")
-                    .header("content-type", "application/json")
-                    .body(Body::from(json!({"code": code}).to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-    }
+    let currency_batch: Vec<_> = ["XYZ", "EUR", "GBP", "JPY", "CAD", "AUD"]
+        .iter()
+        .map(|code| json!({"code": code}))
+        .collect();
+    
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/currencies")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&currency_batch).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
     // Test single regex pattern - should match XYZ only
     let response = app
@@ -222,22 +233,25 @@ async fn test_currency_pagination_and_sorting() {
     let app = api::router(app_state.clone()).with_state(app_state);
 
     // Create multiple currencies for testing
-    let currencies = [
+    let currency_codes = [
         "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK",
     ];
-    for code in &currencies {
-        app.clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/currencies")
-                    .header("content-type", "application/json")
-                    .body(Body::from(json!({"code": code}).to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-    }
+    let currency_batch: Vec<_> = currency_codes
+        .iter()
+        .map(|code| json!({"code": code}))
+        .collect();
+    
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/currencies")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&currency_batch).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
     // Test pagination with limit
     let response = app
@@ -405,7 +419,7 @@ async fn test_name_filter_validation() {
                 .method("POST")
                 .uri("/ledgers")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"name": ledger_name}).to_string()))
+                .body(Body::from(json!([{"name": ledger_name}]).to_string()))
                 .unwrap(),
         )
         .await
@@ -414,7 +428,8 @@ async fn test_name_filter_validation() {
     let ledger_body = axum::body::to_bytes(ledger_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledger: Value = serde_json::from_slice(&ledger_body).unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&ledger_body).unwrap();
+    let ledger = &ledgers[0];
     let ledger_id = ledger["id"].as_i64().unwrap();
 
     // Test valid name patterns
@@ -650,26 +665,33 @@ async fn test_ledger_search() {
         format!("Analytics Platform {}", timestamp),
     ];
 
-    let mut ledger_ids = Vec::new();
-    for name in &ledger_names {
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/ledgers")
-                    .header("content-type", "application/json")
-                    .body(Body::from(json!({"name": name}).to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+    // Create all ledgers at once
+    let ledger_batch: Vec<_> = ledger_names
+        .iter()
+        .map(|name| json!({"name": name}))
+        .collect();
+    
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/ledgers")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&ledger_batch).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(response.status(), StatusCode::CREATED);
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let ledger: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created_ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    
+    let mut ledger_ids = Vec::new();
+    for ledger in &created_ledgers {
         ledger_ids.push(ledger["id"].as_i64().unwrap());
     }
 
@@ -781,7 +803,7 @@ async fn test_ledger_crud_operations() {
     let app_state = common::setup_test_app_state().await;
     let app = api::router(app_state.clone()).with_state(app_state);
 
-    // Create a ledger
+    // Create a ledger (now expects array)
     let create_response = app
         .clone()
         .oneshot(
@@ -790,13 +812,13 @@ async fn test_ledger_crud_operations() {
                 .uri("/ledgers")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "name": format!("Test Ledger CRUD {}",
                             std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_nanos())
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -809,8 +831,8 @@ async fn test_ledger_crud_operations() {
     let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledger: Value = serde_json::from_slice(&body).unwrap();
-    let ledger_id = ledger["id"].as_i64().unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let ledger_id = ledgers[0]["id"].as_i64().unwrap();
 
     // Update ledger
     let update_response = app
@@ -869,7 +891,7 @@ async fn test_account_search_parameters() {
                 .method("POST")
                 .uri("/ledgers")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"name": ledger_name}).to_string()))
+                .body(Body::from(json!([{"name": ledger_name}]).to_string()))
                 .unwrap(),
         )
         .await
@@ -878,8 +900,8 @@ async fn test_account_search_parameters() {
     let ledger_body = axum::body::to_bytes(ledger_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledger: Value = serde_json::from_slice(&ledger_body).unwrap();
-    let ledger_id = ledger["id"].as_i64().unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&ledger_body).unwrap();
+    let ledger_id = ledgers[0]["id"].as_i64().unwrap();
 
     // Create multiple accounts with different attributes
     let accounts_data = vec![
@@ -891,25 +913,27 @@ async fn test_account_search_parameters() {
         json!({"ledger_id": ledger_id, "name": "Revenue", "number": 300, "normal": "CR"}),
     ];
 
-    let mut created_account_ids = Vec::new();
-    for account_data in accounts_data {
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/accounts")
-                    .header("content-type", "application/json")
-                    .body(Body::from(account_data.to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+    // Create all accounts at once
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/accounts")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_string(&accounts_data).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
 
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let account: Value = serde_json::from_slice(&body).unwrap();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let created_accounts: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    
+    let mut created_account_ids = Vec::new();
+    for account in &created_accounts {
         created_account_ids.push(account["id"].as_i64().unwrap());
     }
 
@@ -1077,7 +1101,7 @@ async fn test_account_operations() {
     let _pool = app_state.pool.clone();
     let app = api::router(app_state.clone()).with_state(app_state);
 
-    // First create a ledger
+    // First create a ledger (now expects array)
     let ledger_response = app
         .clone()
         .oneshot(
@@ -1086,13 +1110,13 @@ async fn test_account_operations() {
                 .uri("/ledgers")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "name": format!("Account Test Ledger {}",
                             std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_nanos())
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1103,10 +1127,10 @@ async fn test_account_operations() {
     let body = axum::body::to_bytes(ledger_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledger: Value = serde_json::from_slice(&body).unwrap();
-    let ledger_id = ledger["id"].as_i64().unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let ledger_id = ledgers[0]["id"].as_i64().unwrap();
 
-    // Create an account
+    // Create an account (now expects array)
     let account_response = app
         .clone()
         .oneshot(
@@ -1115,12 +1139,12 @@ async fn test_account_operations() {
                 .uri("/accounts")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "ledger_id": ledger_id,
                         "number": 1000,
                         "name": "Cash",
                         "normal": "DR"
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1133,9 +1157,9 @@ async fn test_account_operations() {
     let body = axum::body::to_bytes(account_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let account: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(account["number"], 1000);
-    assert_eq!(account["name"], "Cash");
+    let accounts: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(accounts[0]["number"], 1000);
+    assert_eq!(accounts[0]["name"], "Cash");
 }
 
 #[tokio::test]
@@ -1150,7 +1174,7 @@ async fn test_transaction_posting() {
     let cash_account_id = create_test_account(&app, ledger_id, "1000", "Cash", "DR").await;
     let revenue_account_id = create_test_account(&app, ledger_id, "4000", "Revenue", "CR").await;
 
-    // Post a transaction
+    // Post a transaction (now expects array)
     let transaction_response = app
         .clone()
         .oneshot(
@@ -1159,7 +1183,7 @@ async fn test_transaction_posting() {
                 .uri("/transactions")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "ledger_id": ledger_id,
                         "effective": "2024-01-01T00:00:00Z",
                         "memo": "Test transaction",
@@ -1175,7 +1199,7 @@ async fn test_transaction_posting() {
                                 "credit": "100.00"
                             }
                         ]
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1209,7 +1233,7 @@ async fn test_unbalanced_transaction_rejection() {
     let cash_account_id = create_test_account(&app, ledger_id, "1000", "Cash", "DR").await;
     let revenue_account_id = create_test_account(&app, ledger_id, "4000", "Revenue", "CR").await;
 
-    // Try to post an unbalanced transaction
+    // Try to post an unbalanced transaction (now expects array)
     let transaction_response = app
         .clone()
         .oneshot(
@@ -1218,7 +1242,7 @@ async fn test_unbalanced_transaction_rejection() {
                 .uri("/transactions")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "ledger_id": ledger_id,
                         "effective": "2024-01-01T00:00:00Z",
                         "memo": "Unbalanced transaction",
@@ -1234,7 +1258,7 @@ async fn test_unbalanced_transaction_rejection() {
                                 "credit": "50.00"  // Doesn't balance!
                             }
                         ]
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1261,7 +1285,7 @@ async fn create_test_ledger(app: &axum::Router) -> i64 {
                 .method("POST")
                 .uri("/ledgers")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"name": ledger_name}).to_string()))
+                .body(Body::from(json!([{"name": ledger_name}]).to_string()))
                 .unwrap(),
         )
         .await
@@ -1270,8 +1294,8 @@ async fn create_test_ledger(app: &axum::Router) -> i64 {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledger: Value = serde_json::from_slice(&body).unwrap();
-    ledger["id"].as_i64().unwrap()
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    ledgers[0]["id"].as_i64().unwrap()
 }
 
 async fn create_test_currency(app: &axum::Router, code: &str) {
@@ -1282,9 +1306,9 @@ async fn create_test_currency(app: &axum::Router, code: &str) {
                 .uri("/currencies")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "code": code
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1308,12 +1332,12 @@ async fn create_test_account(
                 .uri("/accounts")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    json!({
+                    json!([{
                         "ledger_id": ledger_id,
                         "number": number.parse::<i16>().ok(),
                         "name": name,
                         "normal": normal_balance
-                    })
+                    }])
                     .to_string(),
                 ))
                 .unwrap(),
@@ -1324,6 +1348,6 @@ async fn create_test_account(
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let account: Value = serde_json::from_slice(&body).unwrap();
-    account["id"].as_i64().unwrap()
+    let accounts: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    accounts[0]["id"].as_i64().unwrap()
 }

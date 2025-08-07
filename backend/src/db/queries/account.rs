@@ -43,6 +43,55 @@ pub async fn create_account(pool: &PgPool, input: &CreateAccount) -> ApiResult<A
     })
 }
 
+pub async fn create_accounts_batch(pool: &PgPool, inputs: &[CreateAccount]) -> ApiResult<Vec<Account>> {
+    // Start a transaction to ensure atomicity
+    let mut tx = pool.begin().await?;
+    
+    let mut accounts = Vec::new();
+    
+    for input in inputs {
+        let normal_str = match input.normal {
+            NormalBalance::Debit => "DR",
+            NormalBalance::Credit => "CR",
+        };
+
+        let record = sqlx::query!(
+            r#"
+            INSERT INTO account (ledger_id, parent_id, name, number, normal)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, ledger_id, parent_id, name, number, normal, version, created
+            "#,
+            input.ledger_id,
+            input.parent_id,
+            input.name,
+            input.number,
+            normal_str
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        
+        accounts.push(Account {
+            id: record.id,
+            ledger_id: record.ledger_id,
+            parent_id: record.parent_id,
+            name: record.name,
+            number: record.number,
+            normal: match record.normal.as_str() {
+                "DR" => NormalBalance::Debit,
+                "CR" => NormalBalance::Credit,
+                _ => NormalBalance::Debit,
+            },
+            version: record.version,
+            created: record.created,
+        });
+    }
+    
+    // Commit the transaction
+    tx.commit().await?;
+    
+    Ok(accounts)
+}
+
 pub async fn get_account_by_id(pool: &PgPool, id: i64) -> ApiResult<Account> {
     let record = sqlx::query!(
         r#"SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE id = $1"#,

@@ -30,13 +30,13 @@ pub fn router(state: AppState) -> Router<AppState> {
         .route(
             "/currencies",
             get(handlers::currencies::handle_search_currencies)
-                .post(handlers::currencies::handle_create_currency),
+                .post(handlers::currencies::handle_create_currencies),
         )
         // Ledger endpoints
         .route(
             "/ledgers",
             get(handlers::ledgers::handle_search_ledgers)
-                .post(handlers::ledgers::handle_create_ledger),
+                .post(handlers::ledgers::handle_create_ledgers),
         )
         .route(
             "/ledgers/:id",
@@ -45,8 +45,8 @@ pub fn router(state: AppState) -> Router<AppState> {
         // Account endpoints
         .route(
             "/accounts",
-            get(handlers::accounts::handle_list_accounts)
-                .post(handlers::accounts::handle_create_account),
+            get(handlers::accounts::handle_search_accounts)
+                .post(handlers::accounts::handle_create_accounts),
         )
         .route(
             "/accounts/:id",
@@ -59,8 +59,8 @@ pub fn router(state: AppState) -> Router<AppState> {
         // Transaction endpoints
         .route(
             "/transactions",
-            get(handlers::transactions::handle_list_transactions)
-                .post(handlers::transactions::handle_create_transaction),
+            get(handlers::transactions::handle_search_transactions)
+                .post(handlers::transactions::handle_create_transactions),
         )
         .layer(TraceLayer::new_for_http())
         .layer(axum_middleware::from_fn_with_state(

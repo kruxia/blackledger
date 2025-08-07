@@ -12,7 +12,8 @@ use crate::{
         search::AccountSearchParams,
     },
     db::queries::account::{
-        count_accounts, create_account, get_account_balances, search_accounts, update_account,
+        count_accounts, create_accounts_batch, get_account_balances, search_accounts,
+        update_account,
     },
     error::ApiResult,
     models::account::{Account, AccountBalance, CreateAccount, UpdateAccount},
@@ -24,12 +25,12 @@ pub struct GetBalancesQuery {
     pub account_ids: Option<Vec<i64>>,
 }
 
-pub async fn handle_create_account(
+pub async fn handle_create_accounts(
     State(state): State<AppState>,
-    Json(input): Json<CreateAccount>,
-) -> ApiResult<(StatusCode, Json<Account>)> {
-    let account = create_account(&state.pool, &input).await?;
-    Ok((StatusCode::CREATED, Json(account)))
+    Json(input): Json<Vec<CreateAccount>>,
+) -> ApiResult<(StatusCode, Json<Vec<Account>>)> {
+    let accounts = create_accounts_batch(&state.pool, &input).await?;
+    Ok((StatusCode::CREATED, Json(accounts)))
 }
 
 pub async fn handle_update_account(
@@ -41,7 +42,7 @@ pub async fn handle_update_account(
     Ok(Json(account))
 }
 
-pub async fn handle_list_accounts(
+pub async fn handle_search_accounts(
     State(state): State<AppState>,
     Query(params): Query<AccountSearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Account>>> {

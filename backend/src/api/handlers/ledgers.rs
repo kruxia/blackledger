@@ -6,17 +6,17 @@ use axum::{
 
 use crate::{
     api::{AppState, search::LedgerSearchParams},
-    db::queries::ledger::{create_ledger, search_ledgers, update_ledger},
+    db::queries::ledger::{create_ledgers_batch, search_ledgers, update_ledger},
     error::ApiResult,
     models::ledger::{CreateLedger, Ledger, UpdateLedger},
 };
 
-pub async fn handle_create_ledger(
+pub async fn handle_create_ledgers(
     State(state): State<AppState>,
-    Json(input): Json<CreateLedger>,
-) -> ApiResult<(StatusCode, Json<Ledger>)> {
-    let ledger = create_ledger(&state.pool, &input).await?;
-    Ok((StatusCode::CREATED, Json(ledger)))
+    Json(input): Json<Vec<CreateLedger>>,
+) -> ApiResult<(StatusCode, Json<Vec<Ledger>>)> {
+    let ledgers = create_ledgers_batch(&state.pool, &input).await?;
+    Ok((StatusCode::CREATED, Json(ledgers)))
 }
 
 pub async fn handle_update_ledger(

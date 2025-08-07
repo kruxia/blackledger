@@ -5,7 +5,7 @@ use axum::{
 };
 use serde::Serialize;
 
-use crate::services::posting::post_transaction;
+use crate::services::posting::post_transactions_batch;
 use crate::{
     api::{
         AppState,
@@ -26,24 +26,26 @@ pub struct TransactionWithEntries {
     pub entries: Vec<Entry>,
 }
 
-pub async fn handle_create_transaction(
+pub async fn handle_create_transactions(
     State(state): State<AppState>,
     OptionalAuthUser(auth_user): OptionalAuthUser,
-    Json(input): Json<CreateTransaction>,
-) -> ApiResult<(StatusCode, Json<TransactionWithEntries>)> {
+    Json(input): Json<Vec<CreateTransaction>>,
+) -> ApiResult<(StatusCode, Json<Vec<TransactionWithEntries>>)> {
     let user_id = auth_user.as_ref().map(|u| u.sub.as_str());
-    let (transaction, entries) = post_transaction(&state.pool, &input, user_id).await?;
+    let results = post_transactions_batch(&state.pool, &input, user_id).await?;
 
-    Ok((
-        StatusCode::CREATED,
-        Json(TransactionWithEntries {
+    let response: Vec<TransactionWithEntries> = results
+        .into_iter()
+        .map(|(transaction, entries)| TransactionWithEntries {
             transaction,
             entries,
-        }),
-    ))
+        })
+        .collect();
+
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
-pub async fn handle_list_transactions(
+pub async fn handle_search_transactions(
     State(state): State<AppState>,
     Query(params): Query<TransactionSearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Transaction>>> {

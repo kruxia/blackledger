@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::{
     api::{AppState, search::CurrencySearchParams},
-    db::queries::currency::{create_currency, search_currencies},
+    db::queries::currency::{create_currencies_batch, search_currencies},
     error::ApiResult,
     models::currency::Currency,
 };
@@ -17,20 +17,24 @@ pub struct CreateCurrencyRequest {
     pub code: String,
 }
 
-pub async fn handle_create_currency(
+pub async fn handle_create_currencies(
     State(state): State<AppState>,
-    Json(input): Json<CreateCurrencyRequest>,
-) -> ApiResult<(StatusCode, Json<Currency>)> {
-    // Validate currency code
-    if !Currency::is_valid_code(&input.code) {
-        return Err(crate::error::ApiError::Validation(
-            "Invalid currency code".to_string(),
-        ));
+    Json(input): Json<Vec<CreateCurrencyRequest>>,
+) -> ApiResult<(StatusCode, Json<Vec<Currency>>)> {
+    // Validate all currency codes first
+    for req in &input {
+        if !Currency::is_valid_code(&req.code) {
+            return Err(crate::error::ApiError::Validation(format!(
+                "Invalid currency code: {}",
+                req.code
+            )));
+        }
     }
 
-    let currency = create_currency(&state.pool, &input.code).await?;
+    let codes: Vec<String> = input.into_iter().map(|req| req.code).collect();
+    let currencies = create_currencies_batch(&state.pool, &codes).await?;
 
-    Ok((StatusCode::CREATED, Json(currency)))
+    Ok((StatusCode::CREATED, Json(currencies)))
 }
 
 pub async fn handle_search_currencies(
