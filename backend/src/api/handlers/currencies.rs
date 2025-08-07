@@ -1,9 +1,13 @@
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::Json,
+};
 use serde::Deserialize;
 
 use crate::{
-    api::AppState,
-    db::queries::currency::{create_currency, list_currencies},
+    api::{AppState, search::CurrencySearchParams},
+    db::queries::currency::{create_currency, search_currencies},
     error::ApiResult,
     models::currency::Currency,
 };
@@ -29,9 +33,10 @@ pub async fn handle_create_currency(
     Ok((StatusCode::CREATED, Json(currency)))
 }
 
-pub async fn handle_list_currencies(
+pub async fn handle_search_currencies(
     State(state): State<AppState>,
+    Query(params): Query<CurrencySearchParams>,
 ) -> ApiResult<Json<Vec<Currency>>> {
-    let currencies = list_currencies(&state.pool).await?;
+    let currencies = search_currencies(&state.pool, &params).await?;
     Ok(Json(currencies))
 }

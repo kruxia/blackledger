@@ -28,7 +28,7 @@ pub fn router(state: AppState) -> Router<AppState> {
         // Currency endpoints
         .route(
             "/currencies",
-            get(handlers::currencies::handle_list_currencies)
+            get(handlers::currencies::handle_search_currencies)
                 .post(handlers::currencies::handle_create_currency),
         )
         // Ledger endpoints

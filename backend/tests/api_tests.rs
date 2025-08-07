@@ -57,6 +57,246 @@ async fn test_create_and_get_currency() {
 }
 
 #[tokio::test]
+async fn test_currency_search_with_regex() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create multiple currencies
+    for code in &["USD", "EUR", "GBP", "JPY", "CAD", "AUD"] {
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/currencies")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"code": code}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+
+    // Test single regex pattern
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?code=^U")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(currencies.len(), 1);
+    assert_eq!(currencies[0]["code"], "USD");
+
+    // Test comma-delimited patterns
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?code=^U,^E")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(currencies.len(), 2);
+    let codes: Vec<String> = currencies.iter().map(|c| c["code"].as_str().unwrap().to_string()).collect();
+    assert!(codes.contains(&"USD".to_string()));
+    assert!(codes.contains(&"EUR".to_string()));
+
+    // Test case-insensitive matching
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?code=usd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(currencies.len(), 1);
+    assert_eq!(currencies[0]["code"], "USD");
+
+    // Test pattern matching within string
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?code=.*D$")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let codes: Vec<String> = currencies.iter().map(|c| c["code"].as_str().unwrap().to_string()).collect();
+    assert!(codes.contains(&"USD".to_string()));
+    assert!(codes.contains(&"CAD".to_string()));
+    assert!(codes.contains(&"AUD".to_string()));
+}
+
+#[tokio::test]
+async fn test_currency_pagination_and_sorting() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create multiple currencies for testing
+    let currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK"];
+    for code in &currencies {
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/currencies")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"code": code}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+    }
+
+    // Test pagination with limit
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?_limit=3")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let status = response.status();
+    if status != StatusCode::OK {
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        eprintln!("Response body: {}", String::from_utf8_lossy(&body));
+        panic!("Expected OK, got {}", status);
+    }
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(currencies.len(), 3);
+
+    // Test pagination with offset
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?_limit=3&_offset=3")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let currencies_page2: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(currencies_page2.len(), 3);
+    // Ensure we got different currencies
+    assert_ne!(currencies[0]["code"], currencies_page2[0]["code"]);
+
+    // Test sorting ascending
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?_orderby=code")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let sorted_asc: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(sorted_asc[0]["code"], "AUD");
+
+    // Test sorting descending
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?_orderby=-code")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let sorted_desc: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(sorted_desc[0]["code"], "USD");
+
+    // Test combination of filtering, pagination and sorting
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/currencies?code=^[AC]&_orderby=-code&_limit=2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let filtered: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(filtered.len(), 2);
+    assert_eq!(filtered[0]["code"], "CHF");
+    assert_eq!(filtered[1]["code"], "CAD");
+}
+
+#[tokio::test]
 async fn test_ledger_crud_operations() {
     let app_state = common::setup_test_app_state().await;
     let app = api::router(app_state.clone()).with_state(app_state);

@@ -51,8 +51,8 @@ pub async fn handle_list_transactions(
     let total = count_transactions(&state.pool, &params).await?;
 
     let pagination = PaginationParams {
-        page: params.common.page.unwrap_or(1),
-        size: params.common.size.unwrap_or(20),
+        page: (params.base.get_offset() / params.base.get_limit() + 1) as u32,
+        size: params.base.get_limit() as u32,
     };
 
     let response = PaginatedResponse::new(transactions, &pagination, Some(total));

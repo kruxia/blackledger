@@ -230,9 +230,8 @@ pub async fn search_accounts(
     pool: &PgPool,
     params: &crate::api::search::AccountSearchParams,
 ) -> ApiResult<Vec<Account>> {
-    let page = params.common.page.unwrap_or(1) as i64;
-    let size = params.common.size.unwrap_or(20) as i64;
-    let offset = (page - 1) * size;
+    let limit = params.base.get_limit() as i64;
+    let offset = params.base.get_offset() as i64;
 
     // Build dynamic query based on search parameters
     let mut query = String::from("SELECT * FROM account WHERE 1=1");
@@ -263,18 +262,18 @@ pub async fn search_accounts(
         bindings.push(format!("%{}%", number));
     }
 
-    // Add sorting
-    let sort_column = params.common.sort_by.as_deref().unwrap_or("created");
-    let sort_order = match params.common.sort_order.as_ref() {
-        Some(crate::api::search::SortOrder::Asc) => "ASC",
-        _ => "DESC",
-    };
-    query.push_str(&format!(" ORDER BY {} {}", sort_column, sort_order));
+    // Add sorting based on SearchParams
+    if let Some(order_clause) = params.base.parse_order_by() {
+        query.push_str(&format!(" ORDER BY {}", order_clause));
+    } else {
+        // Default ordering
+        query.push_str(" ORDER BY created DESC");
+    }
 
     // Add pagination
     bind_count += 1;
     query.push_str(&format!(" LIMIT ${}", bind_count));
-    bindings.push(size.to_string());
+    bindings.push(limit.to_string());
 
     bind_count += 1;
     query.push_str(&format!(" OFFSET ${}", bind_count));
@@ -287,12 +286,12 @@ pub async fn search_accounts(
             pool,
             Some(ledger_id),
             params.parent_id,
-            Some(size),
+            Some(limit),
             Some(offset),
         )
         .await?
     } else {
-        list_accounts(pool, None, params.parent_id, Some(size), Some(offset)).await?
+        list_accounts(pool, None, params.parent_id, Some(limit), Some(offset)).await?
     };
 
     Ok(accounts)
