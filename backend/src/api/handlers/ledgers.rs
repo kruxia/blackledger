@@ -28,7 +28,7 @@ pub async fn handle_update_ledger(
     Ok(Json(ledger))
 }
 
-pub async fn handle_list_ledgers(
+pub async fn handle_search_ledgers(
     State(state): State<AppState>,
     Query(params): Query<LedgerSearchParams>,
 ) -> ApiResult<Json<Vec<Ledger>>> {

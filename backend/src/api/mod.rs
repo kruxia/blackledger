@@ -34,7 +34,7 @@ pub fn router(state: AppState) -> Router<AppState> {
         // Ledger endpoints
         .route(
             "/ledgers",
-            get(handlers::ledgers::handle_list_ledgers)
+            get(handlers::ledgers::handle_search_ledgers)
                 .post(handlers::ledgers::handle_create_ledger),
         )
         .route(
