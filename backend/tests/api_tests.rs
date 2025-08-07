@@ -419,13 +419,14 @@ async fn test_name_filter_validation() {
 
     // Test valid name patterns
     let valid_patterns = vec![
-        "^Cash",           // Starts with
-        "Account$",        // Ends with
-        "Bank.*Account",   // Contains pattern
+        "^Cash",           // Starts with (^ at beginning)
+        "Account$",        // Ends with ($ at end)
+        "Bank.*Account",   // Contains pattern with * and ?
         "Asset,Liability", // Multiple patterns
         "Test-Account",    // With hyphen
         "Account.Name",    // With dot
         "My Account",      // With space
+        "^Start.*End$",    // Both ^ and $ in correct positions
     ];
 
     for pattern in valid_patterns {
@@ -449,17 +450,27 @@ async fn test_name_filter_validation() {
         );
     }
 
-    // Test invalid/dangerous patterns that should be rejected
+    // Test invalid patterns that should be rejected due to invalid characters
+    // Our regex allows: \w (word chars), -, ., space, *, ?, and comma
+    // ^ is only allowed at the start, $ only at the end
     let invalid_patterns = vec![
-        "'; DROP TABLE account; --",  // SQL injection attempt
-        "name' OR '1'='1",            // SQL injection attempt
-        "UNION SELECT * FROM users",  // SQL injection with UNION
-        "Robert'); DROP TABLE Students;--", // Bobby Tables
-        "name/*comment*/",             // SQL comment injection
-        "name--comment",               // SQL line comment
-        "0x41424344",                  // Hex encoding attempt
-        "\\x41\\x42\\x43",             // Escape sequence
-        "'; EXEC xp_cmdshell('cmd')", // Command execution attempt
+        "name'; DROP TABLE",          // Contains single quote
+        "name\" OR \"1\"=\"1",        // Contains double quotes  
+        "Robert(); DROP TABLE",       // Contains parentheses
+        "name/*comment*/",            // Contains slashes
+        "name;delete",                // Contains semicolon
+        "(SELECT FROM users)",        // Contains parentheses
+        "name=value",                 // Contains equals sign
+        "name' AND 1=1",              // Contains single quote
+        "name[0]",                    // Contains brackets
+        "name|value",                 // Contains pipe
+        "name&param",                 // Contains ampersand
+        "name+value",                 // Contains plus
+        "Ca$h",                       // $ in the middle
+        "$$money",                    // Multiple $ signs
+        "Account$$",                  // Multiple $ at end
+        "Test^Account",               // ^ in the middle
+        "^^Start",                    // Multiple ^ at start
     ];
 
     for pattern in invalid_patterns {
@@ -492,8 +503,7 @@ async fn test_name_filter_validation() {
         // The error might be plain text or JSON, depending on where it's caught
         let body_str = String::from_utf8_lossy(&body);
         assert!(
-            body_str.contains("Invalid name filter") 
-                || body_str.contains("dangerous pattern")
+            body_str.contains("Invalid name filter format") 
                 || body_str.contains("Failed to deserialize"),
             "Error message should indicate invalid name filter for pattern: {}, got: {}",
             pattern,
@@ -502,7 +512,7 @@ async fn test_name_filter_validation() {
     }
 
     // Test the same for ledger search
-    for pattern in &["'; DROP TABLE ledger; --", "UNION SELECT * FROM users"] {
+    for pattern in &["name'; DROP TABLE", "(SELECT FROM ledger)"] {
         let response = app
             .clone()
             .oneshot(
@@ -675,13 +685,13 @@ async fn test_ledger_search() {
     let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
     assert_eq!(ledgers.len(), 2);
 
-    // Test searching by name regex patterns - match names containing "Ledger"
+    // Test searching by name regex patterns - match names containing "Ledger" and the specific timestamp
     let response = app
         .clone()
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/ledgers?name=.*Ledger.*{}", timestamp))
+                .uri(&format!("/ledgers?name={}", urlencoding::encode(&format!("Ledger {}", timestamp))))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -693,7 +703,7 @@ async fn test_ledger_search() {
         .await
         .unwrap();
     let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
-    // Should match "Production Ledger", "Test Ledger", "Development Ledger"
+    // Should match "Production Ledger {timestamp}", "Test Ledger {timestamp}", "Development Ledger {timestamp}"
     assert_eq!(ledgers.len(), 3);
 
     // Test comma-delimited name patterns

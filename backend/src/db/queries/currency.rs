@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, QueryBuilder, Postgres, Row};
 
 use crate::api::search::CurrencySearchParams;
 use crate::error::{ApiError, ApiResult};
@@ -61,48 +61,60 @@ pub async fn search_currencies(
     pool: &PgPool,
     params: &CurrencySearchParams,
 ) -> ApiResult<Vec<Currency>> {
-    let mut query = String::from("SELECT code, created FROM currency WHERE 1=1");
-    let mut bindings = vec![];
+    let limit = params.base.get_limit() as i64;
+    let offset = params.base.get_offset() as i64;
+
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT code, created FROM currency WHERE 1=1"
+    );
 
     // Handle comma-delimited regex patterns for currency codes
-    if let Some(code_filter) = &params.code {
-        let patterns: Vec<&str> = code_filter.split(',').map(|s| s.trim()).collect();
+    if let Some(ref code_patterns) = params.code {
+        let patterns: Vec<&str> = code_patterns.split(',').map(|s| s.trim()).collect();
         if !patterns.is_empty() {
-            query.push_str(" AND (");
-            for (i, pattern) in patterns.iter().enumerate() {
-                if i > 0 {
-                    query.push_str(" OR ");
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
                 }
-                query.push_str(&format!("code ~* ${}", bindings.len() + 1));
-                bindings.push(pattern.to_string());
+                query_builder.push("code ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
             }
-            query.push_str(")");
+            query_builder.push(")");
         }
     }
 
-    // Add ordering based on SearchParams
-    if let Some(order_clause) = params.base.parse_order_by() {
-        query.push_str(&format!(" ORDER BY {}", order_clause));
+    // Add sorting based on SearchParams with whitelist validation
+    const ALLOWED_COLUMNS: &[&str] = &["code", "created"];
+    if let Some(order_clause) = params.base.parse_order_by(ALLOWED_COLUMNS) {
+        query_builder.push(" ORDER BY ");
+        query_builder.push(order_clause);
     } else {
         // Default ordering
-        query.push_str(" ORDER BY code ASC");
+        query_builder.push(" ORDER BY code ASC");
     }
 
-    // Add pagination
-    let limit = params.base.get_limit();
-    let offset = params.base.get_offset();
-    query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
+    // Add pagination with parameter binding
+    query_builder.push(" LIMIT ");
+    query_builder.push_bind(limit);
+    query_builder.push(" OFFSET ");
+    query_builder.push_bind(offset);
 
-    // Build the query dynamically
-    let mut sql_query = sqlx::query_as::<_, (String, chrono::DateTime<chrono::Utc>)>(&query);
-    for binding in bindings {
-        sql_query = sql_query.bind(binding);
+    // Execute the query
+    let query = query_builder.build();
+    let rows = query.fetch_all(pool).await?;
+
+    let mut currencies = Vec::new();
+    for row in rows {
+        let currency = Currency {
+            code: row.try_get("code")?,
+            created: row.try_get("created")?,
+        };
+        currencies.push(currency);
     }
 
-    let records = sql_query.fetch_all(pool).await?;
-
-    Ok(records
-        .into_iter()
-        .map(|(code, created)| Currency { code, created })
-        .collect())
+    Ok(currencies)
 }

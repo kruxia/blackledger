@@ -6,10 +6,11 @@ use serde_with::{DisplayFromStr, serde_as};
 static ORDERBY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^-?\w+(,-?\w+)*$").expect("Invalid orderby regex pattern"));
 
-// Regex pattern for name filters - allows word chars, hyphens, dots, spaces, and regex special chars (^, $, *, ?)
+// Regex pattern for name filters - allows word chars, hyphens, dots, spaces, and certain regex metacharacters
+// Pattern structure: optional ^, then main pattern chars, then optional $ at the end
 // Also allows commas for multiple patterns
 static NAME_FILTER_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[\^\$\*\?\w\-\. ]+(,[\^\$\*\?\w\-\. ]+)*$")
+    Regex::new(r"^(\^?[\*\?\w\-\. ]+\$?)(,\^?[\*\?\w\-\. ]+\$?)*$")
         .expect("Invalid name filter regex pattern")
 });
 
@@ -40,9 +41,11 @@ where
     if let Some(ref s) = opt_str {
         // Validate that the name filter matches our allowed pattern
         // This prevents SQL injection by ensuring only safe characters are used
+        // The regex allows: word chars (\w), hyphens, dots, spaces, and regex metacharacters (^, $, *, ?)
+        // This combined with parameterized queries provides SQL injection protection
         if !NAME_FILTER_REGEX.is_match(s) {
             return Err(serde::de::Error::custom(format!(
-                "Invalid name filter format: '{}'. Must contain only letters, numbers, spaces, hyphens, dots, and regex metacharacters (^, $, *, ?). Multiple patterns can be separated by commas.",
+                "Invalid name filter format: '{}'. Patterns must contain only letters, numbers, spaces, hyphens, dots, *, and ?. Can optionally start with ^ and/or end with $. Multiple patterns can be separated by commas.",
                 s
             )));
         }
@@ -82,21 +85,34 @@ impl Default for SearchParams {
 impl SearchParams {
     /// Parse the orderby field into SQL ORDER BY clause components
     /// e.g., "name,-created" becomes "name ASC, created DESC"
-    /// The orderby field is pre-validated against SQL injection
-    pub fn parse_order_by(&self) -> Option<String> {
-        self.orderby.as_ref().map(|orderby| {
-            orderby
+    /// The orderby field is pre-validated against SQL injection and checked against a whitelist
+    pub fn parse_order_by(&self, allowed_columns: &[&str]) -> Option<String> {
+        self.orderby.as_ref().and_then(|orderby| {
+            let parts: Vec<String> = orderby
                 .split(',')
-                .map(|field| {
+                .filter_map(|field| {
                     let field = field.trim();
-                    if field.starts_with('-') {
-                        format!("{} DESC", &field[1..])
+                    let (column, is_desc) = if field.starts_with('-') {
+                        (&field[1..], true)
                     } else {
-                        format!("{} ASC", field)
+                        (field, false)
+                    };
+                    
+                    // Validate against whitelist
+                    if allowed_columns.contains(&column) {
+                        Some(format!("{} {}", column, if is_desc { "DESC" } else { "ASC" }))
+                    } else {
+                        // Invalid column name, skip it
+                        None
                     }
                 })
-                .collect::<Vec<_>>()
-                .join(", ")
+                .collect();
+            
+            if parts.is_empty() {
+                None
+            } else {
+                Some(parts.join(", "))
+            }
         })
     }
 

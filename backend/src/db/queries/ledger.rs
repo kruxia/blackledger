@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, QueryBuilder, Postgres, Row};
 
 use crate::api::search::LedgerSearchParams;
 use crate::error::{ApiError, ApiResult};
@@ -101,69 +101,77 @@ pub async fn count_ledgers(pool: &PgPool) -> ApiResult<i64> {
 }
 
 pub async fn search_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiResult<Vec<Ledger>> {
-    let mut query = String::from("SELECT id, name, created FROM ledger WHERE 1=1");
-    let mut bindings = vec![];
+    let limit = params.base.get_limit() as i64;
+    let offset = params.base.get_offset() as i64;
+
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT id, name, created FROM ledger WHERE 1=1"
+    );
 
     // Handle comma-delimited list of IDs
-    if let Some(id_filter) = &params.id {
-        let ids: Vec<&str> = id_filter.split(',').map(|s| s.trim()).collect();
+    if let Some(ref id_list) = params.id {
+        let ids: Vec<i64> = id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
         if !ids.is_empty() {
-            let valid_ids: Vec<i64> = ids
-                .iter()
-                .filter_map(|id_str| id_str.parse::<i64>().ok())
-                .collect();
-
-            if !valid_ids.is_empty() {
-                let placeholders: Vec<String> = (1..=valid_ids.len())
-                    .map(|i| format!("${}::bigint", bindings.len() + i))
-                    .collect();
-                query.push_str(&format!(" AND id IN ({})", placeholders.join(", ")));
-                for id in valid_ids {
-                    bindings.push(id.to_string());
-                }
+            query_builder.push(" AND id IN (");
+            let mut separated = query_builder.separated(", ");
+            for id in ids {
+                separated.push_bind(id);
             }
+            query_builder.push(")");
         }
     }
 
     // Handle comma-delimited regex patterns for names
-    if let Some(name_filter) = &params.name {
-        let patterns: Vec<&str> = name_filter.split(',').map(|s| s.trim()).collect();
+    if let Some(ref name_patterns) = params.name {
+        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
         if !patterns.is_empty() {
-            query.push_str(" AND (");
-            for (i, pattern) in patterns.iter().enumerate() {
-                if i > 0 {
-                    query.push_str(" OR ");
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
                 }
-                query.push_str(&format!("name ~* ${}", bindings.len() + 1));
-                bindings.push(pattern.to_string());
+                query_builder.push("name ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
             }
-            query.push_str(")");
+            query_builder.push(")");
         }
     }
 
-    // Add ordering based on SearchParams
-    if let Some(order_clause) = params.base.parse_order_by() {
-        query.push_str(&format!(" ORDER BY {}", order_clause));
+    // Add sorting based on SearchParams with whitelist validation
+    const ALLOWED_COLUMNS: &[&str] = &["id", "name", "created"];
+    if let Some(order_clause) = params.base.parse_order_by(ALLOWED_COLUMNS) {
+        query_builder.push(" ORDER BY ");
+        query_builder.push(order_clause);
     } else {
         // Default ordering
-        query.push_str(" ORDER BY created DESC");
+        query_builder.push(" ORDER BY created DESC");
     }
 
-    // Add pagination
-    let limit = params.base.get_limit();
-    let offset = params.base.get_offset();
-    query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
+    // Add pagination with parameter binding
+    query_builder.push(" LIMIT ");
+    query_builder.push_bind(limit);
+    query_builder.push(" OFFSET ");
+    query_builder.push_bind(offset);
 
-    // Build the query dynamically
-    let mut sql_query = sqlx::query_as::<_, (i64, String, chrono::DateTime<chrono::Utc>)>(&query);
-    for binding in bindings {
-        sql_query = sql_query.bind(binding);
+    // Execute the query
+    let query = query_builder.build();
+    let rows = query.fetch_all(pool).await?;
+
+    let mut ledgers = Vec::new();
+    for row in rows {
+        let ledger = Ledger {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            created: row.try_get("created")?,
+        };
+        ledgers.push(ledger);
     }
 
-    let records = sql_query.fetch_all(pool).await?;
-
-    Ok(records
-        .into_iter()
-        .map(|(id, name, created)| Ledger { id, name, created })
-        .collect())
+    Ok(ledgers)
 }

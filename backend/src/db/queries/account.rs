@@ -351,8 +351,9 @@ pub async fn search_accounts(
         }
     }
 
-    // Add sorting based on SearchParams
-    if let Some(order_clause) = params.base.parse_order_by() {
+    // Add sorting based on SearchParams with whitelist validation
+    const ALLOWED_COLUMNS: &[&str] = &["id", "ledger_id", "parent_id", "name", "number", "created", "normal", "version"];
+    if let Some(order_clause) = params.base.parse_order_by(ALLOWED_COLUMNS) {
         query_builder.push(" ORDER BY ");
         query_builder.push(order_clause);
     } else {
