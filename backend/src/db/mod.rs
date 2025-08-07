@@ -18,7 +18,6 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "requires database connection"]
     async fn test_create_pool() {
         let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
             "postgresql://blackledger_test@localhost:5434/blackledger_test".to_string()
