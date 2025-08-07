@@ -193,12 +193,19 @@ pub struct AccountSearchParams {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TransactionSearchParams {
-    pub ledger_id: Option<i64>,
-    pub account_id: Option<i64>,
-    pub description: Option<String>,
-    pub from_amount: Option<rust_decimal::Decimal>,
-    pub to_amount: Option<rust_decimal::Decimal>,
-    pub currency_code: Option<String>,
+    /// Comma-delimited list of transaction IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list")]
+    pub tx: Option<String>,
+    /// Comma-delimited list of ledger IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list", alias = "ledger")]
+    pub ledger_id: Option<String>,
+    /// Comma-delimited list of account IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list")]
+    pub acct: Option<String>,
+    /// Currency code patterns (comma-delimited regex patterns)
+    pub curr: Option<String>,
+    /// Memo patterns (regex patterns)
+    pub memo: Option<String>,
     #[serde(flatten)]
     pub base: SearchParams,
 }

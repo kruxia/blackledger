@@ -105,10 +105,13 @@ async fn test_account_search_by_name(pool: PgPool) {
     let (_ledgers, accounts) = setup_test_data(&pool).await;
 
     let params = AccountSearchParams {
-        ledger_id: Some(accounts[0].ledger_id),
+        id: None,
+        ledger_id: Some(accounts[0].ledger_id.to_string()),
         parent_id: None,
+        version: None,
         number: None,
         name: Some("Account 1".to_string()),
+        normal: None,
         base: SearchParams {
             limit: Some(10),
             offset: Some(0),
@@ -129,10 +132,13 @@ async fn test_account_search_pagination(pool: PgPool) {
     let (_ledgers, accounts) = setup_test_data(&pool).await;
 
     let params = AccountSearchParams {
-        ledger_id: Some(accounts[0].ledger_id),
+        id: None,
+        ledger_id: Some(accounts[0].ledger_id.to_string()),
         parent_id: None,
+        version: None,
         number: None,
         name: None,
+        normal: None,
         base: SearchParams {
             limit: Some(5),
             offset: Some(0),
@@ -184,12 +190,11 @@ async fn test_transaction_search(pool: PgPool) {
     }
 
     let params = blackledger::api::search::TransactionSearchParams {
-        ledger_id: Some(ledgers[0].id),
-        account_id: None,
-        description: None,
-        from_amount: None,
-        to_amount: None,
-        currency_code: None,
+        tx: None,
+        ledger_id: Some(ledgers[0].id.to_string()),
+        acct: None,
+        curr: None,
+        memo: None,
         base: SearchParams {
             limit: Some(5),
             offset: Some(0),
@@ -257,10 +262,13 @@ async fn test_sorting(pool: PgPool) {
 
     // Test ascending sort
     let params_asc = AccountSearchParams {
-        ledger_id: Some(accounts[0].ledger_id),
+        id: None,
+        ledger_id: Some(accounts[0].ledger_id.to_string()),
         parent_id: None,
+        version: None,
         number: None,
         name: None,
+        normal: None,
         base: SearchParams {
             limit: Some(5),
             offset: Some(0),

@@ -107,62 +107,105 @@ pub async fn search_transactions(
     let limit = params.base.get_limit() as i64;
     let offset = params.base.get_offset() as i64;
 
-    // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT id, ledger_id, memo, meta, posted, effective FROM transaction WHERE 1=1"
-    );
+    // Use QueryBuilder for dynamic SQL generation with CTE to join with entry table when needed
+    let needs_entry_join = params.acct.is_some() || params.curr.is_some();
+    
+    let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
+        QueryBuilder::new(
+            "WITH tx_ids AS (
+                SELECT DISTINCT transaction.id
+                FROM transaction
+                JOIN entry ON transaction.id = entry.tx
+                WHERE 1=1"
+        )
+    } else {
+        QueryBuilder::new(
+            "SELECT id, ledger_id, memo, meta, posted, effective FROM transaction WHERE 1=1"
+        )
+    };
 
-    // Handle ledger_id filter
-    if let Some(ledger_id) = params.ledger_id {
-        query_builder.push(" AND ledger_id = ");
-        query_builder.push_bind(ledger_id);
-    }
-
-    // Handle account_id filter (requires join with entry table)
-    if let Some(account_id) = params.account_id {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE account_id = ");
-        query_builder.push_bind(account_id);
-        query_builder.push(")");
-    }
-
-    // Handle description filter (regex pattern matching on memo field)
-    if let Some(ref description) = params.description {
-        query_builder.push(" AND memo ~* ");
-        query_builder.push_bind(description);
-    }
-
-    // Handle currency_code filter (requires join with entry table)
-    if let Some(ref currency_code) = params.currency_code {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE curr = ");
-        query_builder.push_bind(currency_code);
-        query_builder.push(")");
-    }
-
-    // Handle amount range filters (requires join with entry table)
-    if params.from_amount.is_some() || params.to_amount.is_some() {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE ");
-        
-        if let Some(from_amount) = params.from_amount {
-            query_builder.push("(debit >= ");
-            query_builder.push_bind(from_amount);
-            query_builder.push(" OR credit >= ");
-            query_builder.push_bind(from_amount);
-            query_builder.push(")");
-            
-            if params.to_amount.is_some() {
-                query_builder.push(" AND ");
+    // Handle transaction ID filter (comma-delimited list)
+    if let Some(ref tx_ids) = params.tx {
+        let ids: Vec<i64> = tx_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            if needs_entry_join {
+                query_builder.push(" AND transaction.id = ANY(");
+            } else {
+                query_builder.push(" AND id = ANY(");
             }
-        }
-        
-        if let Some(to_amount) = params.to_amount {
-            query_builder.push("(debit <= ");
-            query_builder.push_bind(to_amount);
-            query_builder.push(" OR credit <= ");
-            query_builder.push_bind(to_amount);
+            query_builder.push_bind(ids);
             query_builder.push(")");
         }
-        
-        query_builder.push(")");
+    }
+
+    // Handle ledger_id filter (comma-delimited list)
+    if let Some(ref ledger_ids) = params.ledger_id {
+        let ids: Vec<i64> = ledger_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            if needs_entry_join {
+                query_builder.push(" AND transaction.ledger_id = ANY(");
+            } else {
+                query_builder.push(" AND ledger_id = ANY(");
+            }
+            query_builder.push_bind(ids);
+            query_builder.push(")");
+        }
+    }
+
+    // Handle account ID filter (comma-delimited list)
+    if let Some(ref account_ids) = params.acct {
+        let ids: Vec<i64> = account_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            query_builder.push(" AND entry.acct = ANY(");
+            query_builder.push_bind(ids);
+            query_builder.push(")");
+        }
+    }
+
+    // Handle currency code filter (regex patterns)
+    if let Some(ref curr_patterns) = params.curr {
+        let patterns: Vec<&str> = curr_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("entry.curr ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle memo filter (regex pattern matching)
+    if let Some(ref memo_pattern) = params.memo {
+        if needs_entry_join {
+            query_builder.push(" AND transaction.memo ~* ");
+        } else {
+            query_builder.push(" AND memo ~* ");
+        }
+        query_builder.push_bind(memo_pattern);
+    }
+
+    // If we used CTE, close it and select from the results
+    if needs_entry_join {
+        query_builder.push(")
+            SELECT transaction.id, transaction.ledger_id, transaction.memo, transaction.meta, 
+                   transaction.posted, transaction.effective
+            FROM transaction
+            JOIN tx_ids ON tx_ids.id = transaction.id");
     }
 
     // Add sorting based on SearchParams with whitelist validation
@@ -206,61 +249,103 @@ pub async fn count_transactions(
     params: &crate::api::search::TransactionSearchParams,
 ) -> ApiResult<i64> {
     // Use QueryBuilder for dynamic SQL generation (matching search_transactions logic)
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT COUNT(*) as count FROM transaction WHERE 1=1"
-    );
+    let needs_entry_join = params.acct.is_some() || params.curr.is_some();
+    
+    let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
+        QueryBuilder::new(
+            "WITH tx_ids AS (
+                SELECT DISTINCT transaction.id
+                FROM transaction
+                JOIN entry ON transaction.id = entry.tx
+                WHERE 1=1"
+        )
+    } else {
+        QueryBuilder::new(
+            "SELECT COUNT(*) as count FROM transaction WHERE 1=1"
+        )
+    };
 
-    // Handle ledger_id filter
-    if let Some(ledger_id) = params.ledger_id {
-        query_builder.push(" AND ledger_id = ");
-        query_builder.push_bind(ledger_id);
-    }
-
-    // Handle account_id filter (requires join with entry table)
-    if let Some(account_id) = params.account_id {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE account_id = ");
-        query_builder.push_bind(account_id);
-        query_builder.push(")");
-    }
-
-    // Handle description filter (regex pattern matching on memo field)
-    if let Some(ref description) = params.description {
-        query_builder.push(" AND memo ~* ");
-        query_builder.push_bind(description);
-    }
-
-    // Handle currency_code filter (requires join with entry table)
-    if let Some(ref currency_code) = params.currency_code {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE curr = ");
-        query_builder.push_bind(currency_code);
-        query_builder.push(")");
-    }
-
-    // Handle amount range filters (requires join with entry table)
-    if params.from_amount.is_some() || params.to_amount.is_some() {
-        query_builder.push(" AND id IN (SELECT DISTINCT transaction_id FROM entry WHERE ");
-        
-        if let Some(from_amount) = params.from_amount {
-            query_builder.push("(debit >= ");
-            query_builder.push_bind(from_amount);
-            query_builder.push(" OR credit >= ");
-            query_builder.push_bind(from_amount);
-            query_builder.push(")");
-            
-            if params.to_amount.is_some() {
-                query_builder.push(" AND ");
+    // Handle transaction ID filter (comma-delimited list)
+    if let Some(ref tx_ids) = params.tx {
+        let ids: Vec<i64> = tx_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            if needs_entry_join {
+                query_builder.push(" AND transaction.id = ANY(");
+            } else {
+                query_builder.push(" AND id = ANY(");
             }
-        }
-        
-        if let Some(to_amount) = params.to_amount {
-            query_builder.push("(debit <= ");
-            query_builder.push_bind(to_amount);
-            query_builder.push(" OR credit <= ");
-            query_builder.push_bind(to_amount);
+            query_builder.push_bind(ids);
             query_builder.push(")");
         }
-        
-        query_builder.push(")");
+    }
+
+    // Handle ledger_id filter (comma-delimited list)
+    if let Some(ref ledger_ids) = params.ledger_id {
+        let ids: Vec<i64> = ledger_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            if needs_entry_join {
+                query_builder.push(" AND transaction.ledger_id = ANY(");
+            } else {
+                query_builder.push(" AND ledger_id = ANY(");
+            }
+            query_builder.push_bind(ids);
+            query_builder.push(")");
+        }
+    }
+
+    // Handle account ID filter (comma-delimited list)
+    if let Some(ref account_ids) = params.acct {
+        let ids: Vec<i64> = account_ids
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            query_builder.push(" AND entry.acct = ANY(");
+            query_builder.push_bind(ids);
+            query_builder.push(")");
+        }
+    }
+
+    // Handle currency code filter (regex patterns)
+    if let Some(ref curr_patterns) = params.curr {
+        let patterns: Vec<&str> = curr_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("entry.curr ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle memo filter (regex pattern matching)
+    if let Some(ref memo_pattern) = params.memo {
+        if needs_entry_join {
+            query_builder.push(" AND transaction.memo ~* ");
+        } else {
+            query_builder.push(" AND memo ~* ");
+        }
+        query_builder.push_bind(memo_pattern);
+    }
+
+    // If we used CTE, close it and count from the results
+    if needs_entry_join {
+        query_builder.push(")
+            SELECT COUNT(*) as count
+            FROM transaction
+            JOIN tx_ids ON tx_ids.id = transaction.id");
     }
 
     // Execute the query
