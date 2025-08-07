@@ -31,7 +31,7 @@ async fn test_health_check_endpoint() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    
+
     let json: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["status"], "healthy");
     assert!(json["version"].is_string());
@@ -40,11 +40,9 @@ async fn test_health_check_endpoint() {
 #[tokio::test]
 async fn test_database_connectivity() {
     let pool = setup_test_db().await;
-    
+
     // Test that we can execute a simple query
-    let result = sqlx::query("SELECT 1 as test")
-        .fetch_one(&pool)
-        .await;
-    
+    let result = sqlx::query("SELECT 1 as test").fetch_one(&pool).await;
+
     assert!(result.is_ok());
 }

@@ -16,3 +16,6 @@ backend/tarpaulin-report.html
 backend/cobertura.xml
 backend/lcov.info
 backend/coverage.json
+backend/*.profraw
+backend/tarpaulin-report.json
+.DS_Store

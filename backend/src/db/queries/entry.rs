@@ -1,10 +1,13 @@
-use sqlx::PgPool;
 use rust_decimal::Decimal;
+use sqlx::PgPool;
 
 use crate::error::ApiResult;
 use crate::models::entry::Entry;
 
-pub async fn get_entries_by_transaction(pool: &PgPool, transaction_id: i64) -> ApiResult<Vec<Entry>> {
+pub async fn get_entries_by_transaction(
+    pool: &PgPool,
+    transaction_id: i64,
+) -> ApiResult<Vec<Entry>> {
     let records = sqlx::query!(
         r#"
         SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit 
@@ -17,15 +20,18 @@ pub async fn get_entries_by_transaction(pool: &PgPool, transaction_id: i64) -> A
     .fetch_all(pool)
     .await?;
 
-    Ok(records.into_iter().map(|r| Entry {
-        id: r.id,
-        ledger_id: r.ledger_id,
-        transaction_id: r.transaction_id,
-        account_id: r.account_id,
-        currency_code: r.curr,
-        debit: r.debit,
-        credit: r.credit,
-    }).collect())
+    Ok(records
+        .into_iter()
+        .map(|r| Entry {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            transaction_id: r.transaction_id,
+            account_id: r.account_id,
+            currency_code: r.curr,
+            debit: r.debit,
+            credit: r.credit,
+        })
+        .collect())
 }
 
 pub async fn get_entries_by_account(
@@ -50,15 +56,18 @@ pub async fn get_entries_by_account(
     .fetch_all(pool)
     .await?;
 
-    Ok(records.into_iter().map(|r| Entry {
-        id: r.id,
-        ledger_id: r.ledger_id,
-        transaction_id: r.transaction_id,
-        account_id: r.account_id,
-        currency_code: r.curr,
-        debit: r.debit,
-        credit: r.credit,
-    }).collect())
+    Ok(records
+        .into_iter()
+        .map(|r| Entry {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            transaction_id: r.transaction_id,
+            account_id: r.account_id,
+            currency_code: r.curr,
+            debit: r.debit,
+            credit: r.credit,
+        })
+        .collect())
 }
 
 pub async fn list_entries(
@@ -76,11 +85,11 @@ pub async fn list_entries(
     if let Some(tid) = transaction_id {
         return get_entries_by_transaction(pool, tid).await;
     }
-    
+
     if let Some(aid) = account_id {
         return get_entries_by_account(pool, aid, limit, offset).await;
     }
-    
+
     // For ledger_id filtering, we need to join with transaction table
     if let Some(lid) = ledger_id {
         let records = sqlx::query!(
@@ -99,18 +108,21 @@ pub async fn list_entries(
         )
         .fetch_all(pool)
         .await?;
-        
-        return Ok(records.into_iter().map(|r| Entry {
-            id: r.id,
-            ledger_id: r.ledger_id,
-            transaction_id: r.transaction_id,
-            account_id: r.account_id,
-            currency_code: r.curr,
-            debit: r.debit,
-            credit: r.credit,
-        }).collect());
+
+        return Ok(records
+            .into_iter()
+            .map(|r| Entry {
+                id: r.id,
+                ledger_id: r.ledger_id,
+                transaction_id: r.transaction_id,
+                account_id: r.account_id,
+                currency_code: r.curr,
+                debit: r.debit,
+                credit: r.credit,
+            })
+            .collect());
     }
-    
+
     // Default case - return all entries with pagination
     let records = sqlx::query!(
         r#"
@@ -126,15 +138,18 @@ pub async fn list_entries(
     .fetch_all(pool)
     .await?;
 
-    Ok(records.into_iter().map(|r| Entry {
-        id: r.id,
-        ledger_id: r.ledger_id,
-        transaction_id: r.transaction_id,
-        account_id: r.account_id,
-        currency_code: r.curr,
-        debit: r.debit,
-        credit: r.credit,
-    }).collect())
+    Ok(records
+        .into_iter()
+        .map(|r| Entry {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            transaction_id: r.transaction_id,
+            account_id: r.account_id,
+            currency_code: r.curr,
+            debit: r.debit,
+            credit: r.credit,
+        })
+        .collect())
 }
 
 pub async fn search_entries(
@@ -144,7 +159,7 @@ pub async fn search_entries(
     let page = params.common.page.unwrap_or(1) as i64;
     let page_size = params.common.page_size.unwrap_or(20) as i64;
     let offset = (page - 1) * page_size;
-    
+
     list_entries(
         pool,
         params.ledger_id,
@@ -177,14 +192,20 @@ pub async fn count_entries(
         .await?;
         record.count.unwrap_or(0)
     } else if let Some(account_id) = params.account_id {
-        let record = sqlx::query!("SELECT COUNT(*) as count FROM entry WHERE account_id = $1", account_id)
-            .fetch_one(pool)
-            .await?;
+        let record = sqlx::query!(
+            "SELECT COUNT(*) as count FROM entry WHERE account_id = $1",
+            account_id
+        )
+        .fetch_one(pool)
+        .await?;
         record.count.unwrap_or(0)
     } else if let Some(transaction_id) = params.transaction_id {
-        let record = sqlx::query!("SELECT COUNT(*) as count FROM entry WHERE transaction_id = $1", transaction_id)
-            .fetch_one(pool)
-            .await?;
+        let record = sqlx::query!(
+            "SELECT COUNT(*) as count FROM entry WHERE transaction_id = $1",
+            transaction_id
+        )
+        .fetch_one(pool)
+        .await?;
         record.count.unwrap_or(0)
     } else {
         let record = sqlx::query!("SELECT COUNT(*) as count FROM entry")
@@ -192,6 +213,6 @@ pub async fn count_entries(
             .await?;
         record.count.unwrap_or(0)
     };
-    
+
     Ok(count)
 }

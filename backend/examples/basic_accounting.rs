@@ -8,110 +8,130 @@
 //!
 //! Run with: `cargo run --example basic_accounting`
 
+use anyhow::Result;
 use blackledger::{
     db,
-    models::{
-        ledger::CreateLedger,
-        account::{CreateAccount, NormalBalance},
-        transaction::{CreateTransaction, CreateEntry},
-    },
-    services::posting::post_transaction,
     db::queries::{
-        ledger::create_ledger,
         account::{create_account, get_account_balances},
         currency::create_currency,
+        ledger::create_ledger,
     },
+    models::{
+        account::{CreateAccount, NormalBalance},
+        ledger::CreateLedger,
+        transaction::{CreateEntry, CreateTransaction},
+    },
+    services::posting::post_transaction,
 };
-use rust_decimal_macros::dec;
 use chrono::Utc;
-use anyhow::Result;
+use rust_decimal_macros::dec;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize environment and logging
     tracing_subscriber::fmt::init();
-    
+
     // Connect to database
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = db::create_pool(&database_url).await?;
-    
+
     // Run migrations
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await?;
-    
+    sqlx::migrate!("./migrations").run(&pool).await?;
+
     println!("🏦 Blackledger Basic Accounting Example\n");
-    
+
     // Step 1: Create currencies
     println!("1️⃣ Creating currencies...");
     create_currency(&pool, "USD").await?;
     create_currency(&pool, "EUR").await?;
     println!("   ✅ Created USD and EUR currencies\n");
-    
+
     // Step 2: Create a ledger
     println!("2️⃣ Creating ledger...");
     let ledger_input = CreateLedger {
         name: "Example Company Books".to_string(),
     };
     let ledger = create_ledger(&pool, &ledger_input).await?;
-    println!("   ✅ Created ledger: {} (ID: {})\n", ledger.name, ledger.id);
-    
+    println!(
+        "   ✅ Created ledger: {} (ID: {})\n",
+        ledger.name, ledger.id
+    );
+
     // Step 3: Create chart of accounts
     println!("3️⃣ Creating chart of accounts...");
-    
+
     // Asset accounts
-    let cash_account = create_account(&pool, &CreateAccount {
-        ledger_id: ledger.id,
-        parent_id: None,
-        name: "Cash".to_string(),
-        number: Some(1000),
-        normal: NormalBalance::Debit,
-    }).await?;
+    let cash_account = create_account(
+        &pool,
+        &CreateAccount {
+            ledger_id: ledger.id,
+            parent_id: None,
+            name: "Cash".to_string(),
+            number: Some(1000),
+            normal: NormalBalance::Debit,
+        },
+    )
+    .await?;
     println!("   📊 Created Cash account ({})", cash_account.id);
-    
-    let ar_account = create_account(&pool, &CreateAccount {
-        ledger_id: ledger.id,
-        parent_id: None,
-        name: "Accounts Receivable".to_string(),
-        number: Some(1200),
-        normal: NormalBalance::Debit,
-    }).await?;
+
+    let ar_account = create_account(
+        &pool,
+        &CreateAccount {
+            ledger_id: ledger.id,
+            parent_id: None,
+            name: "Accounts Receivable".to_string(),
+            number: Some(1200),
+            normal: NormalBalance::Debit,
+        },
+    )
+    .await?;
     println!("   📊 Created A/R account ({})", ar_account.id);
-    
+
     // Liability accounts
-    let ap_account = create_account(&pool, &CreateAccount {
-        ledger_id: ledger.id,
-        parent_id: None,
-        name: "Accounts Payable".to_string(),
-        number: Some(2000),
-        normal: NormalBalance::Credit,
-    }).await?;
+    let ap_account = create_account(
+        &pool,
+        &CreateAccount {
+            ledger_id: ledger.id,
+            parent_id: None,
+            name: "Accounts Payable".to_string(),
+            number: Some(2000),
+            normal: NormalBalance::Credit,
+        },
+    )
+    .await?;
     println!("   📊 Created A/P account ({})", ap_account.id);
-    
+
     // Revenue account
-    let revenue_account = create_account(&pool, &CreateAccount {
-        ledger_id: ledger.id,
-        parent_id: None,
-        name: "Sales Revenue".to_string(),
-        number: Some(4000),
-        normal: NormalBalance::Credit,
-    }).await?;
+    let revenue_account = create_account(
+        &pool,
+        &CreateAccount {
+            ledger_id: ledger.id,
+            parent_id: None,
+            name: "Sales Revenue".to_string(),
+            number: Some(4000),
+            normal: NormalBalance::Credit,
+        },
+    )
+    .await?;
     println!("   📊 Created Revenue account ({})", revenue_account.id);
-    
+
     // Expense account
-    let expense_account = create_account(&pool, &CreateAccount {
-        ledger_id: ledger.id,
-        parent_id: None,
-        name: "Operating Expenses".to_string(),
-        number: Some(5000),
-        normal: NormalBalance::Debit,
-    }).await?;
+    let expense_account = create_account(
+        &pool,
+        &CreateAccount {
+            ledger_id: ledger.id,
+            parent_id: None,
+            name: "Operating Expenses".to_string(),
+            number: Some(5000),
+            normal: NormalBalance::Debit,
+        },
+    )
+    .await?;
     println!("   📊 Created Expense account ({})\n", expense_account.id);
-    
+
     // Step 4: Post transactions
     println!("4️⃣ Posting transactions...");
-    
+
     // Transaction 1: Cash sale
     let sale_transaction = CreateTransaction {
         ledger_id: ledger.id,
@@ -138,10 +158,14 @@ async fn main() -> Result<()> {
             },
         ],
     };
-    
-    let (transaction1, _) = post_transaction(&pool, &sale_transaction, Some("example_user")).await?;
-    println!("   💰 Posted cash sale: ${} (Transaction {})", 500.00, transaction1.id);
-    
+
+    let (transaction1, _) =
+        post_transaction(&pool, &sale_transaction, Some("example_user")).await?;
+    println!(
+        "   💰 Posted cash sale: ${} (Transaction {})",
+        500.00, transaction1.id
+    );
+
     // Transaction 2: Credit sale
     let credit_sale = CreateTransaction {
         ledger_id: ledger.id,
@@ -165,10 +189,13 @@ async fn main() -> Result<()> {
             },
         ],
     };
-    
+
     let (transaction2, _) = post_transaction(&pool, &credit_sale, Some("example_user")).await?;
-    println!("   💳 Posted credit sale: ${} (Transaction {})", 1000.00, transaction2.id);
-    
+    println!(
+        "   💳 Posted credit sale: ${} (Transaction {})",
+        1000.00, transaction2.id
+    );
+
     // Transaction 3: Pay expense
     let expense_payment = CreateTransaction {
         ledger_id: ledger.id,
@@ -192,10 +219,13 @@ async fn main() -> Result<()> {
             },
         ],
     };
-    
+
     let (transaction3, _) = post_transaction(&pool, &expense_payment, Some("example_user")).await?;
-    println!("   🏢 Posted expense: ${} (Transaction {})", 200.00, transaction3.id);
-    
+    println!(
+        "   🏢 Posted expense: ${} (Transaction {})",
+        200.00, transaction3.id
+    );
+
     // Transaction 4: Multi-currency transaction
     let forex_transaction = CreateTransaction {
         ledger_id: ledger.id,
@@ -237,16 +267,20 @@ async fn main() -> Result<()> {
             },
         ],
     };
-    
-    let (transaction4, _) = post_transaction(&pool, &forex_transaction, Some("example_user")).await?;
-    println!("   💱 Posted multi-currency transaction (Transaction {})\n", transaction4.id);
-    
+
+    let (transaction4, _) =
+        post_transaction(&pool, &forex_transaction, Some("example_user")).await?;
+    println!(
+        "   💱 Posted multi-currency transaction (Transaction {})\n",
+        transaction4.id
+    );
+
     // Step 5: Query balances
     println!("5️⃣ Account Balances:");
     println!("   {}", "─".repeat(50));
-    
+
     let balances = get_account_balances(&pool, ledger.id, None).await?;
-    
+
     for balance in balances {
         let account_name = match balance.account_id {
             id if id == cash_account.id => "Cash",
@@ -256,15 +290,16 @@ async fn main() -> Result<()> {
             id if id == expense_account.id => "Operating Expenses",
             _ => "Unknown",
         };
-        
-        println!("   {:<25} {:>10} {}", 
-            account_name, 
+
+        println!(
+            "   {:<25} {:>10} {}",
+            account_name,
             format!("{:.2}", balance.balance),
             balance.currency_code
         );
     }
-    
+
     println!("\n✨ Example completed successfully!");
-    
+
     Ok(())
 }

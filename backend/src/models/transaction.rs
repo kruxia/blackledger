@@ -30,7 +30,7 @@ pub struct Transaction {
 /// use blackledger::models::transaction::{CreateTransaction, CreateEntry};
 /// use chrono::Utc;
 /// use rust_decimal_macros::dec;
-/// 
+///
 /// let transaction = CreateTransaction {
 ///     ledger_id: 1,
 ///     effective: Utc::now(),

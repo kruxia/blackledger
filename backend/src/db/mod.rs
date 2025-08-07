@@ -19,8 +19,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_pool() {
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgresql://blackledger_test@localhost:5434/blackledger_test".to_string());
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgresql://blackledger_test@localhost:5434/blackledger_test".to_string()
+        });
         let pool = create_pool(&database_url).await;
         assert!(pool.is_ok());
     }

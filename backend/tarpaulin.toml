@@ -18,7 +18,7 @@ exclude-files = [
     "*/examples/*",
     "*/target/*",
     "*/migrations/*",
-    "*/.cargo/*"
+    "*/.cargo/*",
 ]
 
 # Test options

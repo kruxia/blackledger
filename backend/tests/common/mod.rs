@@ -38,31 +38,19 @@ pub async fn setup_test_db() -> PgPool {
 
 async fn clean_database(pool: &PgPool) {
     // Delete all data in reverse order of dependencies
-    sqlx::query("DELETE FROM entry")
-        .execute(pool)
-        .await
-        .ok();
+    sqlx::query("DELETE FROM entry").execute(pool).await.ok();
     sqlx::query("DELETE FROM transaction")
         .execute(pool)
         .await
         .ok();
-    sqlx::query("DELETE FROM account")
-        .execute(pool)
-        .await
-        .ok();
-    sqlx::query("DELETE FROM ledger")
-        .execute(pool)
-        .await
-        .ok();
-    sqlx::query("DELETE FROM currency")
-        .execute(pool)
-        .await
-        .ok();
+    sqlx::query("DELETE FROM account").execute(pool).await.ok();
+    sqlx::query("DELETE FROM ledger").execute(pool).await.ok();
+    sqlx::query("DELETE FROM currency").execute(pool).await.ok();
 }
 
 pub async fn setup_test_app_state() -> AppState {
     let pool = setup_test_db().await;
-    
+
     // Create a mock JWT validator with auth disabled for tests
     let auth_config = auth::AuthConfig {
         enabled: false,
@@ -70,13 +58,13 @@ pub async fn setup_test_app_state() -> AppState {
         audience: None,
         issuer: None,
     };
-    
+
     let jwt_validator = Arc::new(
         auth::JwtValidator::new(auth_config)
             .await
-            .expect("Failed to create JWT validator")
+            .expect("Failed to create JWT validator"),
     );
-    
+
     AppState {
         pool,
         jwt_validator,

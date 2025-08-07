@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 
 use crate::error::{ApiError, ApiResult};
-use crate::models::ledger::{Ledger, CreateLedger, UpdateLedger};
+use crate::models::ledger::{CreateLedger, Ledger, UpdateLedger};
 
 pub async fn create_ledger(pool: &PgPool, input: &CreateLedger) -> ApiResult<Ledger> {
     let record = sqlx::query!(
@@ -23,16 +23,13 @@ pub async fn create_ledger(pool: &PgPool, input: &CreateLedger) -> ApiResult<Led
 }
 
 pub async fn get_ledger_by_id(pool: &PgPool, id: i64) -> ApiResult<Ledger> {
-    let record = sqlx::query!(
-        r#"SELECT id, name, created FROM ledger WHERE id = $1"#,
-        id
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => ApiError::NotFound(format!("Ledger {} not found", id)),
-        _ => ApiError::Database(e),
-    })?;
+    let record = sqlx::query!(r#"SELECT id, name, created FROM ledger WHERE id = $1"#, id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => ApiError::NotFound(format!("Ledger {} not found", id)),
+            _ => ApiError::Database(e),
+        })?;
 
     Ok(Ledger {
         id: record.id,
@@ -95,11 +92,9 @@ pub async fn list_ledgers(
 }
 
 pub async fn count_ledgers(pool: &PgPool) -> ApiResult<i64> {
-    let record = sqlx::query!(
-        r#"SELECT COUNT(*) as count FROM ledger"#
-    )
-    .fetch_one(pool)
-    .await?;
-    
+    let record = sqlx::query!(r#"SELECT COUNT(*) as count FROM ledger"#)
+        .fetch_one(pool)
+        .await?;
+
     Ok(record.count.unwrap_or(0))
 }

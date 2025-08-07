@@ -58,15 +58,18 @@ pub async fn list_transactions(
         )
         .fetch_all(pool)
         .await?;
-        
-        records.into_iter().map(|r| Transaction {
-            id: r.id,
-            ledger_id: r.ledger_id,
-            posted: r.posted,
-            effective: r.effective,
-            memo: r.memo,
-            meta: r.meta,
-        }).collect()
+
+        records
+            .into_iter()
+            .map(|r| Transaction {
+                id: r.id,
+                ledger_id: r.ledger_id,
+                posted: r.posted,
+                effective: r.effective,
+                memo: r.memo,
+                meta: r.meta,
+            })
+            .collect()
     } else {
         let records = sqlx::query!(
             r#"
@@ -80,15 +83,18 @@ pub async fn list_transactions(
         )
         .fetch_all(pool)
         .await?;
-        
-        records.into_iter().map(|r| Transaction {
-            id: r.id,
-            ledger_id: r.ledger_id,
-            posted: r.posted,
-            effective: r.effective,
-            memo: r.memo,
-            meta: r.meta,
-        }).collect()
+
+        records
+            .into_iter()
+            .map(|r| Transaction {
+                id: r.id,
+                ledger_id: r.ledger_id,
+                posted: r.posted,
+                effective: r.effective,
+                memo: r.memo,
+                meta: r.meta,
+            })
+            .collect()
     };
 
     Ok(transactions)
@@ -101,7 +107,7 @@ pub async fn search_transactions(
     let page = params.common.page.unwrap_or(1) as i64;
     let page_size = params.common.page_size.unwrap_or(20) as i64;
     let offset = (page - 1) * page_size;
-    
+
     // For now, using simplified search based on ledger_id
     // In production, you'd build a dynamic query with all search parameters
     list_transactions(pool, params.ledger_id, Some(page_size), Some(offset)).await
@@ -112,9 +118,12 @@ pub async fn count_transactions(
     params: &crate::api::search::TransactionSearchParams,
 ) -> ApiResult<i64> {
     let count = if let Some(ledger_id) = params.ledger_id {
-        let record = sqlx::query!("SELECT COUNT(*) as count FROM transaction WHERE ledger_id = $1", ledger_id)
-            .fetch_one(pool)
-            .await?;
+        let record = sqlx::query!(
+            "SELECT COUNT(*) as count FROM transaction WHERE ledger_id = $1",
+            ledger_id
+        )
+        .fetch_one(pool)
+        .await?;
         record.count.unwrap_or(0)
     } else {
         let record = sqlx::query!("SELECT COUNT(*) as count FROM transaction")
@@ -122,6 +131,6 @@ pub async fn count_transactions(
             .await?;
         record.count.unwrap_or(0)
     };
-    
+
     Ok(count)
 }

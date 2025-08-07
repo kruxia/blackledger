@@ -283,6 +283,7 @@ dependencies = [
  "chrono",
  "jsonwebtoken",
  "pretty_assertions",
+ "regex",
  "reqwest",
  "rust_decimal",
  "rust_decimal_macros",

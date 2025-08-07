@@ -20,14 +20,12 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let config = config::Config::from_env()?;
-    
+
     // Create database pool
     let pool = db::create_pool(&config.database_url).await?;
-    
+
     // Run migrations
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await?;
+    sqlx::migrate!("./migrations").run(&pool).await?;
 
     // Set up JWT validator if auth is enabled
     let auth_config = auth::AuthConfig {
@@ -36,13 +34,13 @@ async fn main() -> Result<()> {
         audience: None,
         issuer: None,
     };
-    
+
     let jwt_validator = Arc::new(
         auth::JwtValidator::new(auth_config)
             .await
-            .expect("Failed to create JWT validator")
+            .expect("Failed to create JWT validator"),
     );
-    
+
     // Create app state
     let app_state = api::AppState {
         pool: pool.clone(),
@@ -59,7 +57,7 @@ async fn main() -> Result<()> {
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("Starting server on {}", addr);
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
 

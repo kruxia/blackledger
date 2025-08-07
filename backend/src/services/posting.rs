@@ -3,16 +3,13 @@
 //! Handles the complete transaction posting workflow including validation,
 //! database persistence, account version updates, and audit logging.
 
-use sqlx::PgPool;
 use chrono::Utc;
+use sqlx::PgPool;
 
 use crate::error::{ApiError, ApiResult};
-use crate::models::transaction::{Transaction, CreateTransaction};
 use crate::models::entry::Entry;
-use crate::services::validation::{
-    validate_transaction,
-    validate_account_versions,
-};
+use crate::models::transaction::{CreateTransaction, Transaction};
+use crate::services::validation::{validate_account_versions, validate_transaction};
 
 /// Posts a validated transaction to the ledger
 ///
@@ -47,20 +44,20 @@ pub async fn post_transaction(
     user_id: Option<&str>,
 ) -> ApiResult<(Transaction, Vec<Entry>)> {
     validate_transaction(pool, input).await?;
-    
+
     let mut tx = pool.begin().await?;
-    
+
     validate_account_versions(pool, &input.entries, &mut tx).await?;
-    
+
     let posted = Utc::now();
     let mut meta = input.meta.clone();
-    
+
     if let Some(uid) = user_id {
         let user_meta = serde_json::json!({
             "posted_by": uid,
             "posted_at": posted.to_rfc3339(),
         });
-        
+
         if let Some(ref mut existing_meta) = meta {
             if let serde_json::Value::Object(map) = existing_meta {
                 map.insert("audit".to_string(), user_meta);
@@ -71,13 +68,13 @@ pub async fn post_transaction(
             }));
         }
     }
-    
+
     let transaction = sqlx::query_as::<_, Transaction>(
         r#"
         INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *
-        "#
+        "#,
     )
     .bind(input.ledger_id)
     .bind(posted)
@@ -86,16 +83,16 @@ pub async fn post_transaction(
     .bind(&meta)
     .fetch_one(&mut *tx)
     .await?;
-    
+
     let mut entries = Vec::new();
-    
+
     for entry_input in &input.entries {
         let entry = sqlx::query_as::<_, Entry>(
             r#"
             INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#
+            "#,
         )
         .bind(input.ledger_id)
         .bind(transaction.id)
@@ -105,24 +102,24 @@ pub async fn post_transaction(
         .bind(entry_input.credit)
         .fetch_one(&mut *tx)
         .await?;
-        
+
         sqlx::query(
             r#"
             UPDATE account
             SET version = $1
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(entry.id)
         .bind(entry_input.account_id)
         .execute(&mut *tx)
         .await?;
-        
+
         entries.push(entry);
     }
-    
+
     tx.commit().await?;
-    
+
     Ok((transaction, entries))
 }
 
@@ -130,28 +127,29 @@ pub async fn get_transaction_with_entries(
     pool: &PgPool,
     transaction_id: i64,
 ) -> ApiResult<(Transaction, Vec<Entry>)> {
-    let transaction = sqlx::query_as::<_, Transaction>(
-        r#"SELECT * FROM transaction WHERE id = $1"#
-    )
-    .bind(transaction_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => ApiError::NotFound(format!("Transaction {} not found", transaction_id)),
-        _ => ApiError::Database(e),
-    })?;
-    
+    let transaction =
+        sqlx::query_as::<_, Transaction>(r#"SELECT * FROM transaction WHERE id = $1"#)
+            .bind(transaction_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| match e {
+                sqlx::Error::RowNotFound => {
+                    ApiError::NotFound(format!("Transaction {} not found", transaction_id))
+                }
+                _ => ApiError::Database(e),
+            })?;
+
     let entries = sqlx::query_as::<_, Entry>(
         r#"
         SELECT * FROM entry 
         WHERE transaction_id = $1
         ORDER BY id
-        "#
+        "#,
     )
     .bind(transaction_id)
     .fetch_all(pool)
     .await?;
-    
+
     Ok((transaction, entries))
 }
 
@@ -176,8 +174,9 @@ pub async fn reverse_transaction(
     memo: Option<String>,
     user_id: Option<&str>,
 ) -> ApiResult<(Transaction, Vec<Entry>)> {
-    let (original_transaction, original_entries) = get_transaction_with_entries(pool, transaction_id).await?;
-    
+    let (original_transaction, original_entries) =
+        get_transaction_with_entries(pool, transaction_id).await?;
+
     let mut reversed_entries = Vec::new();
     for entry in original_entries {
         reversed_entries.push(crate::models::transaction::CreateEntry {
@@ -188,20 +187,19 @@ pub async fn reverse_transaction(
             account_version: None,
         });
     }
-    
-    let reversal_memo = memo.unwrap_or_else(|| {
-        format!("Reversal of transaction {}", transaction_id)
-    });
-    
+
+    let reversal_memo =
+        memo.unwrap_or_else(|| format!("Reversal of transaction {}", transaction_id));
+
     let mut meta = serde_json::json!({
         "reversed_transaction_id": transaction_id,
         "reversal": true,
     });
-    
+
     if let Some(original_meta) = original_transaction.meta {
         meta["original_meta"] = original_meta;
     }
-    
+
     let reversal_input = CreateTransaction {
         ledger_id: original_transaction.ledger_id,
         effective: original_transaction.effective,
@@ -209,7 +207,6 @@ pub async fn reverse_transaction(
         meta: Some(meta),
         entries: reversed_entries,
     };
-    
+
     post_transaction(pool, &reversal_input, user_id).await
 }
-

@@ -47,11 +47,11 @@ async fn test_create_and_get_currency() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-    
+
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    
+
     let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
     assert!(currencies.iter().any(|c| c["code"] == "USD"));
 }
@@ -71,7 +71,7 @@ async fn test_ledger_crud_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": format!("Test Ledger CRUD {}", 
+                        "name": format!("Test Ledger CRUD {}",
                             std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
@@ -85,7 +85,7 @@ async fn test_ledger_crud_operations() {
         .unwrap();
 
     assert_eq!(create_response.status(), StatusCode::CREATED);
-    
+
     let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
         .await
         .unwrap();
@@ -117,7 +117,7 @@ async fn test_ledger_crud_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": format!("Updated Test Ledger {}", 
+                        "name": format!("Updated Test Ledger {}",
                             std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
@@ -131,7 +131,7 @@ async fn test_ledger_crud_operations() {
         .unwrap();
 
     assert_eq!(update_response.status(), StatusCode::OK);
-    
+
     let body = axum::body::to_bytes(update_response.into_body(), usize::MAX)
         .await
         .unwrap();
@@ -158,7 +158,7 @@ async fn test_account_operations() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     json!({
-                        "name": format!("Account Test Ledger {}", 
+                        "name": format!("Account Test Ledger {}",
                             std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
@@ -200,7 +200,7 @@ async fn test_account_operations() {
         .unwrap();
 
     assert_eq!(account_response.status(), StatusCode::CREATED);
-    
+
     let body = axum::body::to_bytes(account_response.into_body(), usize::MAX)
         .await
         .unwrap();
@@ -259,7 +259,11 @@ async fn test_transaction_posting() {
         let body = axum::body::to_bytes(transaction_response.into_body(), usize::MAX)
             .await
             .unwrap();
-        eprintln!("Transaction creation failed with status {}: {}", status, String::from_utf8_lossy(&body));
+        eprintln!(
+            "Transaction creation failed with status {}: {}",
+            status,
+            String::from_utf8_lossy(&body)
+        );
     }
     assert_eq!(status, StatusCode::CREATED);
 }
@@ -320,7 +324,7 @@ async fn create_test_ledger(app: &axum::Router) -> i64 {
         .unwrap()
         .as_nanos();
     let ledger_name = format!("Test Ledger {}", timestamp);
-    
+
     let response = app
         .clone()
         .oneshot(
@@ -328,9 +332,7 @@ async fn create_test_ledger(app: &axum::Router) -> i64 {
                 .method("POST")
                 .uri("/ledgers")
                 .header("content-type", "application/json")
-                .body(Body::from(
-                    json!({"name": ledger_name}).to_string(),
-                ))
+                .body(Body::from(json!({"name": ledger_name}).to_string()))
                 .unwrap(),
         )
         .await

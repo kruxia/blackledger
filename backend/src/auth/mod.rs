@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    http::{request::Parts, StatusCode, header::AUTHORIZATION},
+    http::{header::AUTHORIZATION, request::Parts, StatusCode},
     response::{IntoResponse, Response},
 };
 use jsonwebtoken::{decode, decode_header, jwk::JwkSet, DecodingKey, Validation};
@@ -54,7 +54,10 @@ impl JwtValidator {
             Arc::new(HashMap::new())
         };
 
-        Ok(Self { config, decoding_keys })
+        Ok(Self {
+            config,
+            decoding_keys,
+        })
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<Claims, ApiError> {
@@ -71,22 +74,21 @@ impl JwtValidator {
             });
         }
 
-        let header = decode_header(token)
-            .map_err(|_| ApiError::Unauthorized)?;
+        let header = decode_header(token).map_err(|_| ApiError::Unauthorized)?;
 
-        let kid = header.kid
-            .ok_or_else(|| ApiError::Unauthorized)?;
+        let kid = header.kid.ok_or_else(|| ApiError::Unauthorized)?;
 
-        let decoding_key = self.decoding_keys
+        let decoding_key = self
+            .decoding_keys
             .get(&kid)
             .ok_or_else(|| ApiError::Unauthorized)?;
 
         let mut validation = Validation::default();
-        
+
         if let Some(ref aud) = self.config.audience {
             validation.set_audience(&[aud]);
         }
-        
+
         if let Some(ref iss) = self.config.issuer {
             validation.set_issuer(&[iss]);
         }
@@ -96,12 +98,13 @@ impl JwtValidator {
 
         Ok(token_data.claims)
     }
-
 }
 
-fn precompute_decoding_keys(jwks: JwkSet) -> Result<HashMap<String, DecodingKey>, Box<dyn std::error::Error>> {
+fn precompute_decoding_keys(
+    jwks: JwkSet,
+) -> Result<HashMap<String, DecodingKey>, Box<dyn std::error::Error>> {
     let mut keys = HashMap::new();
-    
+
     for jwk in jwks.keys {
         if let Some(kid) = &jwk.common.key_id {
             match DecodingKey::from_jwk(&jwk) {
@@ -114,11 +117,11 @@ fn precompute_decoding_keys(jwks: JwkSet) -> Result<HashMap<String, DecodingKey>
             }
         }
     }
-    
+
     if keys.is_empty() {
         return Err("No valid keys found in JWKS".into());
     }
-    
+
     tracing::info!("Precomputed {} decoding keys from JWKS", keys.len());
     Ok(keys)
 }
@@ -148,11 +151,9 @@ where
             })?;
 
         // Extract the token from "Bearer <token>"
-        let _token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| {
-                (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
-            })?;
+        let _token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+            (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+        })?;
 
         // For now, just extract basic info from the token
         // In a real implementation, this would validate against the JwtValidator

@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 
 use crate::{
@@ -28,11 +24,7 @@ pub async fn handle_create_currency(
         ));
     }
 
-    let currency = create_currency(
-        &state.pool,
-        &input.code,
-    )
-    .await?;
+    let currency = create_currency(&state.pool, &input.code).await?;
 
     Ok((StatusCode::CREATED, Json(currency)))
 }

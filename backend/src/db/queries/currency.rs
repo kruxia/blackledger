@@ -3,10 +3,7 @@ use sqlx::PgPool;
 use crate::error::{ApiError, ApiResult};
 use crate::models::currency::Currency;
 
-pub async fn create_currency(
-    pool: &PgPool,
-    code: &str,
-) -> ApiResult<Currency> {
+pub async fn create_currency(pool: &PgPool, code: &str) -> ApiResult<Currency> {
     // Try to insert, and if it already exists, fetch it
     let record = sqlx::query!(
         r#"
@@ -46,11 +43,9 @@ pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Curren
 }
 
 pub async fn list_currencies(pool: &PgPool) -> ApiResult<Vec<Currency>> {
-    let records = sqlx::query!(
-        r#"SELECT code, created FROM currency ORDER BY code"#
-    )
-    .fetch_all(pool)
-    .await?;
+    let records = sqlx::query!(r#"SELECT code, created FROM currency ORDER BY code"#)
+        .fetch_all(pool)
+        .await?;
 
     Ok(records
         .into_iter()

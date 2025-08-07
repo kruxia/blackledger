@@ -1,2 +1,2 @@
-pub mod validation;
 pub mod posting;
+pub mod validation;

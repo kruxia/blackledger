@@ -10,12 +10,12 @@
 //! Run the server first: `cargo run`
 //! Then run this example: `cargo run --example rest_api_client`
 
+use anyhow::Result;
+use chrono::{DateTime, Utc};
 use reqwest::{Client, StatusCode};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use rust_decimal::Decimal;
-use chrono::{DateTime, Utc};
-use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Ledger {
@@ -79,69 +79,73 @@ impl ApiClient {
             auth_token: None,
         }
     }
-    
+
     fn with_auth(mut self, token: String) -> Self {
         self.auth_token = Some(token);
         self
     }
-    
+
     async fn create_ledger(&self, name: &str) -> Result<Ledger> {
-        let mut req = self.client
+        let mut req = self
+            .client
             .post(format!("{}/api/ledgers", self.base_url))
             .json(&json!({ "name": name }));
-            
+
         if let Some(token) = &self.auth_token {
             req = req.bearer_auth(token);
         }
-        
+
         let response = req.send().await?;
-        
+
         if response.status() != StatusCode::CREATED {
             anyhow::bail!("Failed to create ledger: {}", response.status());
         }
-        
+
         Ok(response.json().await?)
     }
-    
+
     async fn create_account(&self, account: &serde_json::Value) -> Result<Account> {
-        let mut req = self.client
+        let mut req = self
+            .client
             .post(format!("{}/api/accounts", self.base_url))
             .json(account);
-            
+
         if let Some(token) = &self.auth_token {
             req = req.bearer_auth(token);
         }
-        
+
         let response = req.send().await?;
-        
+
         if response.status() != StatusCode::CREATED {
             anyhow::bail!("Failed to create account: {}", response.status());
         }
-        
+
         Ok(response.json().await?)
     }
-    
+
     async fn post_transaction(&self, transaction: &CreateTransaction) -> Result<serde_json::Value> {
-        let mut req = self.client
+        let mut req = self
+            .client
             .post(format!("{}/api/transactions", self.base_url))
             .json(transaction);
-            
+
         if let Some(token) = &self.auth_token {
             req = req.bearer_auth(token);
         }
-        
+
         let response = req.send().await?;
-        
+
         if response.status() != StatusCode::CREATED {
             let error = response.text().await?;
             anyhow::bail!("Failed to post transaction: {}", error);
         }
-        
+
         Ok(response.json().await?)
     }
-    
+
     async fn list_accounts(&self, ledger_id: i64, page: u32) -> Result<PaginatedResponse<Account>> {
-        let response = self.client
+        let response = self
+            .client
             .get(format!("{}/api/accounts", self.base_url))
             .query(&[
                 ("ledger_id", ledger_id.to_string()),
@@ -150,25 +154,26 @@ impl ApiClient {
             ])
             .send()
             .await?;
-            
+
         if !response.status().is_success() {
             anyhow::bail!("Failed to list accounts: {}", response.status());
         }
-        
+
         Ok(response.json().await?)
     }
-    
+
     async fn get_balances(&self, ledger_id: i64) -> Result<Vec<serde_json::Value>> {
-        let response = self.client
+        let response = self
+            .client
             .get(format!("{}/api/accounts/balances", self.base_url))
             .query(&[("ledger_id", ledger_id.to_string())])
             .send()
             .await?;
-            
+
         if !response.status().is_success() {
             anyhow::bail!("Failed to get balances: {}", response.status());
         }
-        
+
         Ok(response.json().await?)
     }
 }
@@ -176,14 +181,14 @@ impl ApiClient {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("🌐 Blackledger REST API Client Example\n");
-    
+
     // Configure API client
-    let base_url = std::env::var("API_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string());
-    
+    let base_url =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+
     // In production, obtain this from your auth provider
     let auth_token = std::env::var("AUTH_TOKEN").ok();
-    
+
     let mut client = ApiClient::new(base_url.clone());
     if let Some(token) = auth_token {
         println!("🔐 Using authentication token");
@@ -191,36 +196,46 @@ async fn main() -> Result<()> {
     } else {
         println!("⚠️  No auth token provided - some operations may fail");
     }
-    
+
     println!("📡 Connecting to: {}\n", base_url);
-    
+
     // Step 1: Create a ledger
     println!("1️⃣ Creating ledger...");
     let ledger = client.create_ledger("API Example Ledger").await?;
-    println!("   ✅ Created ledger: {} (ID: {})\n", ledger.name, ledger.id);
-    
+    println!(
+        "   ✅ Created ledger: {} (ID: {})\n",
+        ledger.name, ledger.id
+    );
+
     // Step 2: Create accounts
     println!("2️⃣ Creating accounts...");
-    
-    let cash_account = client.create_account(&json!({
-        "ledger_id": ledger.id,
-        "name": "Cash",
-        "number": 1000,
-        "normal": "DR"
-    })).await?;
+
+    let cash_account = client
+        .create_account(&json!({
+            "ledger_id": ledger.id,
+            "name": "Cash",
+            "number": 1000,
+            "normal": "DR"
+        }))
+        .await?;
     println!("   📊 Created Cash account (ID: {})", cash_account.id);
-    
-    let revenue_account = client.create_account(&json!({
-        "ledger_id": ledger.id,
-        "name": "Revenue",
-        "number": 4000,
-        "normal": "CR"
-    })).await?;
-    println!("   📊 Created Revenue account (ID: {})\n", revenue_account.id);
-    
+
+    let revenue_account = client
+        .create_account(&json!({
+            "ledger_id": ledger.id,
+            "name": "Revenue",
+            "number": 4000,
+            "normal": "CR"
+        }))
+        .await?;
+    println!(
+        "   📊 Created Revenue account (ID: {})\n",
+        revenue_account.id
+    );
+
     // Step 3: Post a transaction
     println!("3️⃣ Posting transaction...");
-    
+
     use rust_decimal_macros::dec;
     let transaction = CreateTransaction {
         ledger_id: ledger.id,
@@ -241,32 +256,33 @@ async fn main() -> Result<()> {
             },
         ],
     };
-    
+
     let posted = client.post_transaction(&transaction).await?;
-    println!("   ✅ Posted transaction: {}\n", 
-        posted["transaction"]["id"].as_i64().unwrap());
-    
+    println!(
+        "   ✅ Posted transaction: {}\n",
+        posted["transaction"]["id"].as_i64().unwrap()
+    );
+
     // Step 4: Query with pagination
     println!("4️⃣ Querying accounts with pagination...");
     let page1 = client.list_accounts(ledger.id, 1).await?;
     println!("   📄 Page 1: {} accounts", page1.data.len());
     println!("   📊 Total accounts: {:?}", page1.pagination.total);
     println!("   ➡️  Has more: {}\n", page1.pagination.has_more);
-    
+
     // Step 5: Get balances
     println!("5️⃣ Getting account balances...");
     let balances = client.get_balances(ledger.id).await?;
-    
+
     for balance in balances {
-        println!("   Account {}: {} {}",
-            balance["account_id"],
-            balance["balance"],
-            balance["currency_code"]
+        println!(
+            "   Account {}: {} {}",
+            balance["account_id"], balance["balance"], balance["currency_code"]
         );
     }
-    
+
     println!("\n✨ API example completed successfully!");
     println!("   View the API docs at: {}/docs", base_url);
-    
+
     Ok(())
 }

@@ -43,7 +43,7 @@ pub struct PaginationMeta {
 impl<T> PaginatedResponse<T> {
     pub fn new(data: Vec<T>, params: &PaginationParams, total: Option<i64>) -> Self {
         let has_more = data.len() as u32 >= params.page_size;
-        
+
         Self {
             data,
             pagination: PaginationMeta {
