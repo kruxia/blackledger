@@ -170,13 +170,13 @@ The Rust port of Blackledger is **~85% complete** with all core accounting funct
 
 ## 📈 Performance Metrics
 
-| Metric | Python Baseline | Rust Target | Current Status |
-|--------|----------------|-------------|----------------|
-| Transaction Posting | 50ms | <20ms | ✓ Achieved |
-| Balance Query | 30ms | <10ms | ✓ Achieved |
-| List Accounts (100) | 40ms | <15ms | ✓ Achieved |
-| Memory Usage | 500MB | <100MB | ✓ ~80MB |
-| Concurrent Requests | 100 | 1000+ | Testing needed |
+| Metric                | Python Baseline | Rust Target | Current Status   |
+|-----------------------|-----------------|-------------|------------------|
+| Transaction Posting   | 50ms            | <20ms       | ✓ Achieved       |
+| Balance Query         | 30ms            | <10ms       | ✓ Achieved       |
+| List Accounts (100)   | 40ms            | <15ms       | ✓ Achieved       |
+| Memory Usage          | 500MB           | <100MB      | ✓ ~80MB          |
+| Concurrent Requests   | 100             | 1000+       | Testing needed   |
 
 ## 🐛 Current Issues
 

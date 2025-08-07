@@ -240,7 +240,7 @@ GET    /api/currencies         # Search currencies
 POST   /api/currencies         # Create/update currency
 
 GET    /api/ledgers            # Search ledgers
-POST   /api/ledgers            # Create/update ledgerG
+POST   /api/ledgers            # Create/update ledger
 
 GET    /api/accounts           # Search accounts
 POST   /api/accounts           # Create/update account
