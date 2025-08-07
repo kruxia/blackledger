@@ -1,4 +1,4 @@
-use sqlx::{PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::api::search::LedgerSearchParams;
 use crate::error::{ApiError, ApiResult};
@@ -105,9 +105,8 @@ pub async fn search_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiRe
     let offset = params.base.get_offset() as i64;
 
     // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT id, name, created FROM ledger WHERE 1=1"
-    );
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT id, name, created FROM ledger WHERE 1=1");
 
     // Handle comma-delimited list of IDs
     if let Some(ref id_list) = params.id {

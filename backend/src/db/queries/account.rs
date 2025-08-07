@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row, QueryBuilder, Postgres};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::account::{
@@ -235,7 +235,7 @@ pub async fn search_accounts(
 
     // Use QueryBuilder for dynamic SQL generation
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE 1=1"
+        "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE 1=1",
     );
 
     // Handle comma-delimited list of IDs
@@ -245,27 +245,21 @@ pub async fn search_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !ids.is_empty() {
-            query_builder.push(" AND id IN (");
-            let mut separated = query_builder.separated(", ");
-            for id in ids {
-                separated.push_bind(id);
-            }
+            query_builder.push(" AND id = ANY(");
+            query_builder.push_bind(ids);
             query_builder.push(")");
         }
     }
 
-    // Handle comma-delimited list of ledger IDs  
+    // Handle comma-delimited list of ledger IDs
     if let Some(ref ledger_id_list) = params.ledger_id {
         let ledger_ids: Vec<i64> = ledger_id_list
             .split(',')
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !ledger_ids.is_empty() {
-            query_builder.push(" AND ledger_id IN (");
-            let mut separated = query_builder.separated(", ");
-            for ledger_id in ledger_ids {
-                separated.push_bind(ledger_id);
-            }
+            query_builder.push(" AND ledger_id = ANY(");
+            query_builder.push_bind(ledger_ids);
             query_builder.push(")");
         }
     }
@@ -277,11 +271,8 @@ pub async fn search_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !parent_ids.is_empty() {
-            query_builder.push(" AND parent_id IN (");
-            let mut separated = query_builder.separated(", ");
-            for parent_id in parent_ids {
-                separated.push_bind(parent_id);
-            }
+            query_builder.push(" AND parent_id = ANY(");
+            query_builder.push_bind(parent_ids);
             query_builder.push(")");
         }
     }
@@ -293,11 +284,8 @@ pub async fn search_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !versions.is_empty() {
-            query_builder.push(" AND version IN (");
-            let mut separated = query_builder.separated(", ");
-            for version in versions {
-                separated.push_bind(version);
-            }
+            query_builder.push(" AND version = ANY(");
+            query_builder.push_bind(versions);
             query_builder.push(")");
         }
     }
@@ -309,11 +297,8 @@ pub async fn search_accounts(
             .filter_map(|s| s.trim().parse::<i16>().ok())
             .collect();
         if !numbers.is_empty() {
-            query_builder.push(" AND number IN (");
-            let mut separated = query_builder.separated(", ");
-            for number in numbers {
-                separated.push_bind(number);
-            }
+            query_builder.push(" AND number = ANY(");
+            query_builder.push_bind(numbers);
             query_builder.push(")");
         }
     }
@@ -344,7 +329,7 @@ pub async fn search_accounts(
             "CR" | "CREDIT" => Some("CR"),
             _ => None,
         };
-        
+
         if let Some(normal_val) = normal_value {
             query_builder.push(" AND normal = ");
             query_builder.push_bind(normal_val);
@@ -352,7 +337,16 @@ pub async fn search_accounts(
     }
 
     // Add sorting based on SearchParams with whitelist validation
-    const ALLOWED_COLUMNS: &[&str] = &["id", "ledger_id", "parent_id", "name", "number", "created", "normal", "version"];
+    const ALLOWED_COLUMNS: &[&str] = &[
+        "id",
+        "ledger_id",
+        "parent_id",
+        "name",
+        "number",
+        "created",
+        "normal",
+        "version",
+    ];
     if let Some(order_clause) = params.base.parse_order_by(ALLOWED_COLUMNS) {
         query_builder.push(" ORDER BY ");
         query_builder.push(order_clause);
@@ -398,9 +392,8 @@ pub async fn count_accounts(
     params: &crate::api::search::AccountSearchParams,
 ) -> ApiResult<i64> {
     // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT COUNT(*) as count FROM account WHERE 1=1"
-    );
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT COUNT(*) as count FROM account WHERE 1=1");
 
     // Handle comma-delimited list of IDs
     if let Some(ref id_list) = params.id {
@@ -409,27 +402,21 @@ pub async fn count_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !ids.is_empty() {
-            query_builder.push(" AND id IN (");
-            let mut separated = query_builder.separated(", ");
-            for id in ids {
-                separated.push_bind(id);
-            }
+            query_builder.push(" AND id = ANY(");
+            query_builder.push_bind(ids);
             query_builder.push(")");
         }
     }
 
-    // Handle comma-delimited list of ledger IDs  
+    // Handle comma-delimited list of ledger IDs
     if let Some(ref ledger_id_list) = params.ledger_id {
         let ledger_ids: Vec<i64> = ledger_id_list
             .split(',')
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !ledger_ids.is_empty() {
-            query_builder.push(" AND ledger_id IN (");
-            let mut separated = query_builder.separated(", ");
-            for ledger_id in ledger_ids {
-                separated.push_bind(ledger_id);
-            }
+            query_builder.push(" AND ledger_id = ANY(");
+            query_builder.push_bind(ledger_ids);
             query_builder.push(")");
         }
     }
@@ -441,11 +428,8 @@ pub async fn count_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !parent_ids.is_empty() {
-            query_builder.push(" AND parent_id IN (");
-            let mut separated = query_builder.separated(", ");
-            for parent_id in parent_ids {
-                separated.push_bind(parent_id);
-            }
+            query_builder.push(" AND parent_id = ANY(");
+            query_builder.push_bind(parent_ids);
             query_builder.push(")");
         }
     }
@@ -457,11 +441,8 @@ pub async fn count_accounts(
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect();
         if !versions.is_empty() {
-            query_builder.push(" AND version IN (");
-            let mut separated = query_builder.separated(", ");
-            for version in versions {
-                separated.push_bind(version);
-            }
+            query_builder.push(" AND version = ANY(");
+            query_builder.push_bind(versions);
             query_builder.push(")");
         }
     }
@@ -473,11 +454,8 @@ pub async fn count_accounts(
             .filter_map(|s| s.trim().parse::<i16>().ok())
             .collect();
         if !numbers.is_empty() {
-            query_builder.push(" AND number IN (");
-            let mut separated = query_builder.separated(", ");
-            for number in numbers {
-                separated.push_bind(number);
-            }
+            query_builder.push(" AND number = ANY(");
+            query_builder.push_bind(numbers);
             query_builder.push(")");
         }
     }
@@ -508,7 +486,7 @@ pub async fn count_accounts(
             "CR" | "CREDIT" => Some("CR"),
             _ => None,
         };
-        
+
         if let Some(normal_val) = normal_value {
             query_builder.push(" AND normal = ");
             query_builder.push_bind(normal_val);

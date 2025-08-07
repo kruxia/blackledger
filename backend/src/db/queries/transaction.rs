@@ -1,4 +1,4 @@
-use sqlx::{PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::transaction::Transaction;
@@ -109,18 +109,18 @@ pub async fn search_transactions(
 
     // Use QueryBuilder for dynamic SQL generation with CTE to join with entry table when needed
     let needs_entry_join = params.acct.is_some() || params.curr.is_some();
-    
+
     let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
         QueryBuilder::new(
             "WITH tx_ids AS (
                 SELECT DISTINCT transaction.id
                 FROM transaction
                 JOIN entry ON transaction.id = entry.tx
-                WHERE 1=1"
+                WHERE 1=1",
         )
     } else {
         QueryBuilder::new(
-            "SELECT id, ledger_id, memo, meta, posted, effective FROM transaction WHERE 1=1"
+            "SELECT id, ledger_id, memo, meta, posted, effective FROM transaction WHERE 1=1",
         )
     };
 
@@ -201,11 +201,13 @@ pub async fn search_transactions(
 
     // If we used CTE, close it and select from the results
     if needs_entry_join {
-        query_builder.push(")
+        query_builder.push(
+            ")
             SELECT transaction.id, transaction.ledger_id, transaction.memo, transaction.meta, 
                    transaction.posted, transaction.effective
             FROM transaction
-            JOIN tx_ids ON tx_ids.id = transaction.id");
+            JOIN tx_ids ON tx_ids.id = transaction.id",
+        );
     }
 
     // Add sorting based on SearchParams with whitelist validation
@@ -250,19 +252,17 @@ pub async fn count_transactions(
 ) -> ApiResult<i64> {
     // Use QueryBuilder for dynamic SQL generation (matching search_transactions logic)
     let needs_entry_join = params.acct.is_some() || params.curr.is_some();
-    
+
     let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
         QueryBuilder::new(
             "WITH tx_ids AS (
                 SELECT DISTINCT transaction.id
                 FROM transaction
                 JOIN entry ON transaction.id = entry.tx
-                WHERE 1=1"
+                WHERE 1=1",
         )
     } else {
-        QueryBuilder::new(
-            "SELECT COUNT(*) as count FROM transaction WHERE 1=1"
-        )
+        QueryBuilder::new("SELECT COUNT(*) as count FROM transaction WHERE 1=1")
     };
 
     // Handle transaction ID filter (comma-delimited list)
@@ -342,10 +342,12 @@ pub async fn count_transactions(
 
     // If we used CTE, close it and count from the results
     if needs_entry_join {
-        query_builder.push(")
+        query_builder.push(
+            ")
             SELECT COUNT(*) as count
             FROM transaction
-            JOIN tx_ids ON tx_ids.id = transaction.id");
+            JOIN tx_ids ON tx_ids.id = transaction.id",
+        );
     }
 
     // Execute the query

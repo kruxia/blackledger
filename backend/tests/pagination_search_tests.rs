@@ -5,7 +5,6 @@ use blackledger::{
     },
     db::queries::{
         account::{count_accounts, search_accounts},
-        entry::{count_entries, search_entries},
         ledger::{count_ledgers, list_ledgers},
         transaction::{count_transactions, search_transactions},
     },
@@ -207,53 +206,6 @@ async fn test_transaction_search(pool: PgPool) {
 
     let count = count_transactions(&pool, &params).await.unwrap();
     assert_eq!(count, 10);
-}
-
-#[sqlx::test]
-async fn test_entry_search_by_account(pool: PgPool) {
-    let (ledgers, accounts) = setup_test_data(&pool).await;
-
-    // Create a transaction with entries
-    sqlx::query(
-        r#"
-        WITH t AS (
-            INSERT INTO transaction (ledger_id, posted, effective, memo)
-            VALUES ($1, NOW(), NOW(), 'Test')
-            RETURNING id
-        )
-        INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
-        SELECT $1, t.id, $2, 'USD', 100, NULL FROM t
-        UNION ALL
-        SELECT $1, t.id, $3, 'USD', NULL, 100 FROM t
-        "#,
-    )
-    .bind(ledgers[0].id)
-    .bind(accounts[0].id)
-    .bind(accounts[1].id)
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    let params = blackledger::api::search::EntrySearchParams {
-        ledger_id: None,
-        account_id: Some(accounts[0].id),
-        transaction_id: None,
-        currency_code: None,
-        from_amount: None,
-        to_amount: None,
-        base: SearchParams {
-            limit: Some(10),
-            offset: Some(0),
-            orderby: None,
-        },
-    };
-
-    let entries = search_entries(&pool, &params).await.unwrap();
-    assert!(entries.len() > 0);
-    assert!(entries.iter().all(|e| e.account_id == accounts[0].id));
-
-    let count = count_entries(&pool, &params).await.unwrap();
-    assert!(count > 0);
 }
 
 #[sqlx::test]

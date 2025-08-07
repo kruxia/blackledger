@@ -1,4 +1,4 @@
-use sqlx::{PgPool, QueryBuilder, Postgres, Row};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::api::search::CurrencySearchParams;
 use crate::error::{ApiError, ApiResult};
@@ -65,9 +65,8 @@ pub async fn search_currencies(
     let offset = params.base.get_offset() as i64;
 
     // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT code, created FROM currency WHERE 1=1"
-    );
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT code, created FROM currency WHERE 1=1");
 
     // Handle comma-delimited regex patterns for currency codes
     if let Some(ref code_patterns) = params.code {

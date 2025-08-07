@@ -397,7 +397,7 @@ async fn test_name_filter_validation() {
         .unwrap()
         .as_millis();
     let ledger_name = format!("Name Filter Test Ledger {}", timestamp);
-    
+
     let ledger_response = app
         .clone()
         .oneshot(
@@ -435,7 +435,11 @@ async fn test_name_filter_validation() {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(&format!("/accounts?ledger={}&name={}", ledger_id, urlencoding::encode(pattern)))
+                    .uri(&format!(
+                        "/accounts?ledger={}&name={}",
+                        ledger_id,
+                        urlencoding::encode(pattern)
+                    ))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -454,23 +458,23 @@ async fn test_name_filter_validation() {
     // Our regex allows: \w (word chars), -, ., space, *, ?, and comma
     // ^ is only allowed at the start, $ only at the end
     let invalid_patterns = vec![
-        "name'; DROP TABLE",          // Contains single quote
-        "name\" OR \"1\"=\"1",        // Contains double quotes  
-        "Robert(); DROP TABLE",       // Contains parentheses
-        "name/*comment*/",            // Contains slashes
-        "name;delete",                // Contains semicolon
-        "(SELECT FROM users)",        // Contains parentheses
-        "name=value",                 // Contains equals sign
-        "name' AND 1=1",              // Contains single quote
-        "name[0]",                    // Contains brackets
-        "name|value",                 // Contains pipe
-        "name&param",                 // Contains ampersand
-        "name+value",                 // Contains plus
-        "Ca$h",                       // $ in the middle
-        "$$money",                    // Multiple $ signs
-        "Account$$",                  // Multiple $ at end
-        "Test^Account",               // ^ in the middle
-        "^^Start",                    // Multiple ^ at start
+        "name'; DROP TABLE",    // Contains single quote
+        "name\" OR \"1\"=\"1",  // Contains double quotes
+        "Robert(); DROP TABLE", // Contains parentheses
+        "name/*comment*/",      // Contains slashes
+        "name;delete",          // Contains semicolon
+        "(SELECT FROM users)",  // Contains parentheses
+        "name=value",           // Contains equals sign
+        "name' AND 1=1",        // Contains single quote
+        "name[0]",              // Contains brackets
+        "name|value",           // Contains pipe
+        "name&param",           // Contains ampersand
+        "name+value",           // Contains plus
+        "Ca$h",                 // $ in the middle
+        "$$money",              // Multiple $ signs
+        "Account$$",            // Multiple $ at end
+        "Test^Account",         // ^ in the middle
+        "^^Start",              // Multiple ^ at start
     ];
 
     for pattern in invalid_patterns {
@@ -479,7 +483,11 @@ async fn test_name_filter_validation() {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(&format!("/accounts?ledger={}&name={}", ledger_id, urlencoding::encode(pattern)))
+                    .uri(&format!(
+                        "/accounts?ledger={}&name={}",
+                        ledger_id,
+                        urlencoding::encode(pattern)
+                    ))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -489,7 +497,8 @@ async fn test_name_filter_validation() {
         // When deserialization fails, Axum returns 400 BAD_REQUEST with a plain text error
         // We should get either BAD_REQUEST (400) or UNPROCESSABLE_ENTITY (422)
         assert!(
-            response.status() == StatusCode::BAD_REQUEST || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
+            response.status() == StatusCode::BAD_REQUEST
+                || response.status() == StatusCode::UNPROCESSABLE_ENTITY,
             "Dangerous pattern '{}' should be rejected with 400 or 422, got {}",
             pattern,
             response.status()
@@ -499,11 +508,11 @@ async fn test_name_filter_validation() {
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        
+
         // The error might be plain text or JSON, depending on where it's caught
         let body_str = String::from_utf8_lossy(&body);
         assert!(
-            body_str.contains("Invalid name filter format") 
+            body_str.contains("Invalid name filter format")
                 || body_str.contains("Failed to deserialize"),
             "Error message should indicate invalid name filter for pattern: {}, got: {}",
             pattern,
@@ -691,7 +700,10 @@ async fn test_ledger_search() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/ledgers?name={}", urlencoding::encode(&format!("Ledger {}", timestamp))))
+                .uri(&format!(
+                    "/ledgers?name={}",
+                    urlencoding::encode(&format!("Ledger {}", timestamp))
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -849,7 +861,7 @@ async fn test_account_search_parameters() {
         .unwrap()
         .as_millis();
     let ledger_name = format!("Account Search Test Ledger {}", timestamp);
-    
+
     let ledger_response = app
         .clone()
         .oneshot(
@@ -929,7 +941,10 @@ async fn test_account_search_parameters() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/accounts?ledger={}&number=100,200,300", ledger_id))
+                .uri(&format!(
+                    "/accounts?ledger={}&number=100,200,300",
+                    ledger_id
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -950,7 +965,10 @@ async fn test_account_search_parameters() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/accounts?ledger={}&name=^Cash,Account$", ledger_id))
+                .uri(&format!(
+                    "/accounts?ledger={}&name=^Cash,Account$",
+                    ledger_id
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -1034,7 +1052,10 @@ async fn test_account_search_parameters() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/accounts?ledger={}&normal=DR&number=110,120", ledger_id))
+                .uri(&format!(
+                    "/accounts?ledger={}&normal=DR&number=110,120",
+                    ledger_id
+                ))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -1144,13 +1165,13 @@ async fn test_transaction_posting() {
                         "memo": "Test transaction",
                         "entries": [
                             {
-                                "account_id": cash_account_id,
-                                "currency_code": "USD",
+                                "acct": cash_account_id,
+                                "curr": "USD",
                                 "debit": "100.00"
                             },
                             {
-                                "account_id": revenue_account_id,
-                                "currency_code": "USD",
+                                "acct": revenue_account_id,
+                                "curr": "USD",
                                 "credit": "100.00"
                             }
                         ]
@@ -1203,13 +1224,13 @@ async fn test_unbalanced_transaction_rejection() {
                         "memo": "Unbalanced transaction",
                         "entries": [
                             {
-                                "account_id": cash_account_id,
-                                "currency_code": "USD",
+                                "acct": cash_account_id,
+                                "curr": "USD",
                                 "debit": "100.00"
                             },
                             {
-                                "account_id": revenue_account_id,
-                                "currency_code": "USD",
+                                "acct": revenue_account_id,
+                                "curr": "USD",
                                 "credit": "50.00"  // Doesn't balance!
                             }
                         ]

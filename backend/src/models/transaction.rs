@@ -70,12 +70,14 @@ pub struct CreateTransaction {
 /// concurrent modifications.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateEntry {
+    #[serde(rename = "acct")]
     pub account_id: i64,
+    #[serde(rename = "curr")]
     pub currency_code: String,
     #[serde(default, with = "rust_decimal::serde::str_option")]
     pub debit: Option<rust_decimal::Decimal>,
     #[serde(default, with = "rust_decimal::serde::str_option")]
     pub credit: Option<rust_decimal::Decimal>,
-    #[serde(default)]
+    #[serde(default, rename = "version")]
     pub account_version: Option<i64>,
 }

@@ -43,7 +43,9 @@ struct CreateTransaction {
 
 #[derive(Debug, Serialize)]
 struct CreateEntry {
+    #[serde(rename = "acct")]
     account_id: i64,
+    #[serde(rename = "curr")]
     currency_code: String,
     #[serde(with = "rust_decimal::serde::str_option")]
     debit: Option<Decimal>,

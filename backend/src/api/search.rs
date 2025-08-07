@@ -97,17 +97,21 @@ impl SearchParams {
                     } else {
                         (field, false)
                     };
-                    
+
                     // Validate against whitelist
                     if allowed_columns.contains(&column) {
-                        Some(format!("{} {}", column, if is_desc { "DESC" } else { "ASC" }))
+                        Some(format!(
+                            "{} {}",
+                            column,
+                            if is_desc { "DESC" } else { "ASC" }
+                        ))
                     } else {
                         // Invalid column name, skip it
                         None
                     }
                 })
                 .collect();
-            
+
             if parts.is_empty() {
                 None
             } else {
@@ -206,18 +210,6 @@ pub struct TransactionSearchParams {
     pub curr: Option<String>,
     /// Memo patterns (regex patterns)
     pub memo: Option<String>,
-    #[serde(flatten)]
-    pub base: SearchParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct EntrySearchParams {
-    pub ledger_id: Option<i64>,
-    pub account_id: Option<i64>,
-    pub transaction_id: Option<i64>,
-    pub currency_code: Option<String>,
-    pub from_amount: Option<rust_decimal::Decimal>,
-    pub to_amount: Option<rust_decimal::Decimal>,
     #[serde(flatten)]
     pub base: SearchParams,
 }
