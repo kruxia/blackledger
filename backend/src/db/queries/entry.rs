@@ -157,8 +157,8 @@ pub async fn search_entries(
     params: &crate::api::search::EntrySearchParams,
 ) -> ApiResult<Vec<Entry>> {
     let page = params.common.page.unwrap_or(1) as i64;
-    let page_size = params.common.page_size.unwrap_or(20) as i64;
-    let offset = (page - 1) * page_size;
+    let size = params.common.size.unwrap_or(20) as i64;
+    let offset = (page - 1) * size;
 
     list_entries(
         pool,
@@ -168,7 +168,7 @@ pub async fn search_entries(
         params.currency_code.clone(),
         params.from_amount,
         params.to_amount,
-        Some(page_size),
+        Some(size),
         Some(offset),
     )
     .await

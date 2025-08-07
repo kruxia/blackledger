@@ -7,13 +7,12 @@ use serde::Deserialize;
 
 use crate::{
     api::{
+        AppState,
         pagination::{PaginatedResponse, PaginationParams},
         search::AccountSearchParams,
-        AppState,
     },
     db::queries::account::{
-        count_accounts, create_account, get_account_balances, get_account_by_id, search_accounts,
-        update_account,
+        count_accounts, create_account, get_account_balances, search_accounts, update_account,
     },
     error::ApiResult,
     models::account::{Account, AccountBalance, CreateAccount, UpdateAccount},
@@ -31,14 +30,6 @@ pub async fn handle_create_account(
 ) -> ApiResult<(StatusCode, Json<Account>)> {
     let account = create_account(&state.pool, &input).await?;
     Ok((StatusCode::CREATED, Json(account)))
-}
-
-pub async fn handle_get_account(
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-) -> ApiResult<Json<Account>> {
-    let account = get_account_by_id(&state.pool, id).await?;
-    Ok(Json(account))
 }
 
 pub async fn handle_update_account(
@@ -59,7 +50,7 @@ pub async fn handle_list_accounts(
 
     let pagination = PaginationParams {
         page: params.common.page.unwrap_or(1),
-        page_size: params.common.page_size.unwrap_or(20),
+        size: params.common.size.unwrap_or(20),
     };
 
     let response = PaginatedResponse::new(accounts, &pagination, Some(total));

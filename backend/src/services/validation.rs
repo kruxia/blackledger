@@ -229,10 +229,12 @@ mod tests {
         let entries = vec![];
         let result = validate_entries(&entries);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("at least one entry"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("at least one entry")
+        );
     }
 
     #[test]
@@ -288,10 +290,12 @@ mod tests {
         }];
         let result = validate_entries(&entries);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("exactly 3 characters"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("exactly 3 characters")
+        );
     }
 
     #[test]

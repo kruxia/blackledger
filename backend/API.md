@@ -33,7 +33,7 @@ All responses follow a consistent format:
   "data": [ ... ],
   "pagination": {
     "page": 1,
-    "page_size": 20,
+    "size": 20,
     "total": 100,
     "has_more": true
   }
@@ -129,7 +129,7 @@ List ledgers with pagination.
 
 **Query Parameters:**
 - `page` (default: 1)
-- `page_size` (default: 20)
+- `size` (default: 20)
 
 **Response:**
 ```json
@@ -143,7 +143,7 @@ List ledgers with pagination.
   ],
   "pagination": {
     "page": 1,
-    "page_size": 20,
+    "size": 20,
     "total": 1,
     "has_more": false
   }
@@ -217,7 +217,7 @@ Search and list accounts with pagination.
 - `name` - Search by name (partial match)
 - `number` - Search by account number
 - `page` (default: 1)
-- `page_size` (default: 20)
+- `size` (default: 20)
 - `sort_by` - Sort field (created, number, name)
 - `sort_order` - asc or desc
 
@@ -238,7 +238,7 @@ Search and list accounts with pagination.
   ],
   "pagination": {
     "page": 1,
-    "page_size": 20,
+    "size": 20,
     "total": 15,
     "has_more": false
   }
@@ -375,7 +375,7 @@ Search and list transactions with pagination.
 - `from_date` - Start date (ISO 8601)
 - `to_date` - End date (ISO 8601)
 - `page` (default: 1)
-- `page_size` (default: 20)
+- `size` (default: 20)
 
 #### GET /api/transactions/{id}
 Get a specific transaction with its entries.
@@ -403,7 +403,7 @@ Search and list entries with pagination.
 - `from_amount` - Minimum amount (debit or credit)
 - `to_amount` - Maximum amount (debit or credit)
 - `page` (default: 1)
-- `page_size` (default: 20)
+- `size` (default: 20)
 
 **Response:**
 ```json
@@ -421,7 +421,7 @@ Search and list entries with pagination.
   ],
   "pagination": {
     "page": 1,
-    "page_size": 20,
+    "size": 20,
     "total": 150,
     "has_more": true
   }
@@ -540,7 +540,7 @@ curl "http://localhost:3000/api/accounts/balances?ledger_id=1"
 ### 3. Search Transactions
 
 ```bash
-curl "http://localhost:3000/api/transactions?ledger_id=1&from_date=2025-08-01&page=1&page_size=50"
+curl "http://localhost:3000/api/transactions?ledger_id=1&from_date=2025-08-01&page=1&size=50"
 ```
 
 ---

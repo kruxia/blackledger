@@ -11,10 +11,10 @@ services:
     ports:
       - "8002:8000"
     environment:
-      RUST_LOG: blackledger=debug,tower_http=debug,sqlx=warn
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
       AUTH_ENABLED: "false"
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger
       PORT: "8000"
+      RUST_LOG: blackledger=debug,tower_http=debug,sqlx=warn
     depends_on:
       - postgres
 

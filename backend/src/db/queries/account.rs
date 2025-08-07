@@ -231,8 +231,8 @@ pub async fn search_accounts(
     params: &crate::api::search::AccountSearchParams,
 ) -> ApiResult<Vec<Account>> {
     let page = params.common.page.unwrap_or(1) as i64;
-    let page_size = params.common.page_size.unwrap_or(20) as i64;
-    let offset = (page - 1) * page_size;
+    let size = params.common.size.unwrap_or(20) as i64;
+    let offset = (page - 1) * size;
 
     // Build dynamic query based on search parameters
     let mut query = String::from("SELECT * FROM account WHERE 1=1");
@@ -274,7 +274,7 @@ pub async fn search_accounts(
     // Add pagination
     bind_count += 1;
     query.push_str(&format!(" LIMIT ${}", bind_count));
-    bindings.push(page_size.to_string());
+    bindings.push(size.to_string());
 
     bind_count += 1;
     query.push_str(&format!(" OFFSET ${}", bind_count));
@@ -287,12 +287,12 @@ pub async fn search_accounts(
             pool,
             Some(ledger_id),
             params.parent_id,
-            Some(page_size),
+            Some(size),
             Some(offset),
         )
         .await?
     } else {
-        list_accounts(pool, None, params.parent_id, Some(page_size), Some(offset)).await?
+        list_accounts(pool, None, params.parent_id, Some(size), Some(offset)).await?
     };
 
     Ok(accounts)

@@ -105,12 +105,12 @@ pub async fn search_transactions(
     params: &crate::api::search::TransactionSearchParams,
 ) -> ApiResult<Vec<Transaction>> {
     let page = params.common.page.unwrap_or(1) as i64;
-    let page_size = params.common.page_size.unwrap_or(20) as i64;
-    let offset = (page - 1) * page_size;
+    let size = params.common.size.unwrap_or(20) as i64;
+    let offset = (page - 1) * size;
 
     // For now, using simplified search based on ledger_id
     // In production, you'd build a dynamic query with all search parameters
-    list_transactions(pool, params.ledger_id, Some(page_size), Some(offset)).await
+    list_transactions(pool, params.ledger_id, Some(size), Some(offset)).await
 }
 
 pub async fn count_transactions(

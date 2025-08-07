@@ -1,7 +1,7 @@
 [package]
 name = "blackledger"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # Web framework
@@ -14,7 +14,13 @@ tower-http = { version = "0.6", features = ["trace", "cors"] }
 tokio = { version = "1.42", features = ["full"] }
 
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "rust_decimal", "migrate"] }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+    "rust_decimal",
+    "migrate",
+] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -26,9 +32,6 @@ rust_decimal_macros = "1.36"
 
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
-
-# UUID
-uuid = { version = "1.11", features = ["serde", "v4"] }
 
 # Error handling
 thiserror = "2.0"

@@ -58,18 +58,12 @@ async fn setup_test_data(pool: &PgPool) -> (Vec<Ledger>, Vec<Account>) {
 
 #[test]
 fn test_pagination_params() {
-    let params = PaginationParams {
-        page: 2,
-        page_size: 10,
-    };
+    let params = PaginationParams { page: 2, size: 10 };
 
     assert_eq!(params.limit(), 10);
     assert_eq!(params.offset(), 10);
 
-    let params = PaginationParams {
-        page: 1,
-        page_size: 20,
-    };
+    let params = PaginationParams { page: 1, size: 20 };
 
     assert_eq!(params.limit(), 20);
     assert_eq!(params.offset(), 0);
@@ -78,16 +72,13 @@ fn test_pagination_params() {
 #[test]
 fn test_paginated_response() {
     let data = vec![1, 2, 3, 4, 5];
-    let params = PaginationParams {
-        page: 1,
-        page_size: 5,
-    };
+    let params = PaginationParams { page: 1, size: 5 };
 
     let response = PaginatedResponse::new(data.clone(), &params, Some(100));
 
     assert_eq!(response.data, data);
     assert_eq!(response.pagination.page, 1);
-    assert_eq!(response.pagination.page_size, 5);
+    assert_eq!(response.pagination.size, 5);
     assert_eq!(response.pagination.total, Some(100));
     assert!(response.pagination.has_more);
 }
@@ -125,7 +116,7 @@ async fn test_account_search_by_name(pool: PgPool) {
             sort_by: None,
             sort_order: None,
             page: Some(1),
-            page_size: Some(10),
+            size: Some(10),
         },
     };
 
@@ -153,7 +144,7 @@ async fn test_account_search_pagination(pool: PgPool) {
             sort_by: Some("number".to_string()),
             sort_order: Some(SortOrder::Asc),
             page: Some(1),
-            page_size: Some(5),
+            size: Some(5),
         },
     };
 
@@ -214,7 +205,7 @@ async fn test_transaction_search(pool: PgPool) {
             sort_by: None,
             sort_order: None,
             page: Some(1),
-            page_size: Some(5),
+            size: Some(5),
         },
     };
 
@@ -264,7 +255,7 @@ async fn test_entry_search_by_account(pool: PgPool) {
             sort_by: None,
             sort_order: None,
             page: Some(1),
-            page_size: Some(10),
+            size: Some(10),
         },
     };
 
@@ -293,7 +284,7 @@ async fn test_sorting(pool: PgPool) {
             sort_by: Some("number".to_string()),
             sort_order: Some(SortOrder::Asc),
             page: Some(1),
-            page_size: Some(5),
+            size: Some(5),
         },
     };
 

@@ -60,7 +60,7 @@ struct PaginatedResponse<T> {
 #[derive(Debug, Deserialize)]
 struct PaginationMeta {
     page: u32,
-    page_size: u32,
+    size: u32,
     total: Option<i64>,
     has_more: bool,
 }
@@ -150,7 +150,7 @@ impl ApiClient {
             .query(&[
                 ("ledger_id", ledger_id.to_string()),
                 ("page", page.to_string()),
-                ("page_size", "10".to_string()),
+                ("size", "10".to_string()),
             ])
             .send()
             .await?;

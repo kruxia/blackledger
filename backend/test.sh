@@ -23,7 +23,7 @@ sqlx migrate run
 
 # Run tests
 echo "Running tests..."
-cargo tarpaulin --config tarpaulin.toml --out Html --out Json --all-features -- --test-threads=1
-# cargo test --all-features -- --test-threads=1
+# cargo tarpaulin --config tarpaulin.toml --out Html --all-features #-- --test-threads=1
+cargo test --all-features
 
-# echo "Tests completed successfully!"
+echo "Tests completed successfully!"

@@ -5,7 +5,7 @@ use axum::{
     http::{Request, StatusCode},
 };
 use blackledger::api;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -92,21 +92,6 @@ async fn test_ledger_crud_operations() {
     let ledger: Value = serde_json::from_slice(&body).unwrap();
     let ledger_id = ledger["id"].as_i64().unwrap();
 
-    // Get ledger by ID
-    let get_response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("GET")
-                .uri(&format!("/ledgers/{}", ledger_id))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(get_response.status(), StatusCode::OK);
-
     // Update ledger
     let update_response = app
         .clone()
@@ -136,10 +121,12 @@ async fn test_ledger_crud_operations() {
         .await
         .unwrap();
     let updated_ledger: Value = serde_json::from_slice(&body).unwrap();
-    assert!(updated_ledger["name"]
-        .as_str()
-        .unwrap()
-        .starts_with("Updated Test Ledger"));
+    assert!(
+        updated_ledger["name"]
+            .as_str()
+            .unwrap()
+            .starts_with("Updated Test Ledger")
+    );
 }
 
 #[tokio::test]
