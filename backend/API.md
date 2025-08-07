@@ -390,46 +390,6 @@ Get a specific transaction with its entries.
 
 ---
 
-### Entries
-
-#### GET /api/entries
-Search and list entries with pagination.
-
-**Query Parameters:**
-- `ledger_id` - Filter by ledger
-- `account_id` - Filter by account
-- `transaction_id` - Filter by transaction
-- `currency_code` - Filter by currency
-- `from_amount` - Minimum amount (debit or credit)
-- `to_amount` - Maximum amount (debit or credit)
-- `page` (default: 1)
-- `size` (default: 20)
-
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "ledger_id": 1,
-      "transaction_id": 1,
-      "account_id": 1,
-      "currency_code": "USD",
-      "debit": "100.00",
-      "credit": null
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "size": 20,
-    "total": 150,
-    "has_more": true
-  }
-}
-```
-
----
-
 ## Error Codes
 
 | Status Code | Description |

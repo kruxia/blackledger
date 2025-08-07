@@ -90,7 +90,7 @@ impl ApiClient {
     async fn create_ledger(&self, name: &str) -> Result<Ledger> {
         let mut req = self
             .client
-            .post(format!("{}/api/ledgers", self.base_url))
+            .post(format!("{}/ledgers", self.base_url))
             .json(&json!({ "name": name }));
 
         if let Some(token) = &self.auth_token {
@@ -109,7 +109,7 @@ impl ApiClient {
     async fn create_account(&self, account: &serde_json::Value) -> Result<Account> {
         let mut req = self
             .client
-            .post(format!("{}/api/accounts", self.base_url))
+            .post(format!("{}/accounts", self.base_url))
             .json(account);
 
         if let Some(token) = &self.auth_token {
@@ -128,7 +128,7 @@ impl ApiClient {
     async fn post_transaction(&self, transaction: &CreateTransaction) -> Result<serde_json::Value> {
         let mut req = self
             .client
-            .post(format!("{}/api/transactions", self.base_url))
+            .post(format!("{}/transactions", self.base_url))
             .json(transaction);
 
         if let Some(token) = &self.auth_token {
@@ -148,7 +148,7 @@ impl ApiClient {
     async fn list_accounts(&self, ledger_id: i64, page: u32) -> Result<PaginatedResponse<Account>> {
         let response = self
             .client
-            .get(format!("{}/api/accounts", self.base_url))
+            .get(format!("{}/accounts", self.base_url))
             .query(&[
                 ("ledger_id", ledger_id.to_string()),
                 ("page", page.to_string()),
@@ -167,7 +167,7 @@ impl ApiClient {
     async fn get_balances(&self, ledger_id: i64) -> Result<Vec<serde_json::Value>> {
         let response = self
             .client
-            .get(format!("{}/api/accounts/balances", self.base_url))
+            .get(format!("{}/accounts/balances", self.base_url))
             .query(&[("ledger_id", ledger_id.to_string())])
             .send()
             .await?;

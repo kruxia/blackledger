@@ -5,9 +5,9 @@ services:
       dockerfile: ./Dockerfile
       target: develop
     volumes:
-      - .:/app
+      - .:/opt/blackledger
       - cargo-cache:/usr/local/cargo/registry
-      - target-cache:/app/target
+      - target-cache:/opt/blackledger/target
     ports:
       - "8002:8000"
     environment:

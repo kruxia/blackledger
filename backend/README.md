@@ -82,32 +82,26 @@ DATABASE_URL=postgresql://blackledger_test:test@localhost:5434/blackledger_test 
 ## API Endpoints
 
 ### Health Check
-- `GET /api` - Health check and version
+- `GET /` - Health check and version
 
 ### Currencies
-- `GET /api/currencies` - List all currencies
-- `POST /api/currencies` - Create/update currency
+- `GET /currencies` - List all currencies
+- `POST /currencies` - Create/update currency
 
 ### Ledgers
-- `GET /api/ledgers` - List ledgers with pagination
-- `POST /api/ledgers` - Create new ledger
-- `GET /api/ledgers/{id}` - Get ledger by ID
-- `PATCH /api/ledgers/{id}` - Update ledger
+- `GET /ledgers` - List ledgers with pagination
+- `POST /ledgers` - Create new ledger
+- `PATCH /ledgers/{id}` - Update ledger
 
 ### Accounts
-- `GET /api/accounts` - List accounts with filtering
-- `POST /api/accounts` - Create new account
-- `GET /api/accounts/{id}` - Get account by ID
-- `PATCH /api/accounts/{id}` - Update account
-- `GET /api/accounts/balances` - Get account balances
+- `GET /accounts` - List accounts with filtering
+- `POST /accounts` - Create new account
+- `PATCH /accounts/{id}` - Update account
+- `GET /accounts/balances` - Get account balances
 
 ### Transactions
-- `GET /api/transactions` - List transactions
-- `POST /api/transactions` - Post new transaction
-- `GET /api/transactions/{id}` - Get transaction with entries
-
-### Entries
-- `GET /api/entries` - List entries with filtering
+- `GET /transactions` - List transactions
+- `POST /transactions` - Post new transaction
 
 ## Project Structure
 

@@ -1,3 +1,4 @@
+# =======================================================================
 # Build stage
 FROM rust:1.88-slim AS builder
 
@@ -7,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /opt/blackledger
 
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
@@ -25,27 +26,28 @@ COPY migrations ./migrations
 RUN touch src/main.rs
 RUN cargo build --release
 
-# Runtime stage
-FROM debian:bookworm-slim AS runtime
+# =======================================================================
+# deploy stage
+FROM debian:bookworm-slim AS deploy
 
-# Install runtime dependencies
+# Install deploy dependencies
 RUN apt-get update && apt-get install -y \
     libpq5 \
     libssl3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /opt/blackledger
 
 # Copy the binary from builder
-COPY --from=builder /app/target/release/blackledger /usr/local/bin/blackledger
+COPY --from=builder /opt/blackledger/target/release/blackledger /usr/local/bin/blackledger
 
 # Copy migrations
-COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /opt/blackledger/migrations /opt/blackledger/migrations
 
 # Create non-root user
 RUN useradd -m -u 1000 blackledger && \
-    chown -R blackledger:blackledger /app
+    chown -R blackledger:blackledger /opt/blackledger
 
 USER blackledger
 
@@ -57,10 +59,11 @@ EXPOSE 8000
 
 CMD ["blackledger"]
 
+# =======================================================================
 # Development stage
 FROM rust:1.88 AS develop
 
-WORKDIR /app
+WORKDIR /opt/blackledger
 
 # Install cargo-watch for auto-reload
 RUN cargo install cargo-watch sqlx-cli
@@ -69,7 +72,7 @@ RUN cargo install cargo-watch sqlx-cli
 RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
 
 # Copy everything
-COPY . .
+COPY ./ ./
 
 # Set environment variables for development
 ENV RUST_LOG=blackledger=debug,tower_http=debug

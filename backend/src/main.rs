@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
     // Build application
     let app = Router::new()
-        .nest("/api", api::router(app_state.clone()))
+        .merge(api::router(app_state.clone()))
         .layer(TraceLayer::new_for_http())
         .layer(api::cors::cors_layer())
         .with_state(app_state);
