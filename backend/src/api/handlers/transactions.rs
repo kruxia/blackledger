@@ -3,7 +3,6 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::Serialize;
 
 use crate::services::posting::post_transactions_batch;
 use crate::{
@@ -15,30 +14,22 @@ use crate::{
     auth::OptionalAuthUser,
     db::queries::transaction::{count_transactions, search_transactions},
     error::ApiResult,
-    models::entry::Entry,
     models::transaction::{CreateTransaction, Transaction},
 };
-
-#[derive(Debug, Serialize)]
-pub struct TransactionWithEntries {
-    #[serde(flatten)]
-    pub transaction: Transaction,
-    pub entries: Vec<Entry>,
-}
 
 pub async fn handle_create_transactions(
     State(state): State<AppState>,
     OptionalAuthUser(auth_user): OptionalAuthUser,
     Json(input): Json<Vec<CreateTransaction>>,
-) -> ApiResult<(StatusCode, Json<Vec<TransactionWithEntries>>)> {
+) -> ApiResult<(StatusCode, Json<Vec<Transaction>>)> {
     let user_id = auth_user.as_ref().map(|u| u.sub.as_str());
     let results = post_transactions_batch(&state.pool, &input, user_id).await?;
 
-    let response: Vec<TransactionWithEntries> = results
+    let response: Vec<Transaction> = results
         .into_iter()
-        .map(|(transaction, entries)| TransactionWithEntries {
-            transaction,
-            entries,
+        .map(|(mut transaction, entries)| {
+            transaction.entries = entries;
+            transaction
         })
         .collect();
 

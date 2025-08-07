@@ -1,3 +1,4 @@
+use crate::models::entry::Entry;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -20,6 +21,9 @@ pub struct Transaction {
     pub effective: DateTime<Utc>,
     pub memo: Option<String>,
     pub meta: Option<serde_json::Value>,
+    #[sqlx(skip)]
+    #[serde(default)]
+    pub entries: Vec<Entry>,
 }
 
 /// Input for creating a new transaction

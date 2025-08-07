@@ -1,4 +1,5 @@
 use sqlx::PgPool;
+use std::collections::HashMap;
 
 use crate::error::ApiResult;
 use crate::models::entry::Entry;
@@ -67,4 +68,47 @@ pub async fn get_entries_by_account(
             credit: r.credit,
         })
         .collect())
+}
+
+/// Fetch entries for multiple transactions efficiently in a single query
+pub async fn get_entries_for_transactions(
+    pool: &PgPool,
+    transaction_ids: &[i64],
+) -> ApiResult<HashMap<i64, Vec<Entry>>> {
+    if transaction_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let records = sqlx::query!(
+        r#"
+        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit 
+        FROM entry 
+        WHERE transaction_id = ANY($1)
+        ORDER BY transaction_id, id
+        "#,
+        transaction_ids
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut entries_map: HashMap<i64, Vec<Entry>> = HashMap::new();
+
+    for r in records {
+        let entry = Entry {
+            id: r.id,
+            ledger_id: r.ledger_id,
+            transaction_id: r.transaction_id,
+            account_id: r.account_id,
+            currency_code: r.curr,
+            debit: r.debit,
+            credit: r.credit,
+        };
+
+        entries_map
+            .entry(r.transaction_id)
+            .or_insert_with(Vec::new)
+            .push(entry);
+    }
+
+    Ok(entries_map)
 }

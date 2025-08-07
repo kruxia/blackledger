@@ -2,18 +2,6 @@ use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::transaction::Transaction;
-use crate::services::posting;
-
-// Note: This function is deprecated in favor of services::posting::post_transaction
-// which includes proper validation and user context
-pub async fn create_transaction(
-    pool: &PgPool,
-    input: &crate::models::transaction::CreateTransaction,
-) -> ApiResult<Transaction> {
-    // Use the posting service instead
-    let (transaction, _entries) = posting::post_transaction(pool, input, None).await?;
-    Ok(transaction)
-}
 
 pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transaction> {
     let record = sqlx::query!(
@@ -27,6 +15,8 @@ pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transact
         _ => ApiError::Database(e),
     })?;
 
+    let entries = crate::db::queries::entry::get_entries_by_transaction(pool, id).await?;
+
     Ok(Transaction {
         id: record.id,
         ledger_id: record.ledger_id,
@@ -34,6 +24,7 @@ pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transact
         effective: record.effective,
         memo: record.memo,
         meta: record.meta,
+        entries,
     })
 }
 
@@ -43,7 +34,7 @@ pub async fn list_transactions(
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> ApiResult<Vec<Transaction>> {
-    let transactions = if let Some(lid) = ledger_id {
+    let mut transactions: Vec<Transaction> = if let Some(lid) = ledger_id {
         let records = sqlx::query!(
             r#"
             SELECT id, ledger_id, created, effective, memo, meta FROM transaction
@@ -68,6 +59,7 @@ pub async fn list_transactions(
                 effective: r.effective,
                 memo: r.memo,
                 meta: r.meta,
+                entries: Vec::new(),
             })
             .collect()
     } else {
@@ -93,9 +85,22 @@ pub async fn list_transactions(
                 effective: r.effective,
                 memo: r.memo,
                 meta: r.meta,
+                entries: Vec::new(),
             })
             .collect()
     };
+
+    // Fetch entries for all transactions
+    let transaction_ids: Vec<i64> = transactions.iter().map(|t| t.id).collect();
+    let entries_map =
+        crate::db::queries::entry::get_entries_for_transactions(pool, &transaction_ids).await?;
+
+    // Populate entries for each transaction
+    for transaction in &mut transactions {
+        if let Some(entries) = entries_map.get(&transaction.id) {
+            transaction.entries = entries.clone();
+        }
+    }
 
     Ok(transactions)
 }
@@ -217,7 +222,7 @@ pub async fn search_transactions(
         query_builder.push(order_clause);
     } else {
         // Default ordering
-        query_builder.push(" ORDER BY posted DESC");
+        query_builder.push(" ORDER BY created DESC");
     }
 
     // Add pagination with parameter binding
@@ -239,8 +244,21 @@ pub async fn search_transactions(
             meta: row.try_get("meta")?,
             created: row.try_get("created")?,
             effective: row.try_get("effective")?,
+            entries: Vec::new(),
         };
         transactions.push(transaction);
+    }
+
+    // Fetch entries for all transactions
+    let transaction_ids: Vec<i64> = transactions.iter().map(|t| t.id).collect();
+    let entries_map =
+        crate::db::queries::entry::get_entries_for_transactions(pool, &transaction_ids).await?;
+
+    // Populate entries for each transaction
+    for transaction in &mut transactions {
+        if let Some(entries) = entries_map.get(&transaction.id) {
+            transaction.entries = entries.clone();
+        }
     }
 
     Ok(transactions)
