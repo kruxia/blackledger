@@ -8,6 +8,7 @@ use axum::{
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::sync::Arc;
+use tower_http::trace::TraceLayer;
 
 use crate::error::ApiResult;
 
@@ -61,12 +62,13 @@ pub fn router(state: AppState) -> Router<AppState> {
             get(handlers::transactions::handle_list_transactions)
                 .post(handlers::transactions::handle_create_transaction),
         )
+        .layer(TraceLayer::new_for_http())
         .layer(axum_middleware::from_fn_with_state(
             Arc::clone(&state.jwt_validator),
             middleware::auth::auth_middleware,
         ));
 
-    // Only health check is public
+    // Only health check is public (no tracing for this route)
     let public_routes = Router::new().route("/", get(health_check));
 
     Router::new().merge(protected_routes).merge(public_routes)

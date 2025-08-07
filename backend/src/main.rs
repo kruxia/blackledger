@@ -2,7 +2,6 @@ use anyhow::Result;
 use axum::Router;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use blackledger::{api, auth, config, db};
@@ -50,7 +49,6 @@ async fn main() -> Result<()> {
     // Build application
     let app = Router::new()
         .merge(api::router(app_state.clone()))
-        .layer(TraceLayer::new_for_http())
         .layer(api::cors::cors_layer())
         .with_state(app_state);
 
