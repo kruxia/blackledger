@@ -475,6 +475,147 @@ async fn test_sql_injection_prevention() {
 }
 
 #[tokio::test]
+async fn test_ledger_search() {
+    let app_state = common::setup_test_app_state().await;
+    let app = api::router(app_state.clone()).with_state(app_state);
+
+    // Create multiple ledgers with different names (unique to avoid conflicts)
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let ledger_names = vec![
+        format!("Production Ledger {}", timestamp),
+        format!("Test Ledger {}", timestamp),
+        format!("Development Ledger {}", timestamp),
+        format!("Staging Environment {}", timestamp),
+        format!("Analytics Platform {}", timestamp),
+    ];
+
+    let mut ledger_ids = Vec::new();
+    for name in &ledger_names {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/ledgers")
+                    .header("content-type", "application/json")
+                    .body(Body::from(json!({"name": name}).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let ledger: Value = serde_json::from_slice(&body).unwrap();
+        ledger_ids.push(ledger["id"].as_i64().unwrap());
+    }
+
+    // Test searching by ID list
+    let id_filter = format!("{},{}", ledger_ids[0], ledger_ids[2]);
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/ledgers?id={}", id_filter))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(ledgers.len(), 2);
+
+    // Test searching by name regex patterns - match names containing "Ledger"
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/ledgers?name=.*Ledger.*{}", timestamp))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    // Should match "Production Ledger", "Test Ledger", "Development Ledger"
+    assert_eq!(ledgers.len(), 3);
+
+    // Test comma-delimited name patterns
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!(
+                    "/ledgers?name=^Production.*{},^Analytics.*{}",
+                    timestamp, timestamp
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(ledgers.len(), 2);
+
+    // Test pagination with search
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/ledgers?name=.*&_limit=2&_offset=1&_orderby=name")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(ledgers.len(), 2);
+
+    // Test invalid ID format is rejected
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/ledgers?id=1,abc,3")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn test_ledger_crud_operations() {
     let app_state = common::setup_test_app_state().await;
     let app = api::router(app_state.clone()).with_state(app_state);

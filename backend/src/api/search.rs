@@ -92,6 +92,37 @@ pub struct CurrencySearchParams {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct LedgerSearchParams {
+    /// Comma-delimited list of ledger IDs (e.g., "1,2,3")
+    #[serde(default, deserialize_with = "deserialize_id_list")]
+    pub id: Option<String>,
+    /// Comma-delimited list of name regex patterns
+    pub name: Option<String>,
+    #[serde(flatten)]
+    pub base: SearchParams,
+}
+
+fn deserialize_id_list<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt_str: Option<String> = Option::deserialize(deserializer)?;
+
+    if let Some(ref s) = opt_str {
+        // Validate that it's a comma-delimited list of numbers
+        let id_pattern = Regex::new(r"^[0-9]+(,[0-9]+)*$").unwrap();
+        if !id_pattern.is_match(s) {
+            return Err(serde::de::Error::custom(format!(
+                "Invalid id format: '{}'. Must be comma-delimited list of numbers (e.g., '1,2,3')",
+                s
+            )));
+        }
+    }
+
+    Ok(opt_str)
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct AccountSearchParams {
     pub ledger_id: Option<i64>,
     pub parent_id: Option<i64>,

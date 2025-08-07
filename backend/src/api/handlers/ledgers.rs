@@ -5,11 +5,8 @@ use axum::{
 };
 
 use crate::{
-    api::{
-        AppState,
-        pagination::{PaginatedResponse, PaginationParams},
-    },
-    db::queries::ledger::{count_ledgers, create_ledger, list_ledgers, update_ledger},
+    api::{AppState, search::LedgerSearchParams},
+    db::queries::ledger::{create_ledger, search_ledgers, update_ledger},
     error::ApiResult,
     models::ledger::{CreateLedger, Ledger, UpdateLedger},
 };
@@ -33,11 +30,8 @@ pub async fn handle_update_ledger(
 
 pub async fn handle_list_ledgers(
     State(state): State<AppState>,
-    Query(params): Query<PaginationParams>,
-) -> ApiResult<Json<PaginatedResponse<Ledger>>> {
-    let ledgers = list_ledgers(&state.pool, Some(params.limit()), Some(params.offset())).await?;
-    let total = count_ledgers(&state.pool).await?;
-
-    let response = PaginatedResponse::new(ledgers, &params, Some(total));
-    Ok(Json(response))
+    Query(params): Query<LedgerSearchParams>,
+) -> ApiResult<Json<Vec<Ledger>>> {
+    let ledgers = search_ledgers(&state.pool, &params).await?;
+    Ok(Json(ledgers))
 }
