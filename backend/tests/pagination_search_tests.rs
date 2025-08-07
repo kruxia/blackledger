@@ -168,7 +168,7 @@ async fn test_transaction_search(pool: PgPool) {
         sqlx::query(
             r#"
             WITH t AS (
-                INSERT INTO transaction (ledger_id, posted, effective, memo)
+                INSERT INTO transaction (ledger_id, created, effective, memo)
                 VALUES ($1, NOW(), NOW(), $2)
                 RETURNING id
             )

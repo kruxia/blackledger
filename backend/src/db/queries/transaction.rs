@@ -17,7 +17,7 @@ pub async fn create_transaction(
 
 pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transaction> {
     let record = sqlx::query!(
-        r#"SELECT id, ledger_id, posted, effective, memo, meta FROM transaction WHERE id = $1"#,
+        r#"SELECT id, ledger_id, created, effective, memo, meta FROM transaction WHERE id = $1"#,
         id
     )
     .fetch_one(pool)
@@ -30,7 +30,7 @@ pub async fn get_transaction_by_id(pool: &PgPool, id: i64) -> ApiResult<Transact
     Ok(Transaction {
         id: record.id,
         ledger_id: record.ledger_id,
-        posted: record.posted,
+        created: record.created,
         effective: record.effective,
         memo: record.memo,
         meta: record.meta,
@@ -46,9 +46,9 @@ pub async fn list_transactions(
     let transactions = if let Some(lid) = ledger_id {
         let records = sqlx::query!(
             r#"
-            SELECT id, ledger_id, posted, effective, memo, meta FROM transaction
+            SELECT id, ledger_id, created, effective, memo, meta FROM transaction
             WHERE ledger_id = $1
-            ORDER BY posted DESC
+            ORDER BY created DESC
             LIMIT $2
             OFFSET $3
             "#,
@@ -64,7 +64,7 @@ pub async fn list_transactions(
             .map(|r| Transaction {
                 id: r.id,
                 ledger_id: r.ledger_id,
-                posted: r.posted,
+                created: r.created,
                 effective: r.effective,
                 memo: r.memo,
                 meta: r.meta,
@@ -73,8 +73,8 @@ pub async fn list_transactions(
     } else {
         let records = sqlx::query!(
             r#"
-            SELECT id, ledger_id, posted, effective, memo, meta FROM transaction
-            ORDER BY posted DESC
+            SELECT id, ledger_id, created, effective, memo, meta FROM transaction
+            ORDER BY created DESC
             LIMIT $1
             OFFSET $2
             "#,
@@ -89,7 +89,7 @@ pub async fn list_transactions(
             .map(|r| Transaction {
                 id: r.id,
                 ledger_id: r.ledger_id,
-                posted: r.posted,
+                created: r.created,
                 effective: r.effective,
                 memo: r.memo,
                 meta: r.meta,
@@ -120,7 +120,7 @@ pub async fn search_transactions(
         )
     } else {
         QueryBuilder::new(
-            "SELECT id, ledger_id, memo, meta, posted, effective FROM transaction WHERE 1=1",
+            "SELECT id, ledger_id, memo, meta, created, effective FROM transaction WHERE 1=1",
         )
     };
 
@@ -204,14 +204,14 @@ pub async fn search_transactions(
         query_builder.push(
             ")
             SELECT transaction.id, transaction.ledger_id, transaction.memo, transaction.meta, 
-                   transaction.posted, transaction.effective
+                   transaction.created, transaction.effective
             FROM transaction
             JOIN tx_ids ON tx_ids.id = transaction.id",
         );
     }
 
     // Add sorting based on SearchParams with whitelist validation
-    const ALLOWED_COLUMNS: &[&str] = &["id", "ledger_id", "memo", "posted", "effective"];
+    const ALLOWED_COLUMNS: &[&str] = &["id", "ledger_id", "memo", "created", "effective"];
     if let Some(order_clause) = params.base.parse_order_by(ALLOWED_COLUMNS) {
         query_builder.push(" ORDER BY ");
         query_builder.push(order_clause);
@@ -237,7 +237,7 @@ pub async fn search_transactions(
             ledger_id: row.try_get("ledger_id")?,
             memo: row.try_get("memo")?,
             meta: row.try_get("meta")?,
-            posted: row.try_get("posted")?,
+            created: row.try_get("created")?,
             effective: row.try_get("effective")?,
         };
         transactions.push(transaction);

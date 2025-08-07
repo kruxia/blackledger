@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, ledger_id, posted, effective, memo, meta FROM transaction WHERE id = $1",
+  "query": "SELECT id, ledger_id, created, effective, memo, meta FROM transaction WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "ordinal": 2,
-        "name": "posted",
+        "name": "created",
         "type_info": "Timestamptz"
       },
       {
@@ -48,5 +48,5 @@
       true
     ]
   },
-  "hash": "be5965ceb7833815df227698952c9fb97cb7a547b4891a551be98caae9e56846"
+  "hash": "4160e9b759ab68f9270c7e30db832ee57d61049283dcd37a87d5b26438df61ab"
 }

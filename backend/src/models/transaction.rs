@@ -16,7 +16,7 @@ use sqlx::FromRow;
 pub struct Transaction {
     pub id: i64,
     pub ledger_id: i64,
-    pub posted: DateTime<Utc>,
+    pub created: DateTime<Utc>,
     pub effective: DateTime<Utc>,
     pub memo: Option<String>,
     pub meta: Option<serde_json::Value>,

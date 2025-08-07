@@ -28,9 +28,9 @@ pub async fn create_currency(pool: &PgPool, code: &str) -> ApiResult<Currency> {
 pub async fn create_currencies_batch(pool: &PgPool, codes: &[String]) -> ApiResult<Vec<Currency>> {
     // Start a transaction to ensure atomicity
     let mut tx = pool.begin().await?;
-    
+
     let mut currencies = Vec::new();
-    
+
     for code in codes {
         let record = sqlx::query!(
             r#"
@@ -44,16 +44,16 @@ pub async fn create_currencies_batch(pool: &PgPool, codes: &[String]) -> ApiResu
         )
         .fetch_one(&mut *tx)
         .await?;
-        
+
         currencies.push(Currency {
             code: record.code,
             created: record.created,
         });
     }
-    
+
     // Commit the transaction
     tx.commit().await?;
-    
+
     Ok(currencies)
 }
 

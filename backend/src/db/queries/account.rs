@@ -43,12 +43,15 @@ pub async fn create_account(pool: &PgPool, input: &CreateAccount) -> ApiResult<A
     })
 }
 
-pub async fn create_accounts_batch(pool: &PgPool, inputs: &[CreateAccount]) -> ApiResult<Vec<Account>> {
+pub async fn create_accounts_batch(
+    pool: &PgPool,
+    inputs: &[CreateAccount],
+) -> ApiResult<Vec<Account>> {
     // Start a transaction to ensure atomicity
     let mut tx = pool.begin().await?;
-    
+
     let mut accounts = Vec::new();
-    
+
     for input in inputs {
         let normal_str = match input.normal {
             NormalBalance::Debit => "DR",
@@ -69,7 +72,7 @@ pub async fn create_accounts_batch(pool: &PgPool, inputs: &[CreateAccount]) -> A
         )
         .fetch_one(&mut *tx)
         .await?;
-        
+
         accounts.push(Account {
             id: record.id,
             ledger_id: record.ledger_id,
@@ -85,10 +88,10 @@ pub async fn create_accounts_batch(pool: &PgPool, inputs: &[CreateAccount]) -> A
             created: record.created,
         });
     }
-    
+
     // Commit the transaction
     tx.commit().await?;
-    
+
     Ok(accounts)
 }
 

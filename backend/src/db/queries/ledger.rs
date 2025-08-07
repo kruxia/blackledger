@@ -23,12 +23,15 @@ pub async fn create_ledger(pool: &PgPool, input: &CreateLedger) -> ApiResult<Led
     })
 }
 
-pub async fn create_ledgers_batch(pool: &PgPool, inputs: &[CreateLedger]) -> ApiResult<Vec<Ledger>> {
+pub async fn create_ledgers_batch(
+    pool: &PgPool,
+    inputs: &[CreateLedger],
+) -> ApiResult<Vec<Ledger>> {
     // Start a transaction to ensure atomicity
     let mut tx = pool.begin().await?;
-    
+
     let mut ledgers = Vec::new();
-    
+
     for input in inputs {
         let record = sqlx::query!(
             r#"
@@ -40,17 +43,17 @@ pub async fn create_ledgers_batch(pool: &PgPool, inputs: &[CreateLedger]) -> Api
         )
         .fetch_one(&mut *tx)
         .await?;
-        
+
         ledgers.push(Ledger {
             id: record.id,
             name: record.name,
             created: record.created,
         });
     }
-    
+
     // Commit the transaction
     tx.commit().await?;
-    
+
     Ok(ledgers)
 }
 

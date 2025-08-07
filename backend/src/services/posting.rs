@@ -49,13 +49,13 @@ pub async fn post_transaction(
 
     validate_account_versions(pool, &input.entries, &mut tx).await?;
 
-    let posted = Utc::now();
+    let created = Utc::now();
     let mut meta = input.meta.clone();
 
     if let Some(uid) = user_id {
         let user_meta = serde_json::json!({
             "posted_by": uid,
-            "posted_at": posted.to_rfc3339(),
+            "posted_at": created.to_rfc3339(),
         });
 
         if let Some(ref mut existing_meta) = meta {
@@ -71,13 +71,13 @@ pub async fn post_transaction(
 
     let transaction = sqlx::query_as::<_, Transaction>(
         r#"
-        INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
+        INSERT INTO transaction (ledger_id, created, effective, memo, meta)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         "#,
     )
     .bind(input.ledger_id)
-    .bind(posted)
+    .bind(created)
     .bind(input.effective)
     .bind(&input.memo)
     .bind(&meta)
@@ -248,13 +248,13 @@ pub async fn post_transactions_batch(
         // Validate account versions with row locking
         validate_account_versions(pool, &input.entries, &mut tx).await?;
 
-        let posted = Utc::now();
+        let created = Utc::now();
         let mut meta = input.meta.clone();
 
         if let Some(uid) = user_id {
             let user_meta = serde_json::json!({
                 "posted_by": uid,
-                "posted_at": posted.to_rfc3339(),
+                "posted_at": created.to_rfc3339(),
             });
 
             if let Some(ref mut existing_meta) = meta {
@@ -270,13 +270,13 @@ pub async fn post_transactions_batch(
 
         let transaction = sqlx::query_as::<_, Transaction>(
             r#"
-            INSERT INTO transaction (ledger_id, posted, effective, memo, meta)
+            INSERT INTO transaction (ledger_id, created, effective, memo, meta)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
             "#,
         )
         .bind(input.ledger_id)
-        .bind(posted)
+        .bind(created)
         .bind(input.effective)
         .bind(&input.memo)
         .bind(&meta)

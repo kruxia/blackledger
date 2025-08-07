@@ -26,10 +26,11 @@ async fn test_create_and_get_currency() {
     ];
 
     // Create all valid currencies at once
-    let currency_requests: Vec<_> = valid_codes.iter()
+    let currency_requests: Vec<_> = valid_codes
+        .iter()
         .map(|code| json!({"code": code}))
         .collect();
-    
+
     let response = app
         .clone()
         .oneshot(
@@ -37,7 +38,9 @@ async fn test_create_and_get_currency() {
                 .method("POST")
                 .uri("/currencies")
                 .header("content-type", "application/json")
-                .body(Body::from(serde_json::to_string(&currency_requests).unwrap()))
+                .body(Body::from(
+                    serde_json::to_string(&currency_requests).unwrap(),
+                ))
                 .unwrap(),
         )
         .await
@@ -62,10 +65,10 @@ async fn test_create_and_get_currency() {
     // Test that any invalid code in the batch causes rejection
     for code in &invalid_codes {
         let invalid_request = vec![
-            json!({"code": "EUR"}),  // Valid
-            json!({"code": code}),    // Invalid
+            json!({"code": "EUR"}), // Valid
+            json!({"code": code}),  // Invalid
         ];
-        
+
         let response = app
             .clone()
             .oneshot(
@@ -120,7 +123,7 @@ async fn test_currency_search_with_regex() {
         .iter()
         .map(|code| json!({"code": code}))
         .collect();
-    
+
     app.clone()
         .oneshot(
             Request::builder()
@@ -240,7 +243,7 @@ async fn test_currency_pagination_and_sorting() {
         .iter()
         .map(|code| json!({"code": code}))
         .collect();
-    
+
     app.clone()
         .oneshot(
             Request::builder()
@@ -670,7 +673,7 @@ async fn test_ledger_search() {
         .iter()
         .map(|name| json!({"name": name}))
         .collect();
-    
+
     let response = app
         .clone()
         .oneshot(
@@ -689,7 +692,7 @@ async fn test_ledger_search() {
         .await
         .unwrap();
     let created_ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
-    
+
     let mut ledger_ids = Vec::new();
     for ledger in &created_ledgers {
         ledger_ids.push(ledger["id"].as_i64().unwrap());
@@ -931,7 +934,7 @@ async fn test_account_search_parameters() {
         .await
         .unwrap();
     let created_accounts: Vec<Value> = serde_json::from_slice(&body).unwrap();
-    
+
     let mut created_account_ids = Vec::new();
     for account in &created_accounts {
         created_account_ids.push(account["id"].as_i64().unwrap());
