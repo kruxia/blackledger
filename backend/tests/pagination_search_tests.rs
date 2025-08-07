@@ -1,7 +1,7 @@
 use blackledger::{
     api::{
         pagination::{PaginatedResponse, PaginationParams},
-        search::{AccountSearchParams, SearchParams, SortOrder},
+        search::{AccountSearchParams, SearchParams},
     },
     db::queries::{
         account::{count_accounts, search_accounts},
@@ -109,14 +109,10 @@ async fn test_account_search_by_name(pool: PgPool) {
         parent_id: None,
         number: None,
         name: Some("Account 1".to_string()),
-        common: SearchParams {
-            q: None,
-            from_date: None,
-            to_date: None,
-            sort_by: None,
-            sort_order: None,
-            page: Some(1),
-            size: Some(10),
+        base: SearchParams {
+            limit: Some(10),
+            offset: Some(0),
+            orderby: None,
         },
     };
 
@@ -137,14 +133,10 @@ async fn test_account_search_pagination(pool: PgPool) {
         parent_id: None,
         number: None,
         name: None,
-        common: SearchParams {
-            q: None,
-            from_date: None,
-            to_date: None,
-            sort_by: Some("number".to_string()),
-            sort_order: Some(SortOrder::Asc),
-            page: Some(1),
-            size: Some(5),
+        base: SearchParams {
+            limit: Some(5),
+            offset: Some(0),
+            orderby: Some("number".to_string()),
         },
     };
 
@@ -152,7 +144,7 @@ async fn test_account_search_pagination(pool: PgPool) {
     assert_eq!(page1.len(), 5);
 
     let mut params2 = params.clone();
-    params2.common.page = Some(2);
+    params2.base.offset = Some(5);
 
     let page2 = search_accounts(&pool, &params2).await.unwrap();
     assert_eq!(page2.len(), 5);
@@ -198,14 +190,10 @@ async fn test_transaction_search(pool: PgPool) {
         from_amount: None,
         to_amount: None,
         currency_code: None,
-        common: SearchParams {
-            q: None,
-            from_date: None,
-            to_date: None,
-            sort_by: None,
-            sort_order: None,
-            page: Some(1),
-            size: Some(5),
+        base: SearchParams {
+            limit: Some(5),
+            offset: Some(0),
+            orderby: None,
         },
     };
 
@@ -248,14 +236,10 @@ async fn test_entry_search_by_account(pool: PgPool) {
         currency_code: None,
         from_amount: None,
         to_amount: None,
-        common: SearchParams {
-            q: None,
-            from_date: None,
-            to_date: None,
-            sort_by: None,
-            sort_order: None,
-            page: Some(1),
-            size: Some(10),
+        base: SearchParams {
+            limit: Some(10),
+            offset: Some(0),
+            orderby: None,
         },
     };
 
@@ -277,14 +261,10 @@ async fn test_sorting(pool: PgPool) {
         parent_id: None,
         number: None,
         name: None,
-        common: SearchParams {
-            q: None,
-            from_date: None,
-            to_date: None,
-            sort_by: Some("number".to_string()),
-            sort_order: Some(SortOrder::Asc),
-            page: Some(1),
-            size: Some(5),
+        base: SearchParams {
+            limit: Some(5),
+            offset: Some(0),
+            orderby: Some("number".to_string()),
         },
     };
 
@@ -293,7 +273,7 @@ async fn test_sorting(pool: PgPool) {
 
     // Test descending sort
     let mut params_desc = params_asc.clone();
-    params_desc.common.sort_order = Some(SortOrder::Desc);
+    params_desc.base.orderby = Some("-number".to_string());
 
     let results_desc = search_accounts(&pool, &params_desc).await.unwrap();
     // Since we're sorting by created DESC by default when no sort is specified,

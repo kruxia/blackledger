@@ -1,18 +1,17 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{DisplayFromStr, serde_as};
 
-static ORDERBY_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^-?\w+(,-?\w+)*$").expect("Invalid orderby regex pattern")
-});
+static ORDERBY_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^-?\w+(,-?\w+)*$").expect("Invalid orderby regex pattern"));
 
 fn deserialize_orderby<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let opt_str: Option<String> = Option::deserialize(deserializer)?;
-    
+
     if let Some(ref s) = opt_str {
         if !ORDERBY_REGEX.is_match(s) {
             return Err(serde::de::Error::custom(format!(
@@ -21,7 +20,7 @@ where
             )));
         }
     }
-    
+
     Ok(opt_str)
 }
 
@@ -73,12 +72,12 @@ impl SearchParams {
                 .join(", ")
         })
     }
-    
+
     /// Get the limit with a maximum of 100
     pub fn get_limit(&self) -> i32 {
         self.limit.unwrap_or(100).min(100)
     }
-    
+
     /// Get the offset, defaulting to 0
     pub fn get_offset(&self) -> i32 {
         self.offset.unwrap_or(0)
