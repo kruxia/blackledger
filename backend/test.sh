@@ -23,8 +23,8 @@ sqlx migrate run
 
 # Run tests
 echo "Running tests..."
-# cargo tarpaulin --config tarpaulin.toml --out Html --all-features -- --test-threads=1
 # Run tests sequentially to avoid database state conflicts
-cargo test --all-features -- --test-threads=1
+# cargo test --all-features -- --test-threads=1
+cargo tarpaulin --config tarpaulin.toml --out Html --all-features -- --test-threads=1
 
 echo "Tests completed successfully!"
