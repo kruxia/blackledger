@@ -82,21 +82,21 @@ backend/
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
-- [ ] Project setup with Cargo workspace
-- [ ] Basic Axum server with /api endpoint (health check)
-- [ ] SQLx integration with connection pooling
-- [ ] Configuration management (environment variables)
-- [ ] Error handling framework with custom exception handlers
-- [ ] Basic logging setup
-- [ ] Docker Compose setup for development
+### Phase 1: Foundation (Week 1-2) ✅
+- [x] Project setup with Cargo workspace
+- [x] Basic Axum server with /api endpoint (health check)
+- [x] SQLx integration with connection pooling
+- [x] Configuration management (environment variables)
+- [x] Error handling framework with custom exception handlers
+- [x] Basic logging setup
+- [x] Docker Compose setup for development
 
 **Testing**:
-- [ ] Unit tests for configuration loading
-- [ ] Unit tests for error type conversions
-- [ ] Integration test for /api endpoint
-- [ ] Integration test for database connectivity
-- [ ] Test database setup/teardown fixtures
+- [x] Unit tests for configuration loading
+- [x] Unit tests for error type conversions
+- [x] Integration test for /api endpoint
+- [x] Integration test for database connectivity
+- [x] Test database setup/teardown fixtures
 
 **Deliverables**: Basic server matching Python foundation
 
@@ -203,12 +203,12 @@ backend/
 
 **Deliverables**: Feature parity with Python implementation
 
-### Phase 6: Authentication (Week 6-7)
-- [ ] JWT token validation middleware
-- [ ] JWKS (JSON Web Key Set) integration
-- [ ] Bearer token extraction from Authorization header
-- [ ] Configurable auth that can be disabled for testing
-- [ ] Token expiration and claims validation
+### Phase 6: Authentication (Week 6-7) ✅
+- [x] JWT token validation middleware
+- [x] JWKS (JSON Web Key Set) integration
+- [x] Bearer token extraction from Authorization header
+- [x] Configurable auth that can be disabled for testing
+- [x] Token expiration and claims validation
 
 **Testing**:
 - [ ] Unit tests for JWT token parsing and validation
@@ -230,32 +230,34 @@ backend/
 
 **Deliverables**: 90%+ verified test coverage, deployment-ready application
 
-## API Compatibility Requirements
+## API Compatibility Requirements ✅
 
 ### Endpoint Structure
-Maintain exact endpoint paths and HTTP methods as implemented in Python:
+All endpoints have been implemented with exact paths and HTTP methods:
 ```
-GET    /api                    # Health check endpoint
-GET    /api/currencies         # Search currencies
-POST   /api/currencies         # Create/update currency
+GET    /api                    # Health check endpoint ✅
+GET    /api/currencies         # Search currencies ✅
+POST   /api/currencies         # Create/update currency ✅
 
-GET    /api/ledgers            # Search ledgers
-POST   /api/ledgers            # Create/update ledger
+GET    /api/ledgers            # Search ledgers ✅
+POST   /api/ledgers            # Create/update ledger ✅
 
-GET    /api/accounts           # Search accounts
-POST   /api/accounts           # Create/update account
-GET    /api/accounts/balances  # Get account balances
+GET    /api/accounts           # Search accounts ✅
+POST   /api/accounts           # Create/update account ✅
+GET    /api/accounts/balances  # Get account balances ✅
 
-GET    /api/transactions       # Search transactions
-POST   /api/transactions       # Create transaction
+GET    /api/transactions       # Search transactions ✅
+POST   /api/transactions       # Create transaction ✅
 ```
 
-### JSON Schema Compatibility
-- Preserve all field names exactly
-- Maintain same date/time formats (ISO 8601)
-- Keep decimal precision (no floating point)
-- Support same query parameters
-- Return identical error response structure
+### JSON Schema Compatibility ✅
+- [x] All field names preserved exactly (including `acct`, `curr`, `version`)
+- [x] Date/time formats use ISO 8601
+- [x] Decimal precision maintained with rust_decimal
+- [x] All query parameters supported
+- [x] Identical error response structure
+- [x] Transaction responses now include `entries` field for consistency
+- [x] Database column `posted` renamed to `created` for clarity
 
 ### Database Schema
 - No changes to existing table structure

@@ -45,10 +45,12 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
   - Atomic database transactions
   - User audit trail integration
   - JSON field names matching Python API (acct, curr, version)
+  - **Transaction response includes entries** for consistency with request format
 - **Transaction endpoints**: POST /transactions, GET /transactions
 - **Transaction search**: Full search with filters (tx, ledger_id, acct, curr, memo)
 - **Transaction reversal**: Complete implementation for corrections
 - **Validation service**: 390+ lines of comprehensive validation logic
+- **Database column renamed**: `posted` → `created` for clarity
 
 ### Phase 5: Search & Pagination ✓
 - ✅ Pagination infrastructure (`PaginationParams`, `PaginatedResponse`)
@@ -86,7 +88,7 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 
 #### 1. Final Integration & Polish (3-5 days)
 - [ ] Integrate auth extractors into all handlers for complete audit trails
-- [ ] Add date range filtering on posted/effective timestamps
+- [ ] Add date range filtering on created/effective timestamps
 - [ ] Add amount range filters for transactions
 
 #### 3. Production Deployment (1-2 weeks)
@@ -234,4 +236,4 @@ The port will be considered complete when:
 ---
 
 *Last updated: 2025-08-07*
-*Status: Core functionality complete with full search capabilities, ready for production preparation*
+*Status: Core functionality complete with full search capabilities and unified transaction format, ready for production preparation*

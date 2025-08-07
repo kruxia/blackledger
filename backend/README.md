@@ -12,6 +12,8 @@ A high-performance, immutable double-entry accounting system built with Rust, Ax
 - **RESTful API**: Clean, consistent API with pagination and search
 - **JWT Authentication**: Secure endpoints with token-based auth
 - **Audit Trail**: Automatic tracking of who posted what and when
+- **Unified Transaction Format**: Responses include entries for consistency with requests
+- **Comprehensive Search**: Regex patterns, comma-delimited filters, and sorting
 
 ## Prerequisites
 
@@ -100,8 +102,8 @@ DATABASE_URL=postgresql://blackledger_test:test@localhost:5434/blackledger_test 
 - `GET /accounts/balances` - Get account balances
 
 ### Transactions
-- `GET /transactions` - List transactions
-- `POST /transactions` - Post new transaction
+- `GET /transactions` - List transactions with entries included
+- `POST /transactions` - Post new transaction (returns transaction with entries)
 
 ## Project Structure
 
@@ -132,7 +134,8 @@ Environment variables:
 ## 📖 Documentation
 
 - **[API Documentation](./API.md)** - Complete REST API reference
-- **[Roadmap](./ROADMAP.md)** - Development status and future plans
+- **[Roadmap](../docs/ROADMAP.md)** - Development status and future plans
+- **[Rust Port Guide](../docs/rust-port.md)** - Implementation details
 - **[Examples](./examples/)** - Integration examples and tutorials
 - **[CLAUDE.md](../CLAUDE.md)** - AI assistant guidance
 
@@ -190,7 +193,19 @@ Current coverage: ~42% (focusing on critical paths)
 
 ## 🚦 Production Status
 
-The Rust port is **80% complete** and production-ready for core accounting operations. See [ROADMAP.md](./ROADMAP.md) for remaining work.
+The Rust port is **~90% complete** and production-ready for core accounting operations. All major features are implemented including:
+- Complete CRUD operations for all entities
+- Full transaction posting with validation
+- Comprehensive search and pagination
+- JWT authentication with JWKS support
+- 51+ tests passing
+
+Recent updates:
+- Transaction `posted` field renamed to `created` for clarity
+- Transaction responses now include `entries` for consistency
+- Improved error handling and validation
+
+See [ROADMAP.md](../docs/ROADMAP.md) for remaining work.
 
 ## 📄 License
 

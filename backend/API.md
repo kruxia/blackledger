@@ -325,19 +325,17 @@ Post a new transaction.
 **Response:** `201 Created`
 ```json
 {
-  "transaction": {
-    "id": 1,
-    "ledger_id": 1,
-    "posted": "2025-08-06T10:31:00Z",
-    "effective": "2025-08-06T10:30:00Z",
-    "memo": "Cash sale",
-    "meta": {
-      "invoice": "INV-001",
-      "customer": "ABC Corp",
-      "audit": {
-        "posted_by": "user123",
-        "posted_at": "2025-08-06T10:31:00Z"
-      }
+  "id": 1,
+  "ledger_id": 1,
+  "created": "2025-08-06T10:31:00Z",
+  "effective": "2025-08-06T10:30:00Z",
+  "memo": "Cash sale",
+  "meta": {
+    "invoice": "INV-001",
+    "customer": "ABC Corp",
+    "audit": {
+      "posted_by": "user123",
+      "posted_at": "2025-08-06T10:31:00Z"
     }
   },
   "entries": [
@@ -383,7 +381,12 @@ Get a specific transaction with its entries.
 **Response:**
 ```json
 {
-  "transaction": { ... },
+  "id": 1,
+  "ledger_id": 1,
+  "created": "2025-08-06T10:31:00Z",
+  "effective": "2025-08-06T10:30:00Z",
+  "memo": "Cash sale",
+  "meta": { ... },
   "entries": [ ... ]
 }
 ```
