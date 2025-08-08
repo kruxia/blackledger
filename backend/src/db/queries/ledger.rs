@@ -98,39 +98,11 @@ pub async fn update_ledger(pool: &PgPool, id: i64, input: &UpdateLedger) -> ApiR
     })
 }
 
-pub async fn list_ledgers(
-    pool: &PgPool,
-    limit: Option<i64>,
-    offset: Option<i64>,
-) -> ApiResult<Vec<Ledger>> {
-    let records = sqlx::query!(
-        r#"
-        SELECT id, name, created FROM ledger
-        ORDER BY created DESC
-        LIMIT $1
-        OFFSET $2
-        "#,
-        limit.unwrap_or(100),
-        offset.unwrap_or(0)
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(records
-        .into_iter()
-        .map(|r| Ledger {
-            id: r.id,
-            name: r.name,
-            created: r.created,
-        })
-        .collect())
-}
-
-pub async fn count_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiResult<i64> {
-    // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> =
-        QueryBuilder::new("SELECT COUNT(*) as count FROM ledger WHERE 1=1");
-
+/// Build the WHERE clause for ledger queries based on search parameters
+fn build_ledger_where_clause<'a>(
+    query_builder: &mut QueryBuilder<'a, Postgres>,
+    params: &'a LedgerSearchParams,
+) {
     // Handle comma-delimited list of IDs
     if let Some(ref id_list) = params.id {
         let ids: Vec<i64> = id_list
@@ -164,6 +136,15 @@ pub async fn count_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiRes
             query_builder.push(")");
         }
     }
+}
+
+pub async fn count_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiResult<i64> {
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT COUNT(*) as count FROM ledger WHERE 1=1");
+
+    // Build the WHERE clause
+    build_ledger_where_clause(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();
@@ -181,39 +162,8 @@ pub async fn search_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiRe
     let mut query_builder: QueryBuilder<Postgres> =
         QueryBuilder::new("SELECT id, name, created FROM ledger WHERE 1=1");
 
-    // Handle comma-delimited list of IDs
-    if let Some(ref id_list) = params.id {
-        let ids: Vec<i64> = id_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ids.is_empty() {
-            query_builder.push(" AND id IN (");
-            let mut separated = query_builder.separated(", ");
-            for id in ids {
-                separated.push_bind(id);
-            }
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited regex patterns for names
-    if let Some(ref name_patterns) = params.name {
-        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
-        if !patterns.is_empty() {
-            query_builder.push(" AND (");
-            let mut first = true;
-            for pattern in patterns {
-                if !first {
-                    query_builder.push(" OR ");
-                }
-                query_builder.push("name ~* ");
-                query_builder.push_bind(pattern);
-                first = false;
-            }
-            query_builder.push(")");
-        }
-    }
+    // Build the WHERE clause
+    build_ledger_where_clause(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &["id", "name", "created"];

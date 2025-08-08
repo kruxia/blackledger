@@ -75,25 +75,11 @@ pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Curren
     })
 }
 
-pub async fn list_currencies(pool: &PgPool) -> ApiResult<Vec<Currency>> {
-    let records = sqlx::query!(r#"SELECT code, created FROM currency ORDER BY code"#)
-        .fetch_all(pool)
-        .await?;
-
-    Ok(records
-        .into_iter()
-        .map(|r| Currency {
-            code: r.code,
-            created: r.created,
-        })
-        .collect())
-}
-
-pub async fn count_currencies(pool: &PgPool, params: &CurrencySearchParams) -> ApiResult<i64> {
-    // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> =
-        QueryBuilder::new("SELECT COUNT(*) as count FROM currency WHERE 1=1");
-
+/// Build the WHERE clause for currency queries based on search parameters
+fn build_currency_where_clause<'a>(
+    query_builder: &mut QueryBuilder<'a, Postgres>,
+    params: &'a CurrencySearchParams,
+) {
     // Handle comma-delimited regex patterns for currency codes
     if let Some(ref code_patterns) = params.code {
         let patterns: Vec<&str> = code_patterns.split(',').map(|s| s.trim()).collect();
@@ -111,6 +97,15 @@ pub async fn count_currencies(pool: &PgPool, params: &CurrencySearchParams) -> A
             query_builder.push(")");
         }
     }
+}
+
+pub async fn count_currencies(pool: &PgPool, params: &CurrencySearchParams) -> ApiResult<i64> {
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT COUNT(*) as count FROM currency WHERE 1=1");
+
+    // Build the WHERE clause
+    build_currency_where_clause(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();
@@ -131,23 +126,8 @@ pub async fn search_currencies(
     let mut query_builder: QueryBuilder<Postgres> =
         QueryBuilder::new("SELECT code, created FROM currency WHERE 1=1");
 
-    // Handle comma-delimited regex patterns for currency codes
-    if let Some(ref code_patterns) = params.code {
-        let patterns: Vec<&str> = code_patterns.split(',').map(|s| s.trim()).collect();
-        if !patterns.is_empty() {
-            query_builder.push(" AND (");
-            let mut first = true;
-            for pattern in patterns {
-                if !first {
-                    query_builder.push(" OR ");
-                }
-                query_builder.push("code ~* ");
-                query_builder.push_bind(pattern);
-                first = false;
-            }
-            query_builder.push(")");
-        }
-    }
+    // Build the WHERE clause
+    build_currency_where_clause(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &["code", "created"];

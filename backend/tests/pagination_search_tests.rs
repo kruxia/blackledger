@@ -1,11 +1,11 @@
 use blackledger::{
     api::{
         pagination::{PaginatedResponse, PaginationParams},
-        search::{AccountSearchParams, SearchParams},
+        search::{AccountSearchParams, LedgerSearchParams, SearchParams},
     },
     db::queries::{
         account::{count_accounts, search_accounts},
-        ledger::{count_ledgers, list_ledgers},
+        ledger::{count_ledgers, search_ledgers},
         transaction::{count_transactions, search_transactions},
     },
     models::{account::Account, ledger::Ledger},
@@ -87,15 +87,38 @@ async fn test_ledger_pagination(pool: PgPool) {
     let (ledgers, _) = setup_test_data(&pool).await;
 
     // Test first page
-    let page1 = list_ledgers(&pool, Some(2), Some(0)).await.unwrap();
+    let params1 = LedgerSearchParams {
+        id: None,
+        name: None,
+        base: SearchParams {
+            limit: Some(2),
+            offset: Some(0),
+            orderby: None,
+        },
+    };
+    let page1 = search_ledgers(&pool, &params1).await.unwrap();
     assert_eq!(page1.len(), 2);
 
     // Test second page
-    let page2 = list_ledgers(&pool, Some(2), Some(2)).await.unwrap();
+    let params2 = LedgerSearchParams {
+        id: None,
+        name: None,
+        base: SearchParams {
+            limit: Some(2),
+            offset: Some(2),
+            orderby: None,
+        },
+    };
+    let page2 = search_ledgers(&pool, &params2).await.unwrap();
     assert_eq!(page2.len(), 2);
 
     // Test count
-    let count = count_ledgers(&pool).await.unwrap();
+    let count_params = LedgerSearchParams {
+        id: None,
+        name: None,
+        base: SearchParams::default(),
+    };
+    let count = count_ledgers(&pool, &count_params).await.unwrap();
     assert_eq!(count, ledgers.len() as i64);
 }
 

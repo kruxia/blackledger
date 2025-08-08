@@ -108,7 +108,8 @@ async fn test_create_and_get_currency() {
         .await
         .unwrap();
 
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     assert!(currencies.iter().any(|c| c["code"] == "USD"));
     assert!(currencies.iter().any(|c| c["code"] == "GOOG"));
 }
@@ -153,7 +154,8 @@ async fn test_currency_search_with_regex() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     assert_eq!(currencies.len(), 1);
     assert_eq!(currencies[0]["code"], "XYZ");
 
@@ -174,7 +176,8 @@ async fn test_currency_search_with_regex() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     assert_eq!(currencies.len(), 2);
     let codes: Vec<String> = currencies
         .iter()
@@ -200,7 +203,8 @@ async fn test_currency_search_with_regex() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     assert_eq!(currencies.len(), 1);
     assert_eq!(currencies[0]["code"], "XYZ");
 
@@ -220,7 +224,8 @@ async fn test_currency_search_with_regex() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     let codes: Vec<String> = currencies
         .iter()
         .map(|c| c["code"].as_str().unwrap().to_string())
@@ -280,7 +285,8 @@ async fn test_currency_pagination_and_sorting() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies = response_json["data"].as_array().unwrap();
     assert_eq!(currencies.len(), 3);
 
     // Test pagination with offset
@@ -300,7 +306,8 @@ async fn test_currency_pagination_and_sorting() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let currencies_page2: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let currencies_page2 = response_json["data"].as_array().unwrap();
     assert_eq!(currencies_page2.len(), 3);
     // Ensure we got different currencies
     assert_ne!(currencies[0]["code"], currencies_page2[0]["code"]);
@@ -322,7 +329,8 @@ async fn test_currency_pagination_and_sorting() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let sorted_asc: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let sorted_asc = response_json["data"].as_array().unwrap();
     // Verify we got currencies and they contain expected ones
     assert!(!sorted_asc.is_empty());
     let codes: Vec<String> = sorted_asc
@@ -351,7 +359,8 @@ async fn test_currency_pagination_and_sorting() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let sorted_desc: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let sorted_desc = response_json["data"].as_array().unwrap();
     // Verify we got currencies
     assert!(!sorted_desc.is_empty());
     let _codes: Vec<String> = sorted_desc
@@ -382,7 +391,8 @@ async fn test_currency_pagination_and_sorting() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let filtered: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let filtered = response_json["data"].as_array().unwrap();
     // Should have currencies starting with A or C
     let codes: Vec<String> = filtered
         .iter()
@@ -716,7 +726,8 @@ async fn test_ledger_search() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let ledgers = response_json["data"].as_array().unwrap();
     assert_eq!(ledgers.len(), 2);
 
     // Test searching by name regex patterns - match names containing "Ledger" and the specific timestamp
@@ -739,7 +750,8 @@ async fn test_ledger_search() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let ledgers = response_json["data"].as_array().unwrap();
     // Should match "Production Ledger {timestamp}", "Test Ledger {timestamp}", "Development Ledger {timestamp}"
     assert_eq!(ledgers.len(), 3);
 
@@ -763,7 +775,8 @@ async fn test_ledger_search() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let ledgers = response_json["data"].as_array().unwrap();
     assert_eq!(ledgers.len(), 2);
 
     // Test pagination with search
@@ -783,7 +796,8 @@ async fn test_ledger_search() {
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let ledgers: Vec<Value> = serde_json::from_slice(&body).unwrap();
+    let response_json: Value = serde_json::from_slice(&body).unwrap();
+    let ledgers = response_json["data"].as_array().unwrap();
     assert_eq!(ledgers.len(), 2);
 
     // Test invalid ID format is rejected

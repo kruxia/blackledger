@@ -157,74 +157,6 @@ pub async fn update_account(pool: &PgPool, id: i64, input: &UpdateAccount) -> Ap
     })
 }
 
-pub async fn list_accounts(
-    pool: &PgPool,
-    ledger_id: Option<i64>,
-    parent_id: Option<i64>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-) -> ApiResult<Vec<Account>> {
-    // Due to SQLx limitations with dynamic queries, we'll use a simpler approach
-    let accounts = if ledger_id.is_some() && parent_id.is_some() {
-        sqlx::query_as::<_, Account>(
-            r#"
-            SELECT * FROM account
-            WHERE ledger_id = $1 AND parent_id = $2
-            ORDER BY number
-            LIMIT $3 OFFSET $4
-            "#,
-        )
-        .bind(ledger_id.unwrap())
-        .bind(parent_id.unwrap())
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
-        .fetch_all(pool)
-        .await?
-    } else if ledger_id.is_some() {
-        sqlx::query_as::<_, Account>(
-            r#"
-            SELECT * FROM account
-            WHERE ledger_id = $1
-            ORDER BY number
-            LIMIT $2 OFFSET $3
-            "#,
-        )
-        .bind(ledger_id.unwrap())
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
-        .fetch_all(pool)
-        .await?
-    } else if parent_id.is_some() {
-        sqlx::query_as::<_, Account>(
-            r#"
-            SELECT * FROM account
-            WHERE parent_id = $1
-            ORDER BY number
-            LIMIT $2 OFFSET $3
-            "#,
-        )
-        .bind(parent_id.unwrap())
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
-        .fetch_all(pool)
-        .await?
-    } else {
-        sqlx::query_as::<_, Account>(
-            r#"
-            SELECT * FROM account
-            ORDER BY number
-            LIMIT $1 OFFSET $2
-            "#,
-        )
-        .bind(limit.unwrap_or(100))
-        .bind(offset.unwrap_or(0))
-        .fetch_all(pool)
-        .await?
-    };
-
-    Ok(accounts)
-}
-
 pub async fn get_account_balances(
     pool: &PgPool,
     ledger_id: i64,
@@ -278,18 +210,11 @@ pub async fn get_account_balances(
     Ok(balances)
 }
 
-pub async fn search_accounts(
-    pool: &PgPool,
-    params: &crate::api::search::AccountSearchParams,
-) -> ApiResult<Vec<Account>> {
-    let limit = params.base.get_limit() as i64;
-    let offset = params.base.get_offset() as i64;
-
-    // Use QueryBuilder for dynamic SQL generation
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE 1=1",
-    );
-
+/// Build the WHERE clause for account queries based on search parameters
+fn build_account_where_clause<'a>(
+    query_builder: &mut QueryBuilder<'a, Postgres>,
+    params: &'a crate::api::search::AccountSearchParams,
+) {
     // Handle comma-delimited list of IDs
     if let Some(ref id_list) = params.id {
         let ids: Vec<i64> = id_list
@@ -387,6 +312,22 @@ pub async fn search_accounts(
             query_builder.push_bind(normal_val);
         }
     }
+}
+
+pub async fn search_accounts(
+    pool: &PgPool,
+    params: &crate::api::search::AccountSearchParams,
+) -> ApiResult<Vec<Account>> {
+    let limit = params.base.get_limit() as i64;
+    let offset = params.base.get_offset() as i64;
+
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT id, ledger_id, parent_id, name, number, normal, version, created FROM account WHERE 1=1",
+    );
+
+    // Build the WHERE clause
+    build_account_where_clause(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &[
@@ -447,103 +388,8 @@ pub async fn count_accounts(
     let mut query_builder: QueryBuilder<Postgres> =
         QueryBuilder::new("SELECT COUNT(*) as count FROM account WHERE 1=1");
 
-    // Handle comma-delimited list of IDs
-    if let Some(ref id_list) = params.id {
-        let ids: Vec<i64> = id_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ids.is_empty() {
-            query_builder.push(" AND id = ANY(");
-            query_builder.push_bind(ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited list of ledger IDs
-    if let Some(ref ledger_id_list) = params.ledger_id {
-        let ledger_ids: Vec<i64> = ledger_id_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ledger_ids.is_empty() {
-            query_builder.push(" AND ledger_id = ANY(");
-            query_builder.push_bind(ledger_ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited list of parent IDs
-    if let Some(ref parent_id_list) = params.parent_id {
-        let parent_ids: Vec<i64> = parent_id_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !parent_ids.is_empty() {
-            query_builder.push(" AND parent_id = ANY(");
-            query_builder.push_bind(parent_ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited list of version IDs
-    if let Some(ref version_list) = params.version {
-        let versions: Vec<i64> = version_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !versions.is_empty() {
-            query_builder.push(" AND version = ANY(");
-            query_builder.push_bind(versions);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited list of account numbers
-    if let Some(ref number_list) = params.number {
-        let numbers: Vec<i16> = number_list
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i16>().ok())
-            .collect();
-        if !numbers.is_empty() {
-            query_builder.push(" AND number = ANY(");
-            query_builder.push_bind(numbers);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle comma-delimited list of name patterns (regex patterns)
-    if let Some(ref name_patterns) = params.name {
-        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
-        if !patterns.is_empty() {
-            query_builder.push(" AND (");
-            let mut first = true;
-            for pattern in patterns {
-                if !first {
-                    query_builder.push(" OR ");
-                }
-                query_builder.push("name ~* ");
-                query_builder.push_bind(pattern);
-                first = false;
-            }
-            query_builder.push(")");
-        }
-    }
-
-    // Handle normal balance type (DR/CR, case-insensitive, also accepts debit/credit)
-    if let Some(ref normal) = params.normal {
-        let normal_upper = normal.to_uppercase();
-        let normal_value = match normal_upper.as_str() {
-            "DR" | "DEBIT" => Some("DR"),
-            "CR" | "CREDIT" => Some("CR"),
-            _ => None,
-        };
-
-        if let Some(normal_val) = normal_value {
-            query_builder.push(" AND normal = ");
-            query_builder.push_bind(normal_val);
-        }
-    }
+    // Build the WHERE clause
+    build_account_where_clause(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();
