@@ -7,7 +7,7 @@ use axum::{
 use crate::services::posting::post_transactions_batch;
 use crate::{
     api::{AppState, pagination::PaginatedResponse, search::TransactionSearchParams},
-    auth::OptionalAuthUser,
+    auth::AuthUser,
     db::queries::transaction::{count_transactions, search_transactions},
     error::ApiResult,
     models::transaction::{CreateTransaction, Transaction},
@@ -15,10 +15,10 @@ use crate::{
 
 pub async fn handle_create_transactions(
     State(state): State<AppState>,
-    OptionalAuthUser(auth_user): OptionalAuthUser,
+    auth_user: AuthUser,
     Json(input): Json<Vec<CreateTransaction>>,
 ) -> ApiResult<(StatusCode, Json<Vec<Transaction>>)> {
-    let user_id = auth_user.as_ref().map(|u| u.sub.as_str());
+    let user_id = Some(auth_user.sub.as_str());
     let results = post_transactions_batch(&state.pool, &input, user_id).await?;
 
     let response: Vec<Transaction> = results

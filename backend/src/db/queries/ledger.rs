@@ -99,7 +99,7 @@ pub async fn update_ledger(pool: &PgPool, id: i64, input: &UpdateLedger) -> ApiR
 }
 
 /// Build the WHERE clause for ledger queries based on search parameters
-fn build_ledger_where_clause<'a>(
+fn build_ledger_filters<'a>(
     query_builder: &mut QueryBuilder<'a, Postgres>,
     params: &'a LedgerSearchParams,
 ) {
@@ -144,7 +144,7 @@ pub async fn count_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiRes
         QueryBuilder::new("SELECT COUNT(*) as count FROM ledger WHERE 1=1");
 
     // Build the WHERE clause
-    build_ledger_where_clause(&mut query_builder, params);
+    build_ledger_filters(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();
@@ -163,7 +163,7 @@ pub async fn search_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiRe
         QueryBuilder::new("SELECT id, name, created FROM ledger WHERE 1=1");
 
     // Build the WHERE clause
-    build_ledger_where_clause(&mut query_builder, params);
+    build_ledger_filters(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &["id", "name", "created"];

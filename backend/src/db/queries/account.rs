@@ -211,7 +211,7 @@ pub async fn get_account_balances(
 }
 
 /// Build the WHERE clause for account queries based on search parameters
-fn build_account_where_clause<'a>(
+fn build_account_filters<'a>(
     query_builder: &mut QueryBuilder<'a, Postgres>,
     params: &'a crate::api::search::AccountSearchParams,
 ) {
@@ -327,7 +327,7 @@ pub async fn search_accounts(
     );
 
     // Build the WHERE clause
-    build_account_where_clause(&mut query_builder, params);
+    build_account_filters(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &[
@@ -389,7 +389,7 @@ pub async fn count_accounts(
         QueryBuilder::new("SELECT COUNT(*) as count FROM account WHERE 1=1");
 
     // Build the WHERE clause
-    build_account_where_clause(&mut query_builder, params);
+    build_account_filters(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();

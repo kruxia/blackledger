@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    extract::State,
+    extract::{FromRef, State},
     middleware as axum_middleware,
     response::Json,
     routing::{get, patch},
@@ -16,6 +16,13 @@ use crate::error::ApiResult;
 pub struct AppState {
     pub pool: PgPool,
     pub jwt_validator: Arc<crate::auth::JwtValidator>,
+}
+
+// Implement FromRef to allow extracting JwtValidator from AppState
+impl FromRef<AppState> for Arc<crate::auth::JwtValidator> {
+    fn from_ref(state: &AppState) -> Self {
+        state.jwt_validator.clone()
+    }
 }
 
 pub mod cors;

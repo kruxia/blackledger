@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::FromRequestParts,
+    extract::{FromRef, FromRequestParts},
     http::{StatusCode, header::AUTHORIZATION, request::Parts},
     response::{IntoResponse, Response},
 };
@@ -137,10 +137,22 @@ async fn fetch_jwks(url: &str) -> Result<JwkSet, Box<dyn std::error::Error>> {
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
+    Arc<JwtValidator>: axum::extract::FromRef<S>,
 {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let validator = Arc::<JwtValidator>::from_ref(state);
+
+        // If auth is disabled (for testing), return a test user
+        if !validator.config.enabled {
+            return Ok(AuthUser {
+                sub: "test-user".to_string(),
+                email: Some("test@example.com".to_string()),
+                name: Some("Test User".to_string()),
+            });
+        }
+
         // Try to extract the Authorization header
         let auth_header = parts
             .headers
@@ -151,35 +163,20 @@ where
             })?;
 
         // Extract the token from "Bearer <token>"
-        let _token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
             (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
         })?;
 
-        // For now, just extract basic info from the token
-        // In a real implementation, this would validate against the JwtValidator
+        // Validate the token
+        let claims = validator
+            .validate_token(token)
+            .await
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid token").into_response())?;
+
         Ok(AuthUser {
-            sub: "user".to_string(),
-            email: Some("user@example.com".to_string()),
-            name: Some("Test User".to_string()),
+            sub: claims.sub,
+            email: claims.email,
+            name: claims.name,
         })
-    }
-}
-
-// Optional auth extractor that doesn't fail if no auth header is present
-#[derive(Debug, Clone)]
-pub struct OptionalAuthUser(pub Option<AuthUser>);
-
-#[async_trait]
-impl<S> FromRequestParts<S> for OptionalAuthUser
-where
-    S: Send + Sync,
-{
-    type Rejection = Response;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        match AuthUser::from_request_parts(parts, state).await {
-            Ok(user) => Ok(OptionalAuthUser(Some(user))),
-            Err(_) => Ok(OptionalAuthUser(None)),
-        }
     }
 }

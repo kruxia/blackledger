@@ -76,7 +76,7 @@ pub async fn get_currency_by_code(pool: &PgPool, code: &str) -> ApiResult<Curren
 }
 
 /// Build the WHERE clause for currency queries based on search parameters
-fn build_currency_where_clause<'a>(
+fn build_currency_filters<'a>(
     query_builder: &mut QueryBuilder<'a, Postgres>,
     params: &'a CurrencySearchParams,
 ) {
@@ -105,7 +105,7 @@ pub async fn count_currencies(pool: &PgPool, params: &CurrencySearchParams) -> A
         QueryBuilder::new("SELECT COUNT(*) as count FROM currency WHERE 1=1");
 
     // Build the WHERE clause
-    build_currency_where_clause(&mut query_builder, params);
+    build_currency_filters(&mut query_builder, params);
 
     // Execute the query
     let query = query_builder.build();
@@ -127,7 +127,7 @@ pub async fn search_currencies(
         QueryBuilder::new("SELECT code, created FROM currency WHERE 1=1");
 
     // Build the WHERE clause
-    build_currency_where_clause(&mut query_builder, params);
+    build_currency_filters(&mut query_builder, params);
 
     // Add sorting based on SearchParams with whitelist validation
     const ALLOWED_COLUMNS: &[&str] = &["code", "created"];

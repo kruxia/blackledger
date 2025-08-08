@@ -105,30 +105,12 @@ pub async fn list_transactions(
     Ok(transactions)
 }
 
-pub async fn search_transactions(
-    pool: &PgPool,
-    params: &crate::api::search::TransactionSearchParams,
-) -> ApiResult<Vec<Transaction>> {
-    let limit = params.base.get_limit() as i64;
-    let offset = params.base.get_offset() as i64;
-
-    // Use QueryBuilder for dynamic SQL generation with CTE to join with entry table when needed
-    let needs_entry_join = params.acct.is_some() || params.currency.is_some();
-
-    let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
-        QueryBuilder::new(
-            "WITH tx_ids AS (
-                SELECT DISTINCT transaction.id
-                FROM transaction
-                JOIN entry ON transaction.id = entry.tx
-                WHERE 1=1",
-        )
-    } else {
-        QueryBuilder::new(
-            "SELECT id, ledger_id, memo, meta, created, effective FROM transaction WHERE 1=1",
-        )
-    };
-
+/// Build WHERE clause conditions for transaction queries
+fn build_transaction_filters<'a>(
+    query_builder: &mut QueryBuilder<'a, Postgres>,
+    params: &'a crate::api::search::TransactionSearchParams,
+    needs_entry_join: bool,
+) {
     // Handle transaction ID filter (comma-delimited list)
     if let Some(ref tx_ids) = params.tx {
         let ids: Vec<i64> = tx_ids
@@ -203,6 +185,34 @@ pub async fn search_transactions(
         }
         query_builder.push_bind(memo_pattern);
     }
+}
+
+pub async fn search_transactions(
+    pool: &PgPool,
+    params: &crate::api::search::TransactionSearchParams,
+) -> ApiResult<Vec<Transaction>> {
+    let limit = params.base.get_limit() as i64;
+    let offset = params.base.get_offset() as i64;
+
+    // Use QueryBuilder for dynamic SQL generation with CTE to join with entry table when needed
+    let needs_entry_join = params.acct.is_some() || params.currency.is_some();
+
+    let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
+        QueryBuilder::new(
+            "WITH tx_ids AS (
+                SELECT DISTINCT transaction.id
+                FROM transaction
+                JOIN entry ON transaction.id = entry.tx
+                WHERE 1=1",
+        )
+    } else {
+        QueryBuilder::new(
+            "SELECT id, ledger_id, memo, meta, created, effective FROM transaction WHERE 1=1",
+        )
+    };
+
+    // Apply common filters
+    build_transaction_filters(&mut query_builder, params, needs_entry_join);
 
     // If we used CTE, close it and select from the results
     if needs_entry_join {
@@ -283,80 +293,8 @@ pub async fn count_transactions(
         QueryBuilder::new("SELECT COUNT(*) as count FROM transaction WHERE 1=1")
     };
 
-    // Handle transaction ID filter (comma-delimited list)
-    if let Some(ref tx_ids) = params.tx {
-        let ids: Vec<i64> = tx_ids
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ids.is_empty() {
-            if needs_entry_join {
-                query_builder.push(" AND transaction.id = ANY(");
-            } else {
-                query_builder.push(" AND id = ANY(");
-            }
-            query_builder.push_bind(ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle ledger_id filter (comma-delimited list)
-    if let Some(ref ledger_ids) = params.ledger_id {
-        let ids: Vec<i64> = ledger_ids
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ids.is_empty() {
-            if needs_entry_join {
-                query_builder.push(" AND transaction.ledger_id = ANY(");
-            } else {
-                query_builder.push(" AND ledger_id = ANY(");
-            }
-            query_builder.push_bind(ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle account ID filter (comma-delimited list)
-    if let Some(ref account_ids) = params.acct {
-        let ids: Vec<i64> = account_ids
-            .split(',')
-            .filter_map(|s| s.trim().parse::<i64>().ok())
-            .collect();
-        if !ids.is_empty() {
-            query_builder.push(" AND entry.acct = ANY(");
-            query_builder.push_bind(ids);
-            query_builder.push(")");
-        }
-    }
-
-    // Handle currency code filter (regex patterns)
-    if let Some(ref curr_patterns) = params.currency {
-        let patterns: Vec<&str> = curr_patterns.split(',').map(|s| s.trim()).collect();
-        if !patterns.is_empty() {
-            query_builder.push(" AND (");
-            let mut first = true;
-            for pattern in patterns {
-                if !first {
-                    query_builder.push(" OR ");
-                }
-                query_builder.push("entry.currency ~* ");
-                query_builder.push_bind(pattern);
-                first = false;
-            }
-            query_builder.push(")");
-        }
-    }
-
-    // Handle memo filter (regex pattern matching)
-    if let Some(ref memo_pattern) = params.memo {
-        if needs_entry_join {
-            query_builder.push(" AND transaction.memo ~* ");
-        } else {
-            query_builder.push(" AND memo ~* ");
-        }
-        query_builder.push_bind(memo_pattern);
-    }
+    // Apply common filters (same as search_transactions)
+    build_transaction_filters(&mut query_builder, params, needs_entry_join);
 
     // If we used CTE, close it and count from the results
     if needs_entry_join {
