@@ -235,19 +235,19 @@ pub async fn get_account_balances(
             r#"
             SELECT 
                 e.account_id,
-                e.currency_code,
+                e.currency,
                 SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
             FROM entry e
             INNER JOIN transaction t ON e.transaction_id = t.id
             WHERE t.ledger_id = $1 AND e.account_id = ANY($2)
-            GROUP BY e.account_id, e.currency_code
+            GROUP BY e.account_id, e.currency
             "#,
         )
         .bind(ledger_id)
         .bind(&ids)
         .map(|row: sqlx::postgres::PgRow| AccountBalance {
             account_id: row.get("account_id"),
-            currency_code: row.get("currency_code"),
+            currency: row.get("currency"),
             balance: row.get("balance"),
         })
         .fetch_all(pool)
@@ -257,18 +257,18 @@ pub async fn get_account_balances(
             r#"
             SELECT 
                 e.account_id,
-                e.currency_code,
+                e.currency,
                 SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
             FROM entry e
             INNER JOIN transaction t ON e.transaction_id = t.id
             WHERE t.ledger_id = $1
-            GROUP BY e.account_id, e.currency_code
+            GROUP BY e.account_id, e.currency
             "#,
         )
         .bind(ledger_id)
         .map(|row: sqlx::postgres::PgRow| AccountBalance {
             account_id: row.get("account_id"),
-            currency_code: row.get("currency_code"),
+            currency: row.get("currency"),
             balance: row.get("balance"),
         })
         .fetch_all(pool)

@@ -45,8 +45,8 @@ struct CreateTransaction {
 struct CreateEntry {
     #[serde(rename = "acct")]
     account_id: i64,
-    #[serde(rename = "curr")]
-    currency_code: String,
+    #[serde(rename = "currency")]
+    currency: String,
     #[serde(with = "rust_decimal::serde::str_option")]
     debit: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
@@ -60,9 +60,10 @@ struct PaginatedResponse<T> {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PaginationMeta {
-    page: u32,
-    size: u32,
+    limit: u32,
+    offset: u32,
     total: Option<i64>,
     has_more: bool,
 }
@@ -145,14 +146,18 @@ impl ApiClient {
         Ok(response.json().await?)
     }
 
-    async fn list_accounts(&self, ledger_id: i64, page: u32) -> Result<PaginatedResponse<Account>> {
+    async fn list_accounts(
+        &self,
+        ledger_id: i64,
+        offset: u32,
+    ) -> Result<PaginatedResponse<Account>> {
         let response = self
             .client
             .get(format!("{}/accounts", self.base_url))
             .query(&[
                 ("ledger_id", ledger_id.to_string()),
-                ("page", page.to_string()),
-                ("size", "10".to_string()),
+                ("offset", offset.to_string()),
+                ("limit", "10".to_string()),
             ])
             .send()
             .await?;
@@ -246,13 +251,13 @@ async fn main() -> Result<()> {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100.00)),
             },
@@ -267,8 +272,8 @@ async fn main() -> Result<()> {
 
     // Step 4: Query with pagination
     println!("4️⃣ Querying accounts with pagination...");
-    let page1 = client.list_accounts(ledger.id, 1).await?;
-    println!("   📄 Page 1: {} accounts", page1.data.len());
+    let page1 = client.list_accounts(ledger.id, 0).await?;
+    println!("   📄 First batch: {} accounts", page1.data.len());
     println!("   📊 Total accounts: {:?}", page1.pagination.total);
     println!("   ➡️  Has more: {}\n", page1.pagination.has_more);
 
@@ -279,7 +284,7 @@ async fn main() -> Result<()> {
     for balance in balances {
         println!(
             "   Account {}: {} {}",
-            balance["account_id"], balance["balance"], balance["currency_code"]
+            balance["account_id"], balance["balance"], balance["currency"]
         );
     }
 

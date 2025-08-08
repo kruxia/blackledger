@@ -89,7 +89,7 @@ pub async fn post_transaction(
     for entry_input in &input.entries {
         let entry = sqlx::query_as::<_, Entry>(
             r#"
-            INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
+            INSERT INTO entry (ledger_id, transaction_id, account_id, currency, debit, credit)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
             "#,
@@ -97,7 +97,7 @@ pub async fn post_transaction(
         .bind(input.ledger_id)
         .bind(transaction.id)
         .bind(entry_input.account_id)
-        .bind(&entry_input.currency_code)
+        .bind(&entry_input.currency)
         .bind(entry_input.debit)
         .bind(entry_input.credit)
         .fetch_one(&mut *tx)
@@ -181,7 +181,7 @@ pub async fn reverse_transaction(
     for entry in original_entries {
         reversed_entries.push(crate::models::transaction::CreateEntry {
             account_id: entry.account_id,
-            currency_code: entry.currency_code,
+            currency: entry.currency,
             debit: entry.credit,
             credit: entry.debit,
             account_version: None,
@@ -288,7 +288,7 @@ pub async fn post_transactions_batch(
         for entry_input in &input.entries {
             let entry = sqlx::query_as::<_, Entry>(
                 r#"
-                INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
+                INSERT INTO entry (ledger_id, transaction_id, account_id, currency, debit, credit)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING *
                 "#,
@@ -296,7 +296,7 @@ pub async fn post_transactions_batch(
             .bind(input.ledger_id)
             .bind(transaction.id)
             .bind(entry_input.account_id)
-            .bind(&entry_input.currency_code)
+            .bind(&entry_input.currency)
             .bind(entry_input.debit)
             .bind(entry_input.credit)
             .fetch_one(&mut *tx)

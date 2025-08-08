@@ -43,14 +43,14 @@ pub struct Transaction {
 ///     entries: vec![
 ///         CreateEntry {
 ///             account_id: 1001,  // Cash account
-///             currency_code: "USD".to_string(),
+///             currency: "USD".to_string(),
 ///             debit: Some(dec!(100.00)),
 ///             credit: None,
 ///             account_version: None,
 ///         },
 ///         CreateEntry {
 ///             account_id: 4001,  // Revenue account
-///             currency_code: "USD".to_string(),
+///             currency: "USD".to_string(),
 ///             debit: None,
 ///             credit: Some(dec!(100.00)),
 ///             account_version: None,
@@ -76,8 +76,8 @@ pub struct CreateTransaction {
 pub struct CreateEntry {
     #[serde(rename = "acct")]
     pub account_id: i64,
-    #[serde(rename = "curr")]
-    pub currency_code: String,
+    #[serde(rename = "currency")]
+    pub currency: String,
     #[serde(default, with = "rust_decimal::serde::str_option")]
     pub debit: Option<rust_decimal::Decimal>,
     #[serde(default, with = "rust_decimal::serde::str_option")]

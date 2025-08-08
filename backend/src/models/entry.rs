@@ -8,8 +8,8 @@ pub struct Entry {
     pub ledger_id: i64,
     pub transaction_id: i64,
     pub account_id: i64,
-    #[sqlx(rename = "curr")]
-    pub currency_code: String,
+    #[sqlx(rename = "currency")]
+    pub currency: String,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub debit: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
@@ -46,7 +46,7 @@ mod tests {
             ledger_id: 1,
             transaction_id: 1,
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100.00)),
             credit: None,
         };
@@ -69,7 +69,7 @@ mod tests {
             ledger_id: 1,
             transaction_id: 1,
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100.00)),
             credit: None,
         };

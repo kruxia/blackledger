@@ -265,12 +265,12 @@ Get account balances.
 [
   {
     "account_id": 1,
-    "currency_code": "USD",
+    "currency": "USD",
     "balance": "1500.00"
   },
   {
     "account_id": 1,
-    "currency_code": "EUR",
+    "currency": "EUR",
     "balance": "850.00"
   }
 ]
@@ -298,14 +298,14 @@ Post a new transaction.
   "entries": [
     {
       "account_id": 1,
-      "currency_code": "USD",
+      "currency": "USD",
       "debit": "100.00",
       "credit": null,
       "account_version": 5
     },
     {
       "account_id": 2,
-      "currency_code": "USD",
+      "currency": "USD",
       "debit": null,
       "credit": "100.00",
       "account_version": null
@@ -344,7 +344,7 @@ Post a new transaction.
       "ledger_id": 1,
       "transaction_id": 1,
       "account_id": 1,
-      "currency_code": "USD",
+      "currency": "USD",
       "debit": "100.00",
       "credit": null
     },
@@ -353,7 +353,7 @@ Post a new transaction.
       "ledger_id": 1,
       "transaction_id": 1,
       "account_id": 2,
-      "currency_code": "USD",
+      "currency": "USD",
       "debit": null,
       "credit": "100.00"
     }
@@ -367,7 +367,7 @@ Search and list transactions with pagination.
 **Query Parameters:**
 - `ledger_id` - Filter by ledger
 - `account_id` - Filter by account (in any entry)
-- `currency_code` - Filter by currency
+- `currency` - Filter by currency
 - `from_amount` - Minimum amount
 - `to_amount` - Maximum amount
 - `from_date` - Start date (ISO 8601)
@@ -480,13 +480,13 @@ curl -X POST http://localhost:3000/api/transactions \
     "entries": [
       {
         "account_id": 1,
-        "currency_code": "USD",
+        "currency": "USD",
         "debit": "100.00",
         "credit": null
       },
       {
         "account_id": 2,
-        "currency_code": "USD",
+        "currency": "USD",
         "debit": null,
         "credit": "100.00"
       }

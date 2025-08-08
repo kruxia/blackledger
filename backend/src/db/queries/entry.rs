@@ -10,7 +10,7 @@ pub async fn get_entries_by_transaction(
 ) -> ApiResult<Vec<Entry>> {
     let records = sqlx::query!(
         r#"
-        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit 
+        SELECT id, ledger_id, transaction_id, account_id, currency, debit, credit 
         FROM entry 
         WHERE transaction_id = $1 
         ORDER BY id
@@ -27,7 +27,7 @@ pub async fn get_entries_by_transaction(
             ledger_id: r.ledger_id,
             transaction_id: r.transaction_id,
             account_id: r.account_id,
-            currency_code: r.curr,
+            currency: r.currency,
             debit: r.debit,
             credit: r.credit,
         })
@@ -42,7 +42,7 @@ pub async fn get_entries_by_account(
 ) -> ApiResult<Vec<Entry>> {
     let records = sqlx::query!(
         r#"
-        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit 
+        SELECT id, ledger_id, transaction_id, account_id, currency, debit, credit 
         FROM entry 
         WHERE account_id = $1 
         ORDER BY id DESC
@@ -63,7 +63,7 @@ pub async fn get_entries_by_account(
             ledger_id: r.ledger_id,
             transaction_id: r.transaction_id,
             account_id: r.account_id,
-            currency_code: r.curr,
+            currency: r.currency,
             debit: r.debit,
             credit: r.credit,
         })
@@ -81,7 +81,7 @@ pub async fn get_entries_for_transactions(
 
     let records = sqlx::query!(
         r#"
-        SELECT id, ledger_id, transaction_id, account_id, curr, debit, credit 
+        SELECT id, ledger_id, transaction_id, account_id, currency, debit, credit 
         FROM entry 
         WHERE transaction_id = ANY($1)
         ORDER BY transaction_id, id
@@ -99,7 +99,7 @@ pub async fn get_entries_for_transactions(
             ledger_id: r.ledger_id,
             transaction_id: r.transaction_id,
             account_id: r.account_id,
-            currency_code: r.curr,
+            currency: r.currency,
             debit: r.debit,
             credit: r.credit,
         };

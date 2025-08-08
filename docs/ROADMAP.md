@@ -44,10 +44,10 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
   - Optimistic locking via account versioning
   - Atomic database transactions
   - User audit trail integration
-  - JSON field names matching Python API (acct, curr, version)
+  - JSON field names matching Python API (acct, currency, version)
   - **Transaction response includes entries** for consistency with request format
 - **Transaction endpoints**: POST /transactions, GET /transactions
-- **Transaction search**: Full search with filters (tx, ledger_id, acct, curr, memo)
+- **Transaction search**: Full search with filters (tx, ledger_id, acct, currency, memo)
 - **Transaction reversal**: Complete implementation for corrections
 - **Validation service**: 390+ lines of comprehensive validation logic
 - **Database column renamed**: `posted` → `created` for clarity

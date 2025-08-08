@@ -172,7 +172,7 @@ async fn test_transaction_search(pool: PgPool) {
                 VALUES ($1, NOW(), NOW(), $2)
                 RETURNING id
             )
-            INSERT INTO entry (ledger_id, transaction_id, account_id, curr, debit, credit)
+            INSERT INTO entry (ledger_id, transaction_id, account_id, currency, debit, credit)
             SELECT $1, t.id, $3, 'USD', $4, NULL FROM t
             UNION ALL
             SELECT $1, t.id, $5, 'USD', NULL, $4 FROM t
@@ -192,7 +192,7 @@ async fn test_transaction_search(pool: PgPool) {
         tx: None,
         ledger_id: Some(ledgers[0].id.to_string()),
         acct: None,
-        curr: None,
+        currency: None,
         memo: None,
         base: SearchParams {
             limit: Some(5),

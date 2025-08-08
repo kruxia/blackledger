@@ -87,14 +87,14 @@ pub fn validate_entries(entries: &[CreateEntry]) -> ApiResult<()> {
             }
         }
 
-        if entry.currency_code.is_empty() {
+        if entry.currency.is_empty() {
             return Err(ApiError::Validation(format!(
                 "Entry {} must have a currency code",
                 idx
             )));
         }
 
-        if entry.currency_code.len() != 3 {
+        if entry.currency.len() != 3 {
             return Err(ApiError::Validation(format!(
                 "Entry {} currency code must be exactly 3 characters",
                 idx
@@ -115,7 +115,7 @@ pub fn validate_double_entry_balance(entries: &[CreateEntry]) -> ApiResult<()> {
 
     for entry in entries {
         let balance = balances
-            .entry(entry.currency_code.clone())
+            .entry(entry.currency.clone())
             .or_insert(Decimal::ZERO);
 
         if let Some(debit) = entry.debit {
@@ -150,15 +150,12 @@ pub fn validate_double_entry_balance(entries: &[CreateEntry]) -> ApiResult<()> {
 }
 
 pub async fn validate_currencies_exist(pool: &PgPool, entries: &[CreateEntry]) -> ApiResult<()> {
-    let unique_currencies: HashSet<&str> =
-        entries.iter().map(|e| e.currency_code.as_str()).collect();
+    let unique_currencies: HashSet<&str> = entries.iter().map(|e| e.currency.as_str()).collect();
 
-    for currency_code in unique_currencies {
-        get_currency_by_code(pool, currency_code)
+    for currency in unique_currencies {
+        get_currency_by_code(pool, currency)
             .await
-            .map_err(|_| {
-                ApiError::Validation(format!("Currency {} does not exist", currency_code))
-            })?;
+            .map_err(|_| ApiError::Validation(format!("Currency {} does not exist", currency)))?;
     }
 
     Ok(())
@@ -241,7 +238,7 @@ mod tests {
     fn test_validate_entries_negative_amounts() {
         let entries = vec![CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(-100)),
             credit: None,
             account_version: None,
@@ -255,7 +252,7 @@ mod tests {
     fn test_validate_entries_both_debit_and_credit() {
         let entries = vec![CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100)),
             credit: Some(dec!(100)),
             account_version: None,
@@ -269,7 +266,7 @@ mod tests {
     fn test_validate_entries_neither_debit_nor_credit() {
         let entries = vec![CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: None,
             credit: None,
             account_version: None,
@@ -283,7 +280,7 @@ mod tests {
     fn test_validate_entries_invalid_currency_code() {
         let entries = vec![CreateEntry {
             account_id: 1,
-            currency_code: "US".to_string(),
+            currency: "US".to_string(),
             debit: Some(dec!(100)),
             credit: None,
             account_version: None,
@@ -303,14 +300,14 @@ mod tests {
         let entries = vec![
             CreateEntry {
                 account_id: 1,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: 2,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100)),
                 account_version: None,
@@ -325,14 +322,14 @@ mod tests {
         let entries = vec![
             CreateEntry {
                 account_id: 1,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: 2,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(50)),
                 account_version: None,
@@ -348,28 +345,28 @@ mod tests {
         let entries = vec![
             CreateEntry {
                 account_id: 1,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: 2,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100)),
                 account_version: None,
             },
             CreateEntry {
                 account_id: 3,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: Some(dec!(85)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: 4,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: None,
                 credit: Some(dec!(85)),
                 account_version: None,

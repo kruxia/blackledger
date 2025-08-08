@@ -113,7 +113,7 @@ pub async fn search_transactions(
     let offset = params.base.get_offset() as i64;
 
     // Use QueryBuilder for dynamic SQL generation with CTE to join with entry table when needed
-    let needs_entry_join = params.acct.is_some() || params.curr.is_some();
+    let needs_entry_join = params.acct.is_some() || params.currency.is_some();
 
     let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
         QueryBuilder::new(
@@ -177,7 +177,7 @@ pub async fn search_transactions(
     }
 
     // Handle currency code filter (regex patterns)
-    if let Some(ref curr_patterns) = params.curr {
+    if let Some(ref curr_patterns) = params.currency {
         let patterns: Vec<&str> = curr_patterns.split(',').map(|s| s.trim()).collect();
         if !patterns.is_empty() {
             query_builder.push(" AND (");
@@ -186,7 +186,7 @@ pub async fn search_transactions(
                 if !first {
                     query_builder.push(" OR ");
                 }
-                query_builder.push("entry.curr ~* ");
+                query_builder.push("entry.currency ~* ");
                 query_builder.push_bind(pattern);
                 first = false;
             }
@@ -269,7 +269,7 @@ pub async fn count_transactions(
     params: &crate::api::search::TransactionSearchParams,
 ) -> ApiResult<i64> {
     // Use QueryBuilder for dynamic SQL generation (matching search_transactions logic)
-    let needs_entry_join = params.acct.is_some() || params.curr.is_some();
+    let needs_entry_join = params.acct.is_some() || params.currency.is_some();
 
     let mut query_builder: QueryBuilder<Postgres> = if needs_entry_join {
         QueryBuilder::new(
@@ -331,7 +331,7 @@ pub async fn count_transactions(
     }
 
     // Handle currency code filter (regex patterns)
-    if let Some(ref curr_patterns) = params.curr {
+    if let Some(ref curr_patterns) = params.currency {
         let patterns: Vec<&str> = curr_patterns.split(',').map(|s| s.trim()).collect();
         if !patterns.is_empty() {
             query_builder.push(" AND (");
@@ -340,7 +340,7 @@ pub async fn count_transactions(
                 if !first {
                     query_builder.push(" OR ");
                 }
-                query_builder.push("entry.curr ~* ");
+                query_builder.push("entry.currency ~* ");
                 query_builder.push_bind(pattern);
                 first = false;
             }

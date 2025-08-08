@@ -207,7 +207,7 @@ pub struct TransactionSearchParams {
     #[serde(default, deserialize_with = "deserialize_id_list")]
     pub acct: Option<String>,
     /// Currency code patterns (comma-delimited regex patterns)
-    pub curr: Option<String>,
+    pub currency: Option<String>,
     /// Memo patterns (regex patterns)
     pub memo: Option<String>,
     #[serde(flatten)]

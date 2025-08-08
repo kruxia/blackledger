@@ -251,7 +251,7 @@ POST   /api/transactions       # Create transaction ✅
 ```
 
 ### JSON Schema Compatibility ✅
-- [x] All field names preserved exactly (including `acct`, `curr`, `version`)
+- [x] All field names preserved exactly (including `acct`, `currency`, `version`)
 - [x] Date/time formats use ISO 8601
 - [x] Decimal precision maintained with rust_decimal
 - [x] All query parameters supported

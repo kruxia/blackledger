@@ -67,14 +67,14 @@ async fn test_valid_transaction_posting(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100.00)),
                 account_version: None,
@@ -125,14 +125,14 @@ async fn test_unbalanced_transaction_fails(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(50.00)),
                 account_version: None,
@@ -180,28 +180,28 @@ async fn test_multi_currency_transaction(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100.00)),
                 account_version: None,
             },
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: Some(dec!(85.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: forex_account.id,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: None,
                 credit: Some(dec!(85.00)),
                 account_version: None,
@@ -213,16 +213,10 @@ async fn test_multi_currency_transaction(pool: PgPool) {
 
     assert_eq!(entries.len(), 4);
 
-    let usd_entries: Vec<_> = entries
-        .iter()
-        .filter(|e| e.currency_code == "USD")
-        .collect();
+    let usd_entries: Vec<_> = entries.iter().filter(|e| e.currency == "USD").collect();
     assert_eq!(usd_entries.len(), 2);
 
-    let eur_entries: Vec<_> = entries
-        .iter()
-        .filter(|e| e.currency_code == "EUR")
-        .collect();
+    let eur_entries: Vec<_> = entries.iter().filter(|e| e.currency == "EUR").collect();
     assert_eq!(eur_entries.len(), 2);
 }
 
@@ -238,14 +232,14 @@ async fn test_optimistic_locking(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(50.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(50.00)),
                 account_version: None,
@@ -267,14 +261,14 @@ async fn test_optimistic_locking(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(25.00)),
                 credit: None,
                 account_version: Some(cash_entry1.id),
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(25.00)),
                 account_version: None,
@@ -293,14 +287,14 @@ async fn test_optimistic_locking(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(30.00)),
                 credit: None,
                 account_version: Some(cash_entry1.id),
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(30.00)),
                 account_version: None,
@@ -329,14 +323,14 @@ async fn test_invalid_currency_fails(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "XXX".to_string(),
+                currency: "XXX".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "XXX".to_string(),
+                currency: "XXX".to_string(),
                 debit: None,
                 credit: Some(dec!(100.00)),
                 account_version: None,
@@ -367,14 +361,14 @@ async fn test_invalid_account_fails(pool: PgPool) {
         entries: vec![
             CreateEntry {
                 account_id: 999999,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(100.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: 999998,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(100.00)),
                 account_version: None,
@@ -401,14 +395,14 @@ fn test_validate_entries_unit() {
     let valid_entries = vec![
         CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100)),
             credit: None,
             account_version: None,
         },
         CreateEntry {
             account_id: 2,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: None,
             credit: Some(dec!(100)),
             account_version: None,
@@ -422,7 +416,7 @@ fn test_validate_entries_unit() {
 
     let both_debit_credit = vec![CreateEntry {
         account_id: 1,
-        currency_code: "USD".to_string(),
+        currency: "USD".to_string(),
         debit: Some(dec!(100)),
         credit: Some(dec!(100)),
         account_version: None,
@@ -431,7 +425,7 @@ fn test_validate_entries_unit() {
 
     let negative_amount = vec![CreateEntry {
         account_id: 1,
-        currency_code: "USD".to_string(),
+        currency: "USD".to_string(),
         debit: Some(dec!(-100)),
         credit: None,
         account_version: None,
@@ -444,14 +438,14 @@ fn test_validate_double_entry_balance_unit() {
     let balanced_entries = vec![
         CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100)),
             credit: None,
             account_version: None,
         },
         CreateEntry {
             account_id: 2,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: None,
             credit: Some(dec!(100)),
             account_version: None,
@@ -463,14 +457,14 @@ fn test_validate_double_entry_balance_unit() {
     let unbalanced_entries = vec![
         CreateEntry {
             account_id: 1,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: Some(dec!(100)),
             credit: None,
             account_version: None,
         },
         CreateEntry {
             account_id: 2,
-            currency_code: "USD".to_string(),
+            currency: "USD".to_string(),
             debit: None,
             credit: Some(dec!(50)),
             account_version: None,

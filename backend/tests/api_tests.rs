@@ -1193,12 +1193,12 @@ async fn test_transaction_posting() {
                         "entries": [
                             {
                                 "acct": cash_account_id,
-                                "curr": "USD",
+                                "currency": "USD",
                                 "debit": "100.00"
                             },
                             {
                                 "acct": revenue_account_id,
-                                "curr": "USD",
+                                "currency": "USD",
                                 "credit": "100.00"
                             }
                         ]
@@ -1252,12 +1252,12 @@ async fn test_unbalanced_transaction_rejection() {
                         "entries": [
                             {
                                 "acct": cash_account_id,
-                                "curr": "USD",
+                                "currency": "USD",
                                 "debit": "100.00"
                             },
                             {
                                 "acct": revenue_account_id,
-                                "curr": "USD",
+                                "currency": "USD",
                                 "credit": "50.00"  // Doesn't balance!
                             }
                         ]

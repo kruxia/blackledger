@@ -144,14 +144,14 @@ async fn main() -> Result<()> {
         entries: vec![
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(500.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(500.00)),
                 account_version: None,
@@ -175,14 +175,14 @@ async fn main() -> Result<()> {
         entries: vec![
             CreateEntry {
                 account_id: ar_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(1000.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(1000.00)),
                 account_version: None,
@@ -205,14 +205,14 @@ async fn main() -> Result<()> {
         entries: vec![
             CreateEntry {
                 account_id: expense_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(200.00)),
                 credit: None,
                 account_version: None,
             },
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(200.00)),
                 account_version: None,
@@ -236,7 +236,7 @@ async fn main() -> Result<()> {
             // Receive USD
             CreateEntry {
                 account_id: cash_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: Some(dec!(1100.00)),
                 credit: None,
                 account_version: None,
@@ -244,7 +244,7 @@ async fn main() -> Result<()> {
             // Record EUR revenue
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: None,
                 credit: Some(dec!(1000.00)),
                 account_version: None,
@@ -252,7 +252,7 @@ async fn main() -> Result<()> {
             // Balance the USD side
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "USD".to_string(),
+                currency: "USD".to_string(),
                 debit: None,
                 credit: Some(dec!(1100.00)),
                 account_version: None,
@@ -260,7 +260,7 @@ async fn main() -> Result<()> {
             // Balance the EUR side (contra revenue for tracking)
             CreateEntry {
                 account_id: revenue_account.id,
-                currency_code: "EUR".to_string(),
+                currency: "EUR".to_string(),
                 debit: Some(dec!(1000.00)),
                 credit: None,
                 account_version: None,
@@ -295,7 +295,7 @@ async fn main() -> Result<()> {
             "   {:<25} {:>10} {}",
             account_name,
             format!("{:.2}", balance.balance),
-            balance.currency_code
+            balance.currency
         );
     }
 

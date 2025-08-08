@@ -5,7 +5,7 @@ CREATE TABLE entry (
     ledger_id       bigint    NOT NULL REFERENCES ledger(id),
     transaction_id  bigint    NOT NULL REFERENCES transaction(id),
     account_id      bigint    NOT NULL REFERENCES account(id),
-    curr            varchar   NOT NULL REFERENCES currency(code),
+    currency            varchar   NOT NULL REFERENCES currency(code),
     debit           decimal,
     credit          decimal,
     CHECK ((debit IS NOT NULL AND debit > 0 AND credit IS NULL)

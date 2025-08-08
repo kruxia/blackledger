@@ -63,7 +63,7 @@ pub struct UpdateAccount {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccountBalance {
     pub account_id: i64,
-    pub currency_code: String,
+    pub currency: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub balance: Decimal,
 }
