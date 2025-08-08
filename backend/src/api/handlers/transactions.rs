@@ -6,11 +6,7 @@ use axum::{
 
 use crate::services::posting::post_transactions_batch;
 use crate::{
-    api::{
-        AppState,
-        pagination::{PaginatedResponse, PaginationParams},
-        search::TransactionSearchParams,
-    },
+    api::{AppState, pagination::PaginatedResponse, search::TransactionSearchParams},
     auth::OptionalAuthUser,
     db::queries::transaction::{count_transactions, search_transactions},
     error::ApiResult,
@@ -43,11 +39,7 @@ pub async fn handle_search_transactions(
     let transactions = search_transactions(&state.pool, &params).await?;
     let total = count_transactions(&state.pool, &params).await?;
 
-    let pagination = PaginationParams {
-        page: (params.base.get_offset() / params.base.get_limit() + 1) as u32,
-        size: params.base.get_limit() as u32,
-    };
-
+    let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(transactions, &pagination, Some(total));
     Ok(Json(response))
 }

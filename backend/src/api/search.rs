@@ -129,6 +129,14 @@ impl SearchParams {
     pub fn get_offset(&self) -> i32 {
         self.offset.unwrap_or(0)
     }
+
+    /// Convert SearchParams to PaginationParams
+    pub fn to_pagination_params(&self) -> crate::api::pagination::PaginationParams {
+        crate::api::pagination::PaginationParams {
+            page: (self.get_offset() / self.get_limit() + 1) as u32,
+            size: self.get_limit() as u32,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

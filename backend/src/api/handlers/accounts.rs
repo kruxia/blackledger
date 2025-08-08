@@ -6,11 +6,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::{
-        AppState,
-        pagination::{PaginatedResponse, PaginationParams},
-        search::AccountSearchParams,
-    },
+    api::{AppState, pagination::PaginatedResponse, search::AccountSearchParams},
     db::queries::account::{
         count_accounts, create_accounts_batch, get_account_balances, search_accounts,
         update_account,
@@ -49,11 +45,7 @@ pub async fn handle_search_accounts(
     let accounts = search_accounts(&state.pool, &params).await?;
     let total = count_accounts(&state.pool, &params).await?;
 
-    let pagination = PaginationParams {
-        page: (params.base.get_offset() / params.base.get_limit() + 1) as u32,
-        size: params.base.get_limit() as u32,
-    };
-
+    let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(accounts, &pagination, Some(total));
     Ok(Json(response))
 }

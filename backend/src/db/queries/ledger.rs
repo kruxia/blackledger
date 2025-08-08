@@ -126,12 +126,51 @@ pub async fn list_ledgers(
         .collect())
 }
 
-pub async fn count_ledgers(pool: &PgPool) -> ApiResult<i64> {
-    let record = sqlx::query!(r#"SELECT COUNT(*) as count FROM ledger"#)
-        .fetch_one(pool)
-        .await?;
+pub async fn count_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiResult<i64> {
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT COUNT(*) as count FROM ledger WHERE 1=1");
 
-    Ok(record.count.unwrap_or(0))
+    // Handle comma-delimited list of IDs
+    if let Some(ref id_list) = params.id {
+        let ids: Vec<i64> = id_list
+            .split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect();
+        if !ids.is_empty() {
+            query_builder.push(" AND id IN (");
+            let mut separated = query_builder.separated(", ");
+            for id in ids {
+                separated.push_bind(id);
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Handle comma-delimited regex patterns for names
+    if let Some(ref name_patterns) = params.name {
+        let patterns: Vec<&str> = name_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("name ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Execute the query
+    let query = query_builder.build();
+    let row = query.fetch_one(pool).await?;
+    let count: i64 = row.try_get("count")?;
+
+    Ok(count)
 }
 
 pub async fn search_ledgers(pool: &PgPool, params: &LedgerSearchParams) -> ApiResult<Vec<Ledger>> {

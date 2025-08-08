@@ -6,8 +6,8 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::{AppState, search::CurrencySearchParams},
-    db::queries::currency::{create_currencies_batch, search_currencies},
+    api::{AppState, pagination::PaginatedResponse, search::CurrencySearchParams},
+    db::queries::currency::{count_currencies, create_currencies_batch, search_currencies},
     error::ApiResult,
     models::currency::Currency,
 };
@@ -40,7 +40,11 @@ pub async fn handle_create_currencies(
 pub async fn handle_search_currencies(
     State(state): State<AppState>,
     Query(params): Query<CurrencySearchParams>,
-) -> ApiResult<Json<Vec<Currency>>> {
+) -> ApiResult<Json<PaginatedResponse<Currency>>> {
     let currencies = search_currencies(&state.pool, &params).await?;
-    Ok(Json(currencies))
+    let total = count_currencies(&state.pool, &params).await?;
+
+    let pagination = params.base.to_pagination_params();
+    let response = PaginatedResponse::new(currencies, &pagination, Some(total));
+    Ok(Json(response))
 }

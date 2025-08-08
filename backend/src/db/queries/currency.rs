@@ -89,6 +89,37 @@ pub async fn list_currencies(pool: &PgPool) -> ApiResult<Vec<Currency>> {
         .collect())
 }
 
+pub async fn count_currencies(pool: &PgPool, params: &CurrencySearchParams) -> ApiResult<i64> {
+    // Use QueryBuilder for dynamic SQL generation
+    let mut query_builder: QueryBuilder<Postgres> =
+        QueryBuilder::new("SELECT COUNT(*) as count FROM currency WHERE 1=1");
+
+    // Handle comma-delimited regex patterns for currency codes
+    if let Some(ref code_patterns) = params.code {
+        let patterns: Vec<&str> = code_patterns.split(',').map(|s| s.trim()).collect();
+        if !patterns.is_empty() {
+            query_builder.push(" AND (");
+            let mut first = true;
+            for pattern in patterns {
+                if !first {
+                    query_builder.push(" OR ");
+                }
+                query_builder.push("code ~* ");
+                query_builder.push_bind(pattern);
+                first = false;
+            }
+            query_builder.push(")");
+        }
+    }
+
+    // Execute the query
+    let query = query_builder.build();
+    let row = query.fetch_one(pool).await?;
+    let count: i64 = row.try_get("count")?;
+
+    Ok(count)
+}
+
 pub async fn search_currencies(
     pool: &PgPool,
     params: &CurrencySearchParams,
