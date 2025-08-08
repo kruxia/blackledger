@@ -65,7 +65,6 @@ struct PaginationMeta {
     limit: u32,
     offset: u32,
     total: Option<i64>,
-    has_more: bool,
 }
 
 struct ApiClient {
@@ -275,7 +274,6 @@ async fn main() -> Result<()> {
     let page1 = client.list_accounts(ledger.id, 0).await?;
     println!("   📄 First batch: {} accounts", page1.data.len());
     println!("   📊 Total accounts: {:?}", page1.pagination.total);
-    println!("   ➡️  Has more: {}\n", page1.pagination.has_more);
 
     // Step 5: Get balances
     println!("5️⃣ Getting account balances...");

@@ -32,8 +32,14 @@ pub async fn handle_search_ledgers(
     State(state): State<AppState>,
     Query(params): Query<LedgerSearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Ledger>>> {
-    let ledgers = search_ledgers(&state.pool, &params).await?;
-    let total = count_ledgers(&state.pool, &params).await?;
+    // Run search and count queries concurrently
+    let (ledgers_result, count_result) = tokio::join!(
+        search_ledgers(&state.pool, &params),
+        count_ledgers(&state.pool, &params)
+    );
+
+    let ledgers = ledgers_result?;
+    let total = count_result?;
 
     let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(ledgers, &pagination, Some(total));

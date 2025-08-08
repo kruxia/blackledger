@@ -36,8 +36,14 @@ pub async fn handle_search_transactions(
     State(state): State<AppState>,
     Query(params): Query<TransactionSearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Transaction>>> {
-    let transactions = search_transactions(&state.pool, &params).await?;
-    let total = count_transactions(&state.pool, &params).await?;
+    // Run search and count queries concurrently
+    let (transactions_result, count_result) = tokio::join!(
+        search_transactions(&state.pool, &params),
+        count_transactions(&state.pool, &params)
+    );
+
+    let transactions = transactions_result?;
+    let total = count_result?;
 
     let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(transactions, &pagination, Some(total));

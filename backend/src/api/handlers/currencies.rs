@@ -41,8 +41,14 @@ pub async fn handle_search_currencies(
     State(state): State<AppState>,
     Query(params): Query<CurrencySearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Currency>>> {
-    let currencies = search_currencies(&state.pool, &params).await?;
-    let total = count_currencies(&state.pool, &params).await?;
+    // Run search and count queries concurrently
+    let (currencies_result, count_result) = tokio::join!(
+        search_currencies(&state.pool, &params),
+        count_currencies(&state.pool, &params)
+    );
+
+    let currencies = currencies_result?;
+    let total = count_result?;
 
     let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(currencies, &pagination, Some(total));

@@ -42,8 +42,14 @@ pub async fn handle_search_accounts(
     State(state): State<AppState>,
     Query(params): Query<AccountSearchParams>,
 ) -> ApiResult<Json<PaginatedResponse<Account>>> {
-    let accounts = search_accounts(&state.pool, &params).await?;
-    let total = count_accounts(&state.pool, &params).await?;
+    // Run search and count queries concurrently
+    let (accounts_result, count_result) = tokio::join!(
+        search_accounts(&state.pool, &params),
+        count_accounts(&state.pool, &params)
+    );
+
+    let accounts = accounts_result?;
+    let total = count_result?;
 
     let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(accounts, &pagination, Some(total));

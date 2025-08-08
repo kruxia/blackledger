@@ -79,7 +79,6 @@ fn test_paginated_response() {
     assert_eq!(response.pagination.page, 1);
     assert_eq!(response.pagination.size, 5);
     assert_eq!(response.pagination.total, Some(100));
-    assert!(response.pagination.has_more);
 }
 
 #[sqlx::test]
