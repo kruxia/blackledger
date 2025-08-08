@@ -94,7 +94,6 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 #### 3. Production Deployment (1-2 weeks)
 - [ ] Dockerfile optimization for minimal image size
 - [ ] Kubernetes manifests / Helm charts
-- [ ] Health check and readiness probes
 - [ ] Graceful shutdown handling
 - [ ] Connection pool tuning for production loads
 - [ ] Environment-specific configuration
@@ -110,7 +109,6 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 
 #### 5. Performance Optimization (1 week)
 - [ ] Database query optimization and index tuning
-- [ ] Caching layer (Redis) for frequently accessed data
 - [x] Batch transaction posting capabilities
 - [x] Parallel query execution where applicable
 
