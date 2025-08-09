@@ -1830,3 +1830,753 @@ async fn test_effective_date_handling(pool: PgPool) {
     assert!(transaction.created > specific_date);
     assert!(transaction.created <= Utc::now());
 }
+
+#[sqlx::test]
+async fn test_multi_currency_complex_scenarios(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Complex Multi-Currency Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    // Setup multiple currencies
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD'), ('EUR'), ('GBP'), ('JPY') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Create accounts
+    let bank_usd = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Bank USD {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let bank_eur = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Bank EUR {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let bank_gbp = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Bank GBP {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let forex_gain_loss = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'CR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Forex Gain/Loss {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test complex multi-currency transaction with 3+ currencies
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Complex forex transaction".to_string()),
+        meta: Some(serde_json::json!({
+            "exchange_rates": {
+                "USD_EUR": 0.85,
+                "USD_GBP": 0.75
+            }
+        })),
+        entries: vec![
+            // USD leg
+            CreateEntry {
+                account_id: bank_usd.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(1000.00)),
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: forex_gain_loss.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(1000.00)),
+                credit: None,
+                account_version: None,
+            },
+            // EUR leg
+            CreateEntry {
+                account_id: bank_eur.id,
+                currency: "EUR".to_string(),
+                debit: Some(dec!(850.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: forex_gain_loss.id,
+                currency: "EUR".to_string(),
+                debit: None,
+                credit: Some(dec!(850.00)),
+                account_version: None,
+            },
+            // GBP leg
+            CreateEntry {
+                account_id: bank_gbp.id,
+                currency: "GBP".to_string(),
+                debit: Some(dec!(750.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: forex_gain_loss.id,
+                currency: "GBP".to_string(),
+                debit: None,
+                credit: Some(dec!(750.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (transaction, entries) = post_transaction(&pool, &input, Some("forex_trader"))
+        .await
+        .unwrap();
+
+    // Verify all currencies balance independently
+    assert_eq!(entries.len(), 6);
+
+    let usd_entries: Vec<_> = entries.iter().filter(|e| e.currency == "USD").collect();
+    let usd_debits: rust_decimal::Decimal = usd_entries.iter().filter_map(|e| e.debit).sum();
+    let usd_credits: rust_decimal::Decimal = usd_entries.iter().filter_map(|e| e.credit).sum();
+    assert_eq!(usd_debits, usd_credits);
+
+    let eur_entries: Vec<_> = entries.iter().filter(|e| e.currency == "EUR").collect();
+    let eur_debits: rust_decimal::Decimal = eur_entries.iter().filter_map(|e| e.debit).sum();
+    let eur_credits: rust_decimal::Decimal = eur_entries.iter().filter_map(|e| e.credit).sum();
+    assert_eq!(eur_debits, eur_credits);
+
+    let gbp_entries: Vec<_> = entries.iter().filter(|e| e.currency == "GBP").collect();
+    let gbp_debits: rust_decimal::Decimal = gbp_entries.iter().filter_map(|e| e.debit).sum();
+    let gbp_credits: rust_decimal::Decimal = gbp_entries.iter().filter_map(|e| e.credit).sum();
+    assert_eq!(gbp_debits, gbp_credits);
+
+    // Verify metadata preserved
+    assert!(transaction.meta.is_some());
+    let meta = transaction.meta.unwrap();
+    assert_eq!(meta["exchange_rates"]["USD_EUR"], 0.85);
+    assert_eq!(meta["audit"]["posted_by"], "forex_trader");
+}
+
+#[sqlx::test]
+async fn test_partial_currency_unbalanced_fails(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Partial Balance Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(
+        r#"INSERT INTO currency (code) VALUES ('USD'), ('EUR'), ('GBP') ON CONFLICT DO NOTHING"#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let account1 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Account1 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let account2 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'CR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Account2 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test where USD and EUR balance, but GBP doesn't
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Partially unbalanced".to_string()),
+        meta: None,
+        entries: vec![
+            // USD balances
+            CreateEntry {
+                account_id: account1.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account2.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+            // EUR balances
+            CreateEntry {
+                account_id: account1.id,
+                currency: "EUR".to_string(),
+                debit: Some(dec!(85.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account2.id,
+                currency: "EUR".to_string(),
+                debit: None,
+                credit: Some(dec!(85.00)),
+                account_version: None,
+            },
+            // GBP does NOT balance
+            CreateEntry {
+                account_id: account1.id,
+                currency: "GBP".to_string(),
+                debit: Some(dec!(75.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account2.id,
+                currency: "GBP".to_string(),
+                debit: None,
+                credit: Some(dec!(70.00)), // Wrong amount!
+                account_version: None,
+            },
+        ],
+    };
+
+    let result = post_transaction(&pool, &input, None).await;
+    assert!(result.is_err());
+
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("GBP"));
+            assert!(msg.contains("does not balance"));
+            // Should show the imbalance
+            assert!(msg.contains("5") || msg.contains("75") || msg.contains("70"));
+        }
+        _ => panic!("Expected validation error for unbalanced GBP"),
+    }
+}
+
+#[sqlx::test]
+async fn test_decimal_precision_edge_cases(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Precision Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD'), ('BTC') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let account1 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Account1 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let account2 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'CR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Account2 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test with maximum precision (28 decimal places for rust_decimal)
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("High precision transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: account1.id,
+                currency: "BTC".to_string(),
+                debit: Some(dec!(0.123456789012345678)), // High precision
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account2.id,
+                currency: "BTC".to_string(),
+                debit: None,
+                credit: Some(dec!(0.123456789012345678)),
+                account_version: None,
+            },
+            // Test with very small amounts
+            CreateEntry {
+                account_id: account1.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(0.01)), // Penny
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account2.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(0.01)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (_transaction, entries) = post_transaction(&pool, &input, None).await.unwrap();
+
+    // Verify precision is preserved
+    let btc_entry = entries
+        .iter()
+        .find(|e| e.currency == "BTC" && e.debit.is_some())
+        .unwrap();
+    assert_eq!(btc_entry.debit, Some(dec!(0.123456789012345678)));
+
+    let usd_entry = entries
+        .iter()
+        .find(|e| e.currency == "USD" && e.debit.is_some())
+        .unwrap();
+    assert_eq!(usd_entry.debit, Some(dec!(0.01)));
+}
+
+#[sqlx::test]
+async fn test_concurrent_version_conflict_handling(pool: PgPool) {
+    use std::sync::Arc;
+    use tokio::task::JoinSet;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Version Conflict Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let shared_account = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Shared Account {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let counterparty = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'CR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Counterparty {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Post initial transaction to set version
+    let initial = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Initial".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: shared_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: counterparty.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (_initial_tx, initial_entries) = post_transaction(&pool, &initial, None).await.unwrap();
+    let initial_version = initial_entries
+        .iter()
+        .find(|e| e.account_id == shared_account.id)
+        .unwrap()
+        .id;
+
+    // Try to post multiple transactions concurrently with same version
+    let pool = Arc::new(pool);
+    let mut tasks = JoinSet::new();
+
+    for i in 0..3 {
+        let pool_clone = Arc::clone(&pool);
+        let shared_id = shared_account.id;
+        let counter_id = counterparty.id;
+        let ledger_id = ledger.id;
+        let version = initial_version;
+
+        tasks.spawn(async move {
+            let input = CreateTransaction {
+                ledger_id,
+                effective: None,
+                memo: Some(format!("Concurrent {}", i)),
+                meta: None,
+                entries: vec![
+                    CreateEntry {
+                        account_id: shared_id,
+                        currency: "USD".to_string(),
+                        debit: Some(dec!(10.00)),
+                        credit: None,
+                        account_version: Some(version), // All using same version!
+                    },
+                    CreateEntry {
+                        account_id: counter_id,
+                        currency: "USD".to_string(),
+                        debit: None,
+                        credit: Some(dec!(10.00)),
+                        account_version: None,
+                    },
+                ],
+            };
+
+            post_transaction(&pool_clone, &input, None).await
+        });
+    }
+
+    let mut results = Vec::new();
+    while let Some(result) = tasks.join_next().await {
+        results.push(result.unwrap());
+    }
+
+    // Only one should succeed, others should fail with optimistic lock error
+    let successes = results.iter().filter(|r| r.is_ok()).count();
+    let failures = results.iter().filter(|r| r.is_err()).count();
+
+    assert_eq!(successes, 1, "Exactly one transaction should succeed");
+    assert_eq!(
+        failures, 2,
+        "Two transactions should fail with version conflict"
+    );
+
+    // Verify the errors are optimistic lock errors
+    for result in results.iter().filter(|r| r.is_err()) {
+        match result.as_ref().unwrap_err() {
+            ApiError::OptimisticLockError => {}
+            e => panic!("Expected OptimisticLockError, got {:?}", e),
+        }
+    }
+}
+
+#[sqlx::test]
+async fn test_large_batch_transaction_posting(pool: PgPool) {
+    use blackledger::services::posting::post_transactions_batch;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Large Batch Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Create many accounts
+    let mut accounts = Vec::new();
+    for i in 0..20 {
+        let account = sqlx::query_as::<_, Account>(
+            r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, $3) RETURNING *"#,
+        )
+        .bind(ledger.id)
+        .bind(format!("Account {} {}", i, Uuid::new_v4()))
+        .bind(if i % 2 == 0 { "DR" } else { "CR" })
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        accounts.push(account);
+    }
+
+    // Create a large batch of transactions
+    let mut transactions = Vec::new();
+    for i in 0..50 {
+        let from_account = &accounts[i % 10];
+        let to_account = &accounts[10 + (i % 10)];
+
+        // Always use debit/credit pairs that balance
+        transactions.push(CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some(format!("Batch transaction {}", i)),
+            meta: Some(serde_json::json!({
+                "batch_id": "large_batch_001",
+                "sequence": i
+            })),
+            entries: vec![
+                CreateEntry {
+                    account_id: from_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(10.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: to_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(10.00)),
+                    account_version: None,
+                },
+            ],
+        });
+    }
+
+    // Post the large batch
+    let start = std::time::Instant::now();
+    let results = post_transactions_batch(&pool, &transactions, Some("batch_processor"))
+        .await
+        .unwrap();
+    let duration = start.elapsed();
+
+    // Verify all succeeded
+    assert_eq!(results.len(), 50);
+
+    // Verify performance (should complete in reasonable time)
+    assert!(
+        duration.as_secs() < 30,
+        "Large batch should complete within 30 seconds, took {:?}",
+        duration
+    );
+
+    // Verify metadata preserved
+    for (i, (tx, _entries)) in results.iter().enumerate() {
+        assert!(tx.meta.is_some());
+        let meta = tx.meta.as_ref().unwrap();
+        assert_eq!(meta["batch_id"], "large_batch_001");
+        assert_eq!(meta["sequence"], i);
+        assert_eq!(meta["audit"]["posted_by"], "batch_processor");
+    }
+}
+
+#[sqlx::test]
+async fn test_empty_and_invalid_entry_scenarios(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Invalid Entry Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let account = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Test Account {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test empty entries
+    let empty_input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Empty transaction".to_string()),
+        meta: None,
+        entries: vec![],
+    };
+
+    let result = post_transaction(&pool, &empty_input, None).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("at least") || msg.contains("empty"));
+        }
+        _ => panic!("Expected validation error for empty entries"),
+    }
+
+    // Test single entry (can't balance)
+    let single_input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Single entry".to_string()),
+        meta: None,
+        entries: vec![CreateEntry {
+            account_id: account.id,
+            currency: "USD".to_string(),
+            debit: Some(dec!(100.00)),
+            credit: None,
+            account_version: None,
+        }],
+    };
+
+    let result = post_transaction(&pool, &single_input, None).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("balance") || msg.contains("at least 2"));
+        }
+        _ => panic!("Expected validation error for single entry"),
+    }
+
+    // Test both debit and credit on same entry
+    let both_input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Both debit and credit".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: Some(dec!(100.00)), // Both set!
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: None, // Neither set!
+                account_version: None,
+            },
+        ],
+    };
+
+    let result = post_transaction(&pool, &both_input, None).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("both") || msg.contains("exactly one"));
+        }
+        _ => panic!("Expected validation error for both debit and credit"),
+    }
+}
+
+#[sqlx::test]
+async fn test_account_ledger_mismatch(pool: PgPool) {
+    use uuid::Uuid;
+
+    // Create two separate ledgers
+    let ledger1_name = format!("Ledger 1 {}", Uuid::new_v4());
+    let ledger1 =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger1_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    let ledger2_name = format!("Ledger 2 {}", Uuid::new_v4());
+    let ledger2 =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger2_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Create accounts in different ledgers
+    let account_ledger1 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'DR') RETURNING *"#,
+    )
+    .bind(ledger1.id)
+    .bind(format!("Account in Ledger1 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let account_ledger2 = sqlx::query_as::<_, Account>(
+        r#"INSERT INTO account (ledger_id, name, normal) VALUES ($1, $2, 'CR') RETURNING *"#,
+    )
+    .bind(ledger2.id)
+    .bind(format!("Account in Ledger2 {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Try to post transaction with accounts from different ledgers
+    let input = CreateTransaction {
+        ledger_id: ledger1.id,
+        effective: None,
+        memo: Some("Cross-ledger transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: account_ledger1.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: account_ledger2.id, // Wrong ledger!
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let result = post_transaction(&pool, &input, None).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(
+                msg.contains("ledger") || msg.contains("does not exist"),
+                "Error should mention ledger mismatch: {}",
+                msg
+            );
+        }
+        _ => panic!("Expected validation error for ledger mismatch"),
+    }
+}

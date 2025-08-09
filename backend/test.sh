@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --coverage, -c  Run tests with coverage report (tarpaulin)"
+            echo "  --coverage, -c  Run tests with coverage report (cargo-llvm-cov)"
             echo "  --clean         Clean all target directories before running"
             echo "  --quick, -q     Skip database setup (assumes it's already running)"
             echo "  --help, -h      Show this help message"
@@ -50,6 +50,8 @@ if [ "$CLEAN" = true ]; then
     rm -rf target/debug
     rm -rf target/release
     rm -rf target/tarpaulin
+    rm -rf target/llvm-cov
+    rm -rf target/llvm-cov-target
     echo "Target directories cleaned."
 fi
 
@@ -82,24 +84,33 @@ fi
 
 # Run tests
 if [ "$COVERAGE" = true ]; then
-    echo "Running tests with coverage..."
+    echo "Running tests with LLVM coverage..."
     
-    # Clean tarpaulin's specific target directory for fresh instrumentation
-    # This ensures accurate coverage while preserving the skip-clean optimization
+    # Clean llvm-cov's specific target directory for fresh instrumentation if not already cleaned
     if [ "$CLEAN" = false ]; then
-        echo "Cleaning tarpaulin target for accurate coverage..."
-        rm -rf target/tarpaulin
+        echo "Cleaning llvm-cov target for accurate coverage..."
+        rm -rf target/llvm-cov
+        rm -rf target/llvm-cov-target
     fi
     
-    # Run with tarpaulin using config file (which has skip-clean=true)
-    # The --out Html is specified here to ensure HTML output
-    cargo tarpaulin --config tarpaulin.toml --skip-clean --out Html --all-features -- --test-threads=1
-    
+    # Run with cargo-llvm-cov
+    # --html generates HTML report
+    # --text generates text output
+    # --lcov generates lcov.info for CI integration
+    # -- --test-threads=1 runs tests serially to prevent database pool timeouts
+    cargo llvm-cov --html --text --lcov --output-path lcov.info \
+        -- --test-threads=1 --quiet
+
     echo ""
     echo "Coverage report generated:"
-    echo "  - HTML: tarpaulin-report.html"
+    echo "  - HTML: target/llvm-cov/html/index.html"
     echo "  - LCOV: lcov.info"
-    echo "  - JSON: tarpaulin-report.json"
+    echo "  - Text: console output above"
+    
+    # Display summary
+    echo ""
+    echo "Coverage Summary:"
+    cargo llvm-cov report --summary-only
 else
     echo "Running tests..."
     # Run tests sequentially to avoid database state conflicts
