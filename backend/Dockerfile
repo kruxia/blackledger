@@ -1,6 +1,7 @@
 # =======================================================================
 # Build stage
-FROM rust:1.88-slim AS builder
+# =======================================================================
+FROM rust:1.89-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -32,6 +33,7 @@ RUN cargo build --release
 
 # =======================================================================
 # deploy stage
+# =======================================================================
 FROM debian:bookworm-slim AS deploy
 
 # Install deploy dependencies including PostgreSQL client for migrations
@@ -73,12 +75,17 @@ CMD ["blackledger"]
 
 # =======================================================================
 # Development stage
-FROM rust:1.88 AS develop
+# =======================================================================
+FROM rust:1.89 AS develop
 
 WORKDIR /opt/blackledger
 
-# Install cargo-watch for auto-reload and sqlx-cli for migrations
-RUN cargo install cargo-watch sqlx-cli
+# Install cargo-watch for auto-reload, sqlx-cli for migrations, and cargo-llvm-cov for
+# coverage testing
+RUN cargo install cargo-watch \
+    && cargo install sqlx-cli --no-default-features --features postgres \
+    && rustup component add llvm-tools-preview \
+    && cargo install cargo-llvm-cov
 
 # Install PostgreSQL client for database connectivity checks
 RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*

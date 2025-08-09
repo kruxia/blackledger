@@ -2,3 +2,4 @@
 .pytest_cache/
 blackledger.egg-info/
 target/
+backend/target/
