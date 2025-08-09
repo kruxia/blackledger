@@ -1,3 +1,5 @@
+mod common;
+
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -49,8 +51,9 @@ async fn setup_app_with_auth(pool: PgPool, mock_server: &MockServer) -> axum::Ro
     api::router(app_state.clone()).with_state(app_state)
 }
 
-#[sqlx::test]
-async fn test_health_check_no_auth_required(pool: PgPool) {
+#[tokio::test]
+async fn test_health_check_no_auth_required() {
+    let pool = common::setup_test_db().await;
     let mock_server = MockServer::start().await;
     let app = setup_app_with_auth(pool, &mock_server).await;
 
@@ -62,8 +65,9 @@ async fn test_health_check_no_auth_required(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[sqlx::test]
-async fn test_protected_routes_require_auth(pool: PgPool) {
+#[tokio::test]
+async fn test_protected_routes_require_auth() {
+    let pool = common::setup_test_db().await;
     let mock_server = MockServer::start().await;
     let app = setup_app_with_auth(pool, &mock_server).await;
 

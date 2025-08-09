@@ -69,6 +69,10 @@ pub fn router(state: AppState) -> Router<AppState> {
             get(handlers::transactions::handle_search_transactions)
                 .post(handlers::transactions::handle_create_transactions),
         )
+        .route(
+            "/transactions/:id",
+            get(handlers::transactions::handle_get_transaction),
+        )
         .layer(TraceLayer::new_for_http())
         .layer(axum_middleware::from_fn_with_state(
             Arc::clone(&state.jwt_validator),

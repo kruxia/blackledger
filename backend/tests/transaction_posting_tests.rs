@@ -124,7 +124,7 @@ async fn test_valid_transaction_posting(pool: PgPool) {
 
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None, // Will default to created timestamp
         memo: Some("Test transaction".to_string()),
         meta: None,
         entries: vec![
@@ -182,7 +182,7 @@ async fn test_unbalanced_transaction_fails(pool: PgPool) {
 
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: Some(Utc::now()), // Explicitly set effective date
         memo: Some("Unbalanced transaction".to_string()),
         meta: None,
         entries: vec![
@@ -237,7 +237,7 @@ async fn test_multi_currency_transaction(pool: PgPool) {
 
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Multi-currency transaction".to_string()),
         meta: None,
         entries: vec![
@@ -289,7 +289,7 @@ async fn test_optimistic_locking(pool: PgPool) {
 
     let input1 = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("First transaction".to_string()),
         meta: None,
         entries: vec![
@@ -318,7 +318,7 @@ async fn test_optimistic_locking(pool: PgPool) {
 
     let input2_correct_version = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Second transaction with correct version".to_string()),
         meta: None,
         entries: vec![
@@ -344,7 +344,7 @@ async fn test_optimistic_locking(pool: PgPool) {
 
     let input3_wrong_version = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Transaction with wrong version".to_string()),
         meta: None,
         entries: vec![
@@ -380,7 +380,7 @@ async fn test_invalid_currency_fails(pool: PgPool) {
 
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Invalid currency transaction".to_string()),
         meta: None,
         entries: vec![
@@ -418,7 +418,7 @@ async fn test_invalid_account_fails(pool: PgPool) {
 
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Invalid account transaction".to_string()),
         meta: None,
         entries: vec![
@@ -547,7 +547,7 @@ async fn test_multi_currency_transaction_valid(pool: PgPool) {
     // Valid multi-currency transaction: Each currency balances independently
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Multi-currency sale".to_string()),
         meta: None,
         entries: vec![
@@ -614,7 +614,7 @@ async fn test_multi_currency_transaction_unbalanced_fails(pool: PgPool) {
     // Invalid: USD balances but EUR doesn't
     let input = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("Unbalanced multi-currency".to_string()),
         meta: None,
         entries: vec![
@@ -733,7 +733,7 @@ async fn test_account_with_multiple_currency_balances(pool: PgPool) {
     // Post transactions in different currencies to the same account
     let tx1 = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("USD revenue".to_string()),
         meta: None,
         entries: vec![
@@ -756,7 +756,7 @@ async fn test_account_with_multiple_currency_balances(pool: PgPool) {
 
     let tx2 = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None,
         memo: Some("EUR revenue".to_string()),
         meta: None,
         entries: vec![
@@ -807,4 +807,141 @@ async fn test_account_with_multiple_currency_balances(pool: PgPool) {
     assert_eq!(revenue_balances.balances.len(), 2);
     assert_eq!(revenue_balances.balances.get("USD"), Some(&dec!(0)));
     assert_eq!(revenue_balances.balances.get("EUR"), Some(&dec!(0)));
+}
+
+#[sqlx::test]
+async fn test_credit_normal_account_balance_calculation(pool: PgPool) {
+    let ledger = sqlx::query_as::<_, Ledger>(
+        r#"INSERT INTO ledger (name) VALUES ('Test Ledger') RETURNING *"#,
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Create USD currency
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Create a credit-normal account (Revenue)
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, 'Revenue', 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Create a debit-normal account (Cash)
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, 'Cash', 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Post a transaction with revenue (credit-normal account receives credit)
+    let tx1 = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Revenue transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(1000.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(1000.00)), // Credit to revenue
+                account_version: None,
+            },
+        ],
+    };
+
+    post_transaction(&pool, &tx1, None).await.unwrap();
+
+    // Post another revenue transaction
+    let tx2 = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Another revenue transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(500.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(500.00)), // Another credit to revenue
+                account_version: None,
+            },
+        ],
+    };
+
+    post_transaction(&pool, &tx2, None).await.unwrap();
+
+    // Query account balances
+    use blackledger::api::search::{AccountSearchParams, SearchParams};
+    use blackledger::db::queries::account::get_accounts_with_balances;
+
+    let params = AccountSearchParams {
+        id: None, // Get all accounts
+        ledger_id: Some(ledger.id.to_string()),
+        parent_id: None,
+        version: None,
+        number: None,
+        name: None,
+        normal: None,
+        base: SearchParams::default(),
+    };
+
+    let accounts_with_balances = get_accounts_with_balances(&pool, &params).await.unwrap();
+
+    // Find the revenue account balance
+    let revenue_balance = accounts_with_balances
+        .iter()
+        .find(|ab| ab.account.id == revenue_account.id)
+        .unwrap();
+
+    // Find the cash account balance
+    let cash_balance = accounts_with_balances
+        .iter()
+        .find(|ab| ab.account.id == cash_account.id)
+        .unwrap();
+
+    // Revenue (CR normal) should show positive 1500 (credits - debits = 1500 - 0)
+    assert_eq!(
+        revenue_balance.balances.get("USD"),
+        Some(&dec!(1500.00)),
+        "Revenue account (CR normal) should have positive balance of 1500"
+    );
+
+    // Cash (DR normal) should show positive 1500 (debits - credits = 1500 - 0)
+    assert_eq!(
+        cash_balance.balances.get("USD"),
+        Some(&dec!(1500.00)),
+        "Cash account (DR normal) should have positive balance of 1500"
+    );
 }

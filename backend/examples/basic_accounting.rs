@@ -133,10 +133,10 @@ async fn main() -> Result<()> {
     // Step 4: Post transactions
     println!("4️⃣ Posting transactions...");
 
-    // Transaction 1: Cash sale
+    // Transaction 1: Cash sale (no effective date, will use created timestamp)
     let sale_transaction = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None, // Will default to created timestamp
         memo: Some("Cash sale of merchandise".to_string()),
         meta: Some(serde_json::json!({
             "invoice_number": "INV-001",
@@ -167,10 +167,10 @@ async fn main() -> Result<()> {
         500.00, transaction1.id
     );
 
-    // Transaction 2: Credit sale
+    // Transaction 2: Credit sale (with explicit effective date)
     let credit_sale = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: Some(Utc::now()), // Explicitly set effective date
         memo: Some("Credit sale to customer".to_string()),
         meta: None,
         entries: vec![
@@ -200,7 +200,7 @@ async fn main() -> Result<()> {
     // Transaction 3: Pay expense
     let expense_payment = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None, // Will default to created timestamp
         memo: Some("Paid office rent".to_string()),
         meta: None,
         entries: vec![
@@ -230,7 +230,7 @@ async fn main() -> Result<()> {
     // Transaction 4: Multi-currency transaction
     let forex_transaction = CreateTransaction {
         ledger_id: ledger.id,
-        effective: Utc::now(),
+        effective: None, // Will default to created timestamp
         memo: Some("EUR sale with USD cash".to_string()),
         meta: None,
         entries: vec![

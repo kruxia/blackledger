@@ -21,6 +21,7 @@ RUN rm -rf src
 # Copy source code
 COPY src ./src
 COPY migrations ./migrations
+COPY .sqlx ./.sqlx
 
 # Build the application
 RUN touch src/main.rs
@@ -32,9 +33,7 @@ FROM debian:bookworm-slim AS deploy
 
 # Install deploy dependencies
 RUN apt-get update && apt-get install -y \
-    libpq5 \
     libssl3 \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/blackledger

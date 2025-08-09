@@ -87,8 +87,8 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 - [x] Batch transaction posting capabilities
 - [x] Parallel query execution where applicable
 - [x] Multi-currency transaction handling
-- [ ] Multi-currency account balances search
-- [ ] Dockerfile optimization for minimal image size
+- [x] Multi-currency account balances search
+- ~~Dockerfile optimization for minimal image size~~
 
 ### Enhanced Testing
 - [ ] Achieve full Python test suite parity

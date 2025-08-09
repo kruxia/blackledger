@@ -9,7 +9,7 @@ services:
       - cargo-cache:/usr/local/cargo/registry
       - target-cache:/opt/blackledger/target
     ports:
-      - "8002:8000"
+      - "8000:8000"
     environment:
       AUTH_ENABLED: "false"
       DATABASE_URL: postgresql://postgres:password@postgres:5432/blackledger

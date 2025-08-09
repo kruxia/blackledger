@@ -367,36 +367,61 @@ pub async fn get_accounts_with_balances(
     }
 
     // Get balances for these accounts
-    let ledger_id = params
-        .ledger_id
-        .as_ref()
-        .and_then(|id_list| id_list.split(',').next())
-        .and_then(|s| s.trim().parse::<i64>().ok())
-        .ok_or_else(|| ApiError::Validation("ledger_id is required".to_string()))?;
-
-    // Query balances directly
-    let balances = sqlx::query(
+    // Build the query dynamically based on whether ledger_id is provided
+    let mut query_str = String::from(
         r#"
         SELECT 
             e.account_id,
             e.currency,
-            SUM(COALESCE(e.debit, 0) - COALESCE(e.credit, 0)) as balance
+            CASE 
+                WHEN a.normal = 'DR' THEN SUM(COALESCE(e.debit, 0) - COALESCE(e.credit, 0))
+                WHEN a.normal = 'CR' THEN SUM(COALESCE(e.credit, 0) - COALESCE(e.debit, 0))
+            END as balance
         FROM entry e
-        INNER JOIN transaction t ON e.transaction_id = t.id
-        WHERE t.ledger_id = $1 AND e.account_id = ANY($2)
-        GROUP BY e.account_id, e.currency
+        INNER JOIN account a ON e.account_id = a.id
+        WHERE e.account_id = ANY($1)
         "#,
-    )
-    .bind(ledger_id)
-    .bind(&account_ids)
-    .map(|row: sqlx::postgres::PgRow| {
-        let account_id: i64 = row.get("account_id");
-        let currency: String = row.get("currency");
-        let balance: rust_decimal::Decimal = row.get("balance");
-        (account_id, currency, balance)
-    })
-    .fetch_all(pool)
-    .await?;
+    );
+
+    // Parse ledger_id if provided
+    let ledger_id = params
+        .ledger_id
+        .as_ref()
+        .and_then(|id_list| id_list.split(',').next())
+        .and_then(|s| s.trim().parse::<i64>().ok());
+
+    // Add ledger_id filter if provided
+    if ledger_id.is_some() {
+        query_str.push_str(" AND e.ledger_id = $2");
+    }
+
+    query_str.push_str(" GROUP BY e.account_id, e.currency, a.normal");
+
+    // Execute the query with appropriate bindings
+    let balances = if let Some(lid) = ledger_id {
+        sqlx::query(&query_str)
+            .bind(&account_ids)
+            .bind(lid)
+            .map(|row: sqlx::postgres::PgRow| {
+                let account_id: i64 = row.get("account_id");
+                let currency: String = row.get("currency");
+                let balance: rust_decimal::Decimal = row.get("balance");
+                (account_id, currency, balance)
+            })
+            .fetch_all(pool)
+            .await?
+    } else {
+        sqlx::query(&query_str)
+            .bind(&account_ids)
+            .map(|row: sqlx::postgres::PgRow| {
+                let account_id: i64 = row.get("account_id");
+                let currency: String = row.get("currency");
+                let balance: rust_decimal::Decimal = row.get("balance");
+                (account_id, currency, balance)
+            })
+            .fetch_all(pool)
+            .await?
+    };
 
     // Group balances by account_id
     let mut balance_map: HashMap<i64, HashMap<String, rust_decimal::Decimal>> = HashMap::new();

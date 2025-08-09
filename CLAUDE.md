@@ -71,6 +71,31 @@ python -m blackledger.migration --dburl postgresql://blackledger_test@localhost/
 - Function-scoped fixtures for test isolation
 - Test database is recreated for each test run
 
+### Test Data Isolation (IMPORTANT)
+
+**ALWAYS use UUIDs for names in test data to prevent conflicts between test runs.**
+
+The test database is shared across test runs and some entities (like ledgers) have unique constraints on names. To prevent test failures due to duplicate data:
+
+```rust
+// ❌ BAD - Will fail on second test run
+let ledger = create_ledger(&pool, &CreateLedger {
+    name: "Test Ledger".to_string(),
+}).await?;
+
+// ✅ GOOD - Always succeeds
+use uuid::Uuid;
+let ledger = create_ledger(&pool, &CreateLedger {
+    name: format!("Test Ledger {}", Uuid::new_v4()),
+}).await?;
+```
+
+This applies to:
+- Ledger names (have unique constraint)
+- Any other test data that might conflict
+
+For accounts and other entities without unique constraints on names, UUIDs are optional but recommended for clarity in test output.
+
 ## Important Constraints
 
 1. **Transaction Posting**: When posting transactions, ensure:
@@ -102,3 +127,22 @@ When implementing in Rust:
 - Implement the same immutability constraints and validation rules
 - Use / create tower middleware for authentication and request tracing
 - Ensure decimal precision is maintained with rust_decimal::Decimal
+
+### Running Rust Tests
+
+```bash
+# Run all tests (requires DATABASE_URL to be set)
+export DATABASE_URL="postgresql://blackledger_test:test@localhost:5434/blackledger_test"
+cargo test
+
+# Run specific test file
+cargo test --test handlers_test
+
+# Run with output for debugging
+cargo test -- --nocapture
+
+# Run tests with coverage (if using cargo-tarpaulin)
+cargo tarpaulin --out Html
+```
+
+**Important**: Some tests use `#[sqlx::test]` which require DATABASE_URL. Others use the common test setup in `tests/common/mod.rs` which handles database connections internally.

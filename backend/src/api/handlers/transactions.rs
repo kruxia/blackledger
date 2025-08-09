@@ -1,8 +1,9 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
 };
+use serde_json::{json, Value};
 
 use crate::services::posting::post_transactions_batch;
 use crate::{
@@ -48,4 +49,16 @@ pub async fn handle_search_transactions(
     let pagination = params.base.to_pagination_params();
     let response = PaginatedResponse::new(transactions, &pagination, Some(total));
     Ok(Json(response))
+}
+
+pub async fn handle_get_transaction(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<Value>> {
+    let (transaction, entries) = crate::services::posting::get_transaction_with_entries(&state.pool, id).await?;
+    
+    Ok(Json(json!({
+        "transaction": transaction,
+        "entries": entries
+    })))
 }
