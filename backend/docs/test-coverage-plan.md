@@ -1,10 +1,11 @@
 # Test Coverage Improvement Plan
 
 ## Current State (Updated)
-- **Overall Coverage**: 68.57% (611/891 lines)
+- **Overall Coverage**: 72.05% (642/891 lines)
 - **Target Coverage**: 90%+ (802+ lines)
-- **Gap**: 191+ lines need coverage
-- **Progress**: Improved from 58.37% to 68.57% (+10.2%)
+- **Gap**: 160 lines need coverage
+- **Progress**: Improved from 58.37% to 72.05% (+13.68%)
+- **Latest Achievement**: Transaction posting service improved to 66.2% coverage
 
 ## Priority Areas for Coverage Improvement
 
@@ -18,31 +19,28 @@
 - **Note**: Main function delegates to tested `app` module functions
 
 #### 2. Transaction Posting Service (`src/services/posting.rs`)
-- **Current**: 39/68 lines (57.4%)
+- **Current**: 45/68 lines (66.2%)
 - **Impact**: Critical - Core business logic
 - **Key Uncovered Areas**:
-  - Error handling paths (52, 68, 70, 82, 102)
-  - Transaction rollback scenarios (108-109, 111-118, 122-123, 125-127, 130-131)
-  - Error conversion and mapping (135-138, 142, 239, 270)
+  - Error handling paths (52, 70, 82)
+  - Rollback scenarios (111, 113-118, 122-123, 125-127, 131, 135-138, 142)
+  - Database operations (239, 270)
 - **Test Strategy**:
-  - Concurrent posting scenarios
-  - Rollback testing with failures at different stages
-  - Edge cases with zero amounts
-  - Multi-currency transaction scenarios
+  - Additional error path coverage needed
+  - More rollback testing scenarios
+  - Database failure simulations
 
 #### 3. Authentication Module (`src/auth/mod.rs`)
-- **Current**: 22/65 lines (33.8%)
+- **Current**: 44/65 lines (67.7%)
 - **Impact**: Critical - Security
 - **Key Uncovered Areas**:
   - JWKS fetching and key setup (52, 57-59)
-  - JWT validation failures (63-64, 66-73, 77, 79, 81, 84, 88, 92, 96-97)
-  - Auth extraction from request (114-115, 122, 125, 132, 157-162, 166-167, 171-174, 176-179)
+  - JWT validation failures (79, 81, 84, 88, 92, 96-97)
+  - Auth extraction from request (125, 132, 171-174, 176-179)
 - **Test Strategy**:
-  - Mock invalid JWTs
-  - Expired token tests
+  - Additional JWT validation edge cases
   - JWKS rotation scenarios
-  - Missing claims tests
-  - Request extraction edge cases
+  - Request extraction error paths
 
 ### Database Query Layer (Priority 2)
 
@@ -75,8 +73,7 @@
 - **Key Uncovered Areas**:
   - Create ledger error paths (19-22)
   - Update error handling (60-66, 69-72)
-  - Search filters (90-91, 108, 112, 114, 116, 118, 125, 127)
-  - Complex query operations (132-134, 136)
+  - Search filters (90-91, 108, 112, 114, 116, 118, 125, 127, 132-134, 136)
 - **Test Strategy**:
   - Database error simulation
   - Complex search scenarios
@@ -140,15 +137,15 @@
 
 ### Week 1: Critical Components
 - [x] Main entry point refactored into testable app module
-- [ ] App module comprehensive tests (13 lines to cover)
-- [ ] Authentication module comprehensive tests (43 lines to cover)
-- [ ] Transaction posting service edge cases (29 lines to cover)
+- [ ] App module comprehensive tests (20 lines to cover)
+- [ ] Authentication module comprehensive tests (15 lines to cover)
+- [ ] Transaction posting service edge cases (16 lines to cover)
 
 ### Week 2: Database Layer
-- [ ] Entry queries full coverage (34 lines to cover)
-- [ ] Transaction queries search and pagination (36 lines to cover)
-- [ ] Account queries remaining edge cases (35 lines to cover)
-- [ ] Ledger queries error handling (28 lines to cover)
+- [ ] Entry queries full coverage (30 lines to cover)
+- [ ] Transaction queries search and pagination (28 lines to cover)
+- [ ] Account queries remaining edge cases (19 lines to cover)
+- [ ] Ledger queries error handling (20 lines to cover)
 
 ### Week 3: API and Integration
 - [x] API handlers fully covered
@@ -159,9 +156,9 @@
 - [ ] Concurrent operation tests
 
 ### Week 4: Polish and Documentation
-- [ ] Error handling improvements (15 lines to cover)
-- [ ] Validation edge cases (10 lines to cover)
-- [ ] Currency queries (10 lines to cover)
+- [ ] Error handling improvements (12 lines to cover)
+- [ ] Validation edge cases (7 lines to cover)
+- [ ] Currency queries (4 lines to cover)
 - [ ] Coverage report generation
 - [ ] Test documentation
 
@@ -208,21 +205,29 @@ tests/
 
 ## Coverage Summary by Module
 
-| Module         | Current  |   Lines   | Target | Gap  |
-|----------------|----------|-----------|--------|------|
-| API Handlers   | 100%     |  55/55    | ✅     | 0    |
-| API Middleware | 70%      |   7/10    | 90%    | 3    |
-| API Core       | 92.9%    |  52/56    | 95%    | 4    |
-| App Module     | 12%      |   3/25    | 90%    | 20   |
-| Auth           | 33.8%    |  22/65    | 90%    | 37   |
-| Config         | 100%     |  10/10    | ✅     | 0    |
-| DB Core        | 100%     |   6/6     | ✅     | 0    |
-| DB Queries     | 66.3%    | 283/426   | 90%    | 100  |
-| Error          | 48.3%    |  14/29    | 90%    | 12   |
-| Main           | 0%       |   0/7     | N/A    | 7    |
-| Models         | 100%     |  14/14    | ✅     | 0    |
-| Services       | 68.1%    | 103/142   | 90%    | 25   |
-| **Total**      | **68.57%**| **611/891** | **90%** | **191** |
+| Module                      | Current  |   Lines   | Target | Gap  |
+|-----------------------------|----------|-----------|--------|------|
+| API CORS                    | 100%     |   6/6     | ✅     | 0    |
+| API Handlers                | 100%     |  55/55    | ✅     | 0    |
+| API Middleware Auth         | 70%      |   7/10    | 90%    | 3    |
+| API Pagination              | 60%      |   6/10    | 90%    | 4    |
+| API Search                  | 92.9%    |  52/56    | 95%    | 4    |
+| API Core                    | 100%     |  30/30    | ✅     | 0    |
+| App Module                  | 12%      |   3/25    | 90%    | 20   |
+| Auth                        | 67.7%    |  44/65    | 90%    | 15   |
+| Config                      | 100%     |  10/10    | ✅     | 0    |
+| DB Core                     | 100%     |   6/6     | ✅     | 0    |
+| DB Query Account            | 78.7%    | 129/164   | 90%    | 19   |
+| DB Query Currency           | 83.3%    |  50/60    | 90%    | 4    |
+| DB Query Entry              | 10.5%    |   4/38    | 90%    | 30   |
+| DB Query Ledger             | 66.3%    |  55/83    | 90%    | 20   |
+| DB Query Transaction        | 55.6%    |  45/81    | 90%    | 28   |
+| Error                       | 48.3%    |  14/29    | 90%    | 12   |
+| Main                        | 0%       |   0/7     | N/A    | 7    |
+| Models                      | 100%     |  18/18    | ✅     | 0    |
+| Services Posting            | 66.2%    |  45/68    | 90%    | 16   |
+| Services Validation         | 90.5%    |  67/74    | ✅     | 0    |
+| **Total**                   | **72.05%**| **642/891** | **90%** | **160** |
 
 ## Special Considerations
 
@@ -245,19 +250,22 @@ Transaction posting and account versioning require sophisticated concurrent test
 
 ## Next Steps
 
-1. **Immediate Focus** (85 lines - Critical Path):
+1. **Immediate Focus** (51 lines - Critical Path):
    - App module initialization tests (20 lines)
-   - Authentication module with mocked JWKS (37 lines)
-   - Transaction posting error paths (28 lines)
+   - Authentication module edge cases (15 lines)
+   - Transaction posting error paths (16 lines)
 
-2. **Secondary Focus** (100 lines - Database Layer):
-   - Entry queries CRUD operations (34 lines)
-   - Transaction search filters (36 lines)
-   - Account query edge cases (30 lines)
+2. **Secondary Focus** (97 lines - Database Layer):
+   - Entry queries CRUD operations (30 lines)
+   - Transaction queries search filters (28 lines)
+   - Account query edge cases (19 lines)
+   - Ledger query error handling (20 lines)
 
-3. **Final Push** (6 lines - Quick Wins):
+3. **Final Push** (23 lines - Quick Wins):
+   - Error handling improvements (12 lines)
    - API middleware auth (3 lines)
    - API pagination (4 lines)
+   - Currency queries (4 lines)
    - Achieve 90% overall coverage
 
 4. **Infrastructure**:

@@ -945,3 +945,888 @@ async fn test_credit_normal_account_balance_calculation(pool: PgPool) {
         "Cash account (DR normal) should have positive balance of 1500"
     );
 }
+
+#[sqlx::test]
+async fn test_concurrent_transaction_posting(pool: PgPool) {
+    use std::sync::Arc;
+    use tokio::task::JoinSet;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Concurrent Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Run multiple concurrent transactions
+    let pool = Arc::new(pool);
+    let mut tasks = JoinSet::new();
+
+    for i in 0..5 {
+        let pool_clone = Arc::clone(&pool);
+        let cash_id = cash_account.id;
+        let revenue_id = revenue_account.id;
+        let ledger_id = ledger.id;
+
+        tasks.spawn(async move {
+            let input = CreateTransaction {
+                ledger_id,
+                effective: None,
+                memo: Some(format!("Concurrent transaction {}", i)),
+                meta: None,
+                entries: vec![
+                    CreateEntry {
+                        account_id: cash_id,
+                        currency: "USD".to_string(),
+                        debit: Some(dec!(10.00)),
+                        credit: None,
+                        account_version: None,
+                    },
+                    CreateEntry {
+                        account_id: revenue_id,
+                        currency: "USD".to_string(),
+                        debit: None,
+                        credit: Some(dec!(10.00)),
+                        account_version: None,
+                    },
+                ],
+            };
+
+            post_transaction(&pool_clone, &input, None).await
+        });
+    }
+
+    let mut results = Vec::new();
+    while let Some(result) = tasks.join_next().await {
+        results.push(result.unwrap());
+    }
+
+    // All transactions should succeed
+    assert_eq!(results.len(), 5);
+    for result in &results {
+        assert!(result.is_ok());
+    }
+
+    // Verify final account versions are sequential
+    let final_cash = sqlx::query_as::<_, Account>(r#"SELECT * FROM account WHERE id = $1"#)
+        .bind(cash_account.id)
+        .fetch_one(&*pool)
+        .await
+        .unwrap();
+
+    assert!(final_cash.version.is_some());
+}
+
+#[sqlx::test]
+async fn test_transaction_with_zero_amounts(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Zero Amount Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test transaction with zero amounts
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Zero amount transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(0)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(0)),
+                account_version: None,
+            },
+        ],
+    };
+
+    // Zero amounts should fail validation
+    let result = post_transaction(&pool, &input, None).await;
+    assert!(result.is_err());
+
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("must be positive") || msg.contains("zero"));
+        }
+        _ => panic!("Expected validation error for zero amounts"),
+    }
+}
+
+#[sqlx::test]
+async fn test_reverse_transaction(pool: PgPool) {
+    use blackledger::services::posting::reverse_transaction;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Reversal Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Post original transaction
+    let original = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Original transaction".to_string()),
+        meta: Some(serde_json::json!({"original": true})),
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (original_tx, _original_entries) = post_transaction(&pool, &original, Some("test_user"))
+        .await
+        .unwrap();
+
+    // Reverse the transaction
+    let (reversal_tx, reversal_entries) = reverse_transaction(
+        &pool,
+        original_tx.id,
+        Some("Custom reversal memo".to_string()),
+        Some("reversal_user"),
+    )
+    .await
+    .unwrap();
+
+    // Verify reversal metadata
+    assert!(reversal_tx.meta.is_some());
+    let meta = reversal_tx.meta.unwrap();
+    assert_eq!(meta["reversed_transaction_id"], original_tx.id);
+    assert_eq!(meta["reversal"], true);
+    assert_eq!(meta["original_meta"]["original"], true);
+
+    // Verify reversal memo
+    assert_eq!(reversal_tx.memo, Some("Custom reversal memo".to_string()));
+
+    // Verify reversal has same effective date as original
+    assert_eq!(reversal_tx.effective, original_tx.effective);
+
+    // Verify entries are reversed (debits and credits swapped)
+    assert_eq!(reversal_entries.len(), 2);
+
+    let cash_reversal = reversal_entries
+        .iter()
+        .find(|e| e.account_id == cash_account.id)
+        .unwrap();
+    assert_eq!(cash_reversal.debit, None);
+    assert_eq!(cash_reversal.credit, Some(dec!(100.00)));
+
+    let revenue_reversal = reversal_entries
+        .iter()
+        .find(|e| e.account_id == revenue_account.id)
+        .unwrap();
+    assert_eq!(revenue_reversal.debit, Some(dec!(100.00)));
+    assert_eq!(revenue_reversal.credit, None);
+
+    // Verify net effect is zero
+    use blackledger::api::search::{AccountSearchParams, SearchParams};
+    use blackledger::db::queries::account::get_accounts_with_balances;
+
+    let params = AccountSearchParams {
+        id: None,
+        ledger_id: Some(ledger.id.to_string()),
+        parent_id: None,
+        version: None,
+        number: None,
+        name: None,
+        normal: None,
+        base: SearchParams::default(),
+    };
+
+    let accounts_with_balances = get_accounts_with_balances(&pool, &params).await.unwrap();
+
+    for account_balance in accounts_with_balances {
+        assert_eq!(
+            account_balance.balances.get("USD"),
+            Some(&dec!(0)),
+            "Account {} should have zero balance after reversal",
+            account_balance.account.name
+        );
+    }
+}
+
+#[sqlx::test]
+async fn test_reverse_nonexistent_transaction(pool: PgPool) {
+    use blackledger::services::posting::reverse_transaction;
+
+    let result = reverse_transaction(
+        &pool, 999999, // Non-existent transaction ID
+        None, None,
+    )
+    .await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        ApiError::NotFound(msg) => {
+            assert!(msg.contains("Transaction 999999"));
+        }
+        _ => panic!("Expected NotFound error for non-existent transaction"),
+    }
+}
+
+#[sqlx::test]
+async fn test_post_transactions_batch(pool: PgPool) {
+    use blackledger::services::posting::post_transactions_batch;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Batch Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let expense_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Expense {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Create multiple transactions for batch posting
+    let transactions = vec![
+        CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some("Batch transaction 1".to_string()),
+            meta: None,
+            entries: vec![
+                CreateEntry {
+                    account_id: cash_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(100.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: revenue_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(100.00)),
+                    account_version: None,
+                },
+            ],
+        },
+        CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some("Batch transaction 2".to_string()),
+            meta: None,
+            entries: vec![
+                CreateEntry {
+                    account_id: expense_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(50.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: cash_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(50.00)),
+                    account_version: None,
+                },
+            ],
+        },
+        CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some("Batch transaction 3".to_string()),
+            meta: None,
+            entries: vec![
+                CreateEntry {
+                    account_id: cash_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(25.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: revenue_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(25.00)),
+                    account_version: None,
+                },
+            ],
+        },
+    ];
+
+    // Post batch
+    let results = post_transactions_batch(&pool, &transactions, Some("batch_user"))
+        .await
+        .unwrap();
+
+    // Verify all transactions were posted
+    assert_eq!(results.len(), 3);
+
+    for (i, (tx, entries)) in results.iter().enumerate() {
+        assert_eq!(tx.memo, Some(format!("Batch transaction {}", i + 1)));
+        assert_eq!(entries.len(), 2);
+
+        // Verify audit metadata
+        assert!(tx.meta.is_some());
+        let meta = tx.meta.as_ref().unwrap();
+        assert_eq!(meta["audit"]["posted_by"], "batch_user");
+    }
+
+    // Verify final balances
+    use blackledger::api::search::{AccountSearchParams, SearchParams};
+    use blackledger::db::queries::account::get_accounts_with_balances;
+
+    let params = AccountSearchParams {
+        id: None,
+        ledger_id: Some(ledger.id.to_string()),
+        parent_id: None,
+        version: None,
+        number: None,
+        name: None,
+        normal: None,
+        base: SearchParams::default(),
+    };
+
+    let accounts_with_balances = get_accounts_with_balances(&pool, &params).await.unwrap();
+
+    let cash_balance = accounts_with_balances
+        .iter()
+        .find(|ab| ab.account.id == cash_account.id)
+        .unwrap();
+    assert_eq!(cash_balance.balances.get("USD"), Some(&dec!(75.00))); // 100 - 50 + 25
+
+    let revenue_balance = accounts_with_balances
+        .iter()
+        .find(|ab| ab.account.id == revenue_account.id)
+        .unwrap();
+    assert_eq!(revenue_balance.balances.get("USD"), Some(&dec!(125.00))); // 100 + 25
+
+    let expense_balance = accounts_with_balances
+        .iter()
+        .find(|ab| ab.account.id == expense_account.id)
+        .unwrap();
+    assert_eq!(expense_balance.balances.get("USD"), Some(&dec!(50.00)));
+}
+
+#[sqlx::test]
+async fn test_batch_with_invalid_transaction_fails(pool: PgPool) {
+    use blackledger::services::posting::post_transactions_batch;
+    use uuid::Uuid;
+
+    let ledger_name = format!("Batch Fail Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Mix of valid and invalid transactions
+    let transactions = vec![
+        // Valid transaction
+        CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some("Valid transaction".to_string()),
+            meta: None,
+            entries: vec![
+                CreateEntry {
+                    account_id: cash_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(100.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: revenue_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(100.00)),
+                    account_version: None,
+                },
+            ],
+        },
+        // Invalid transaction (unbalanced)
+        CreateTransaction {
+            ledger_id: ledger.id,
+            effective: None,
+            memo: Some("Invalid transaction".to_string()),
+            meta: None,
+            entries: vec![
+                CreateEntry {
+                    account_id: cash_account.id,
+                    currency: "USD".to_string(),
+                    debit: Some(dec!(50.00)),
+                    credit: None,
+                    account_version: None,
+                },
+                CreateEntry {
+                    account_id: revenue_account.id,
+                    currency: "USD".to_string(),
+                    debit: None,
+                    credit: Some(dec!(75.00)), // Unbalanced!
+                    account_version: None,
+                },
+            ],
+        },
+    ];
+
+    // Batch should fail entirely
+    let result = post_transactions_batch(&pool, &transactions, None).await;
+    assert!(result.is_err());
+
+    // Verify no transactions were posted (atomicity)
+    let count: i64 = sqlx::query_scalar(r#"SELECT COUNT(*) FROM transaction WHERE ledger_id = $1"#)
+        .bind(ledger.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        count, 0,
+        "No transactions should be posted when batch fails"
+    );
+}
+
+#[sqlx::test]
+async fn test_transaction_metadata_and_audit_trail(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Metadata Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test with custom metadata
+    let custom_meta = serde_json::json!({
+        "invoice_id": "INV-2024-001",
+        "customer": "Acme Corp",
+        "payment_method": "wire_transfer",
+        "tags": ["revenue", "Q1-2024"],
+    });
+
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Some(Utc::now()),
+        memo: Some("Payment for invoice INV-2024-001".to_string()),
+        meta: Some(custom_meta.clone()),
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(1500.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(1500.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    // Post with user ID for audit
+    let (transaction, _entries) = post_transaction(&pool, &input, Some("john.doe@example.com"))
+        .await
+        .unwrap();
+
+    // Verify metadata preservation and audit trail
+    assert!(transaction.meta.is_some());
+    let meta = transaction.meta.unwrap();
+
+    // Check custom metadata is preserved
+    assert_eq!(meta["invoice_id"], "INV-2024-001");
+    assert_eq!(meta["customer"], "Acme Corp");
+    assert_eq!(meta["payment_method"], "wire_transfer");
+    assert_eq!(meta["tags"][0], "revenue");
+    assert_eq!(meta["tags"][1], "Q1-2024");
+
+    // Check audit metadata was added
+    assert!(meta["audit"].is_object());
+    assert_eq!(meta["audit"]["posted_by"], "john.doe@example.com");
+    assert!(meta["audit"]["posted_at"].is_string());
+
+    // Verify posted_at is a valid timestamp
+    let posted_at = meta["audit"]["posted_at"].as_str().unwrap();
+    assert!(chrono::DateTime::parse_from_rfc3339(posted_at).is_ok());
+}
+
+#[sqlx::test]
+async fn test_transaction_without_user_id_no_audit(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("No Audit Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: None,
+        memo: Some("Transaction without user".to_string()),
+        meta: None, // No initial metadata
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    // Post without user ID
+    let (transaction, _entries) = post_transaction(&pool, &input, None).await.unwrap();
+
+    // Should have no metadata when posted without user ID and no initial metadata
+    assert!(transaction.meta.is_none());
+}
+
+#[sqlx::test]
+async fn test_effective_date_handling(pool: PgPool) {
+    use uuid::Uuid;
+
+    let ledger_name = format!("Effective Date Test Ledger {}", Uuid::new_v4());
+    let ledger =
+        sqlx::query_as::<_, Ledger>(r#"INSERT INTO ledger (name) VALUES ($1) RETURNING *"#)
+            .bind(&ledger_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    sqlx::query(r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING"#)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let cash_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Cash {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let revenue_account = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, $2, 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .bind(format!("Revenue {}", Uuid::new_v4()))
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Test with specific effective date
+    let specific_date = Utc::now() - chrono::Duration::days(30);
+
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Some(specific_date),
+        memo: Some("Backdated transaction".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: cash_account.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(250.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue_account.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(250.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (transaction, _entries) = post_transaction(&pool, &input, None).await.unwrap();
+
+    // Verify effective date was set correctly
+    assert_eq!(transaction.effective, specific_date);
+
+    // Created date should be current (not backdated)
+    assert!(transaction.created > specific_date);
+    assert!(transaction.created <= Utc::now());
+}
