@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::services::posting::post_transactions_batch;
 use crate::{
@@ -55,8 +55,9 @@ pub async fn handle_get_transaction(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<Value>> {
-    let (transaction, entries) = crate::services::posting::get_transaction_with_entries(&state.pool, id).await?;
-    
+    let (transaction, entries) =
+        crate::services::posting::get_transaction_with_entries(&state.pool, id).await?;
+
     Ok(Json(json!({
         "transaction": transaction,
         "entries": entries

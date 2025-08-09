@@ -16,7 +16,6 @@ use uuid;
 async fn test_auth_middleware_with_valid_token() {
     // This test would require a real JWKS endpoint or mocking infrastructure
     // Skipping for now as auth is tested in integration tests
-
 }
 
 #[tokio::test]
@@ -105,5 +104,10 @@ async fn test_request_with_user_context() {
     let ledgers: Vec<serde_json::Value> = serde_json::from_slice(&body).unwrap();
     assert_eq!(ledgers.len(), 1);
     assert!(ledgers[0]["id"].is_i64());
-    assert!(ledgers[0]["name"].as_str().unwrap().starts_with("Test Ledger"));
+    assert!(
+        ledgers[0]["name"]
+            .as_str()
+            .unwrap()
+            .starts_with("Test Ledger")
+    );
 }

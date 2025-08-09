@@ -43,3 +43,6 @@ pub mod models;
 
 /// Business logic services for validation and transaction posting
 pub mod services;
+
+/// Application setup and server initialization
+pub mod app;

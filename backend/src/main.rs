@@ -1,63 +1,20 @@
 use anyhow::Result;
-use axum::Router;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use blackledger::{api, auth, config, db};
+use blackledger::{app, config};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "blackledger=debug,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    app::init_tracing();
 
     // Load configuration
     let config = config::Config::from_env()?;
+    let port = config.port;
 
-    // Create database pool
-    let pool = db::create_pool(&config.database_url).await?;
+    // Build the application
+    let application = app::build_app(config).await?;
 
-    // Run migrations
-    sqlx::migrate!("./migrations").run(&pool).await?;
-
-    // Set up JWT validator if auth is enabled
-    let auth_config = auth::AuthConfig {
-        enabled: config.auth_enabled,
-        jwks_url: config.jwks_url.clone(),
-        audience: None,
-        issuer: None,
-    };
-
-    let jwt_validator = Arc::new(
-        auth::JwtValidator::new(auth_config)
-            .await
-            .expect("Failed to create JWT validator"),
-    );
-
-    // Create app state
-    let app_state = api::AppState {
-        pool: pool.clone(),
-        jwt_validator,
-    };
-
-    // Build application
-    let app = Router::new()
-        .merge(api::router(app_state.clone()))
-        .layer(api::cors::cors_layer())
-        .with_state(app_state);
-
-    // Start server
-    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-    tracing::info!("Starting server on {}", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    // Start the server
+    app::start_server(application, port).await?;
 
     Ok(())
 }

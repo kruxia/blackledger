@@ -200,18 +200,12 @@ async fn test_post_multiple_transactions() {
     let result1 = post_transaction(&pool, &transactions[0], Some("batch_user"))
         .await
         .unwrap();
-    assert_eq!(
-        result1.0.memo,
-        Some("Batch transaction 1".to_string())
-    );
+    assert_eq!(result1.0.memo, Some("Batch transaction 1".to_string()));
 
     let result2 = post_transaction(&pool, &transactions[1], Some("batch_user"))
         .await
         .unwrap();
-    assert_eq!(
-        result2.0.memo,
-        Some("Batch transaction 2".to_string())
-    );
+    assert_eq!(result2.0.memo, Some("Batch transaction 2".to_string()));
 
     // Verify both transactions were posted
     assert!(result1.0.id != result2.0.id);
@@ -335,7 +329,10 @@ async fn test_validate_transaction_with_invalid_currency() {
     match result.unwrap_err() {
         ApiError::NotFound(msg) => assert!(msg.contains("Currency")),
         ApiError::Validation(msg) => assert!(msg.contains("Currency") || msg.contains("currency")),
-        e => panic!("Expected NotFound or Validation error for currency, got: {:?}", e),
+        e => panic!(
+            "Expected NotFound or Validation error for currency, got: {:?}",
+            e
+        ),
     }
 }
 

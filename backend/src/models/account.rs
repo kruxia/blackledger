@@ -9,7 +9,7 @@ use sqlx::FromRow;
 /// as debits or credits:
 /// - Assets and Expenses normally have Debit balances
 /// - Liabilities, Equity, and Revenue normally have Credit balances
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, sqlx::Type, PartialEq)]
 #[sqlx(type_name = "varchar")]
 #[sqlx(rename_all = "UPPERCASE")]
 pub enum NormalBalance {

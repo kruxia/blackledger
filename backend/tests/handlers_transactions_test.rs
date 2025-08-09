@@ -130,12 +130,15 @@ async fn test_handle_post_transaction() {
     let transaction_body = axum::body::to_bytes(transaction_response.into_body(), usize::MAX)
         .await
         .unwrap();
-    
+
     if status != StatusCode::CREATED {
         let error_msg = String::from_utf8_lossy(&transaction_body);
-        panic!("Transaction creation failed with status {}: {}", status, error_msg);
+        panic!(
+            "Transaction creation failed with status {}: {}",
+            status, error_msg
+        );
     }
-    
+
     assert_eq!(status, StatusCode::CREATED);
     let result: Vec<Value> = serde_json::from_slice(&transaction_body).unwrap();
 
