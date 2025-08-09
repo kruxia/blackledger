@@ -55,6 +55,69 @@ async fn setup_test_data(pool: &PgPool) -> (Ledger, Account, Account, Currency) 
     (ledger, cash_account, revenue_account, currency)
 }
 
+async fn setup_multi_currency_test_data(
+    pool: &PgPool,
+) -> (Ledger, Account, Account, Account, Currency, Currency) {
+    let ledger = sqlx::query_as::<_, Ledger>(
+        r#"INSERT INTO ledger (name) VALUES ('Multi-Currency Ledger') RETURNING *"#,
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let usd = sqlx::query_as::<_, Currency>(
+        r#"INSERT INTO currency (code) VALUES ('USD') ON CONFLICT DO NOTHING RETURNING *"#,
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let eur = sqlx::query_as::<_, Currency>(
+        r#"INSERT INTO currency (code) VALUES ('EUR') ON CONFLICT DO NOTHING RETURNING *"#,
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let cash_usd = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, 'Cash USD', 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let cash_eur = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, 'Cash EUR', 'DR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let revenue = sqlx::query_as::<_, Account>(
+        r#"
+        INSERT INTO account (ledger_id, name, normal) 
+        VALUES ($1, 'Revenue Multi-Currency', 'CR') 
+        RETURNING *
+        "#,
+    )
+    .bind(ledger.id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    (ledger, cash_usd, cash_eur, revenue, usd, eur)
+}
+
 #[sqlx::test]
 async fn test_valid_transaction_posting(pool: PgPool) {
     let (ledger, cash_account, revenue_account, _currency) = setup_test_data(&pool).await;
@@ -474,4 +537,274 @@ fn test_validate_double_entry_balance_unit() {
     let result = validate_double_entry_balance(&unbalanced_entries);
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("does not balance"));
+}
+
+#[sqlx::test]
+async fn test_multi_currency_transaction_valid(pool: PgPool) {
+    let (ledger, cash_usd, cash_eur, revenue, _usd, _eur) =
+        setup_multi_currency_test_data(&pool).await;
+
+    // Valid multi-currency transaction: Each currency balances independently
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Utc::now(),
+        memo: Some("Multi-currency sale".to_string()),
+        meta: None,
+        entries: vec![
+            // USD entries
+            CreateEntry {
+                account_id: cash_usd.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+            // EUR entries
+            CreateEntry {
+                account_id: cash_eur.id,
+                currency: "EUR".to_string(),
+                debit: Some(dec!(85.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "EUR".to_string(),
+                debit: None,
+                credit: Some(dec!(85.00)),
+                account_version: None,
+            },
+        ],
+    };
+
+    let (transaction, entries) = post_transaction(&pool, &input, Some("test_user"))
+        .await
+        .unwrap();
+
+    assert_eq!(transaction.ledger_id, ledger.id);
+    assert_eq!(entries.len(), 4);
+
+    // Verify USD entries balance
+    let usd_entries: Vec<_> = entries.iter().filter(|e| e.currency == "USD").collect();
+    assert_eq!(usd_entries.len(), 2);
+    let usd_debits: rust_decimal::Decimal = usd_entries.iter().filter_map(|e| e.debit).sum();
+    let usd_credits: rust_decimal::Decimal = usd_entries.iter().filter_map(|e| e.credit).sum();
+    assert_eq!(usd_debits, usd_credits);
+
+    // Verify EUR entries balance
+    let eur_entries: Vec<_> = entries.iter().filter(|e| e.currency == "EUR").collect();
+    assert_eq!(eur_entries.len(), 2);
+    let eur_debits: rust_decimal::Decimal = eur_entries.iter().filter_map(|e| e.debit).sum();
+    let eur_credits: rust_decimal::Decimal = eur_entries.iter().filter_map(|e| e.credit).sum();
+    assert_eq!(eur_debits, eur_credits);
+}
+
+#[sqlx::test]
+async fn test_multi_currency_transaction_unbalanced_fails(pool: PgPool) {
+    let (ledger, cash_usd, cash_eur, revenue, _usd, _eur) =
+        setup_multi_currency_test_data(&pool).await;
+
+    // Invalid: USD balances but EUR doesn't
+    let input = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Utc::now(),
+        memo: Some("Unbalanced multi-currency".to_string()),
+        meta: None,
+        entries: vec![
+            // USD entries (balanced)
+            CreateEntry {
+                account_id: cash_usd.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+            // EUR entries (unbalanced!)
+            CreateEntry {
+                account_id: cash_eur.id,
+                currency: "EUR".to_string(),
+                debit: Some(dec!(85.00)),
+                credit: None,
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "EUR".to_string(),
+                debit: None,
+                credit: Some(dec!(80.00)), // Wrong amount!
+                account_version: None,
+            },
+        ],
+    };
+
+    let result = post_transaction(&pool, &input, None).await;
+    assert!(result.is_err());
+
+    match result.unwrap_err() {
+        ApiError::Validation(msg) => {
+            assert!(msg.contains("EUR"));
+            assert!(msg.contains("does not balance"));
+        }
+        _ => panic!("Expected validation error for unbalanced EUR"),
+    }
+}
+
+#[test]
+fn test_validate_multi_currency_balance_unit() {
+    // Test that each currency must balance independently
+    let multi_currency_balanced = vec![
+        CreateEntry {
+            account_id: 1,
+            currency: "USD".to_string(),
+            debit: Some(dec!(100)),
+            credit: None,
+            account_version: None,
+        },
+        CreateEntry {
+            account_id: 2,
+            currency: "USD".to_string(),
+            debit: None,
+            credit: Some(dec!(100)),
+            account_version: None,
+        },
+        CreateEntry {
+            account_id: 3,
+            currency: "EUR".to_string(),
+            debit: Some(dec!(85)),
+            credit: None,
+            account_version: None,
+        },
+        CreateEntry {
+            account_id: 4,
+            currency: "EUR".to_string(),
+            debit: None,
+            credit: Some(dec!(85)),
+            account_version: None,
+        },
+    ];
+
+    assert!(validate_double_entry_balance(&multi_currency_balanced).is_ok());
+
+    // Test mixed currencies cannot offset each other
+    let mixed_unbalanced = vec![
+        CreateEntry {
+            account_id: 1,
+            currency: "USD".to_string(),
+            debit: Some(dec!(100)),
+            credit: None,
+            account_version: None,
+        },
+        CreateEntry {
+            account_id: 2,
+            currency: "EUR".to_string(),
+            debit: None,
+            credit: Some(dec!(100)),
+            account_version: None,
+        },
+    ];
+
+    let result = validate_double_entry_balance(&mixed_unbalanced);
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(error_msg.contains("does not balance"));
+    // Should mention the specific currencies that don't balance
+    assert!(error_msg.contains("USD") || error_msg.contains("EUR"));
+}
+
+#[sqlx::test]
+async fn test_account_with_multiple_currency_balances(pool: PgPool) {
+    let (ledger, _cash_usd, _cash_eur, revenue, _usd, _eur) =
+        setup_multi_currency_test_data(&pool).await;
+
+    // Post transactions in different currencies to the same account
+    let tx1 = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Utc::now(),
+        memo: Some("USD revenue".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "USD".to_string(),
+                debit: None,
+                credit: Some(dec!(100.00)),
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "USD".to_string(),
+                debit: Some(dec!(100.00)),
+                credit: None,
+                account_version: None,
+            },
+        ],
+    };
+
+    let tx2 = CreateTransaction {
+        ledger_id: ledger.id,
+        effective: Utc::now(),
+        memo: Some("EUR revenue".to_string()),
+        meta: None,
+        entries: vec![
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "EUR".to_string(),
+                debit: None,
+                credit: Some(dec!(85.00)),
+                account_version: None,
+            },
+            CreateEntry {
+                account_id: revenue.id,
+                currency: "EUR".to_string(),
+                debit: Some(dec!(85.00)),
+                credit: None,
+                account_version: None,
+            },
+        ],
+    };
+
+    // Post both transactions
+    post_transaction(&pool, &tx1, None).await.unwrap();
+    post_transaction(&pool, &tx2, None).await.unwrap();
+
+    // Query account balances
+    use blackledger::api::search::{AccountSearchParams, SearchParams};
+    use blackledger::db::queries::account::get_accounts_with_balances;
+
+    let params = AccountSearchParams {
+        id: Some(revenue.id.to_string()),
+        ledger_id: Some(ledger.id.to_string()),
+        parent_id: None,
+        version: None,
+        number: None,
+        name: None,
+        normal: None,
+        base: SearchParams::default(),
+    };
+
+    let accounts_with_balances = get_accounts_with_balances(&pool, &params).await.unwrap();
+
+    assert_eq!(accounts_with_balances.len(), 1);
+    let revenue_balances = &accounts_with_balances[0];
+    assert_eq!(revenue_balances.account.id, revenue.id);
+
+    // Revenue account should have balances in both currencies
+    // Since we debited and credited the same amounts, balances should be zero
+    assert_eq!(revenue_balances.balances.len(), 2);
+    assert_eq!(revenue_balances.balances.get("USD"), Some(&dec!(0)));
+    assert_eq!(revenue_balances.balances.get("EUR"), Some(&dec!(0)));
 }

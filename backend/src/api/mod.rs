@@ -61,7 +61,7 @@ pub fn router(state: AppState) -> Router<AppState> {
         )
         .route(
             "/accounts/balances",
-            get(handlers::accounts::handle_get_balances),
+            get(handlers::accounts::handle_get_accounts_with_balances),
         )
         // Transaction endpoints
         .route(

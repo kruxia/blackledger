@@ -3,23 +3,16 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::Deserialize;
 
 use crate::{
     api::{AppState, pagination::PaginatedResponse, search::AccountSearchParams},
     db::queries::account::{
-        count_accounts, create_accounts_batch, get_account_balances, search_accounts,
+        count_accounts, create_accounts_batch, get_accounts_with_balances, search_accounts,
         update_account,
     },
     error::ApiResult,
-    models::account::{Account, AccountBalance, CreateAccount, UpdateAccount},
+    models::account::{Account, AccountBalances, CreateAccount, UpdateAccount},
 };
-
-#[derive(Debug, Deserialize)]
-pub struct GetBalancesQuery {
-    pub ledger_id: i64,
-    pub account_ids: Option<Vec<i64>>,
-}
 
 pub async fn handle_create_accounts(
     State(state): State<AppState>,
@@ -56,10 +49,20 @@ pub async fn handle_search_accounts(
     Ok(Json(response))
 }
 
-pub async fn handle_get_balances(
+pub async fn handle_get_accounts_with_balances(
     State(state): State<AppState>,
-    Query(query): Query<GetBalancesQuery>,
-) -> ApiResult<Json<Vec<AccountBalance>>> {
-    let balances = get_account_balances(&state.pool, query.ledger_id, query.account_ids).await?;
-    Ok(Json(balances))
+    Query(params): Query<AccountSearchParams>,
+) -> ApiResult<Json<PaginatedResponse<AccountBalances>>> {
+    // Run search and count queries concurrently
+    let (accounts_result, count_result) = tokio::join!(
+        get_accounts_with_balances(&state.pool, &params),
+        count_accounts(&state.pool, &params)
+    );
+
+    let accounts_with_balances = accounts_result?;
+    let total = count_result?;
+
+    let pagination = params.base.to_pagination_params();
+    let response = PaginatedResponse::new(accounts_with_balances, &pagination, Some(total));
+    Ok(Json(response))
 }

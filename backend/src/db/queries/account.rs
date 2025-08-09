@@ -2,7 +2,7 @@ use sqlx::{PgPool, Postgres, QueryBuilder, Row};
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::account::{
-    Account, AccountBalance, CreateAccount, NormalBalance, UpdateAccount,
+    Account, AccountBalances, CreateAccount, NormalBalance, UpdateAccount,
 };
 
 pub async fn create_account(pool: &PgPool, input: &CreateAccount) -> ApiResult<Account> {
@@ -155,59 +155,6 @@ pub async fn update_account(pool: &PgPool, id: i64, input: &UpdateAccount) -> Ap
         version: record.version,
         created: record.created,
     })
-}
-
-pub async fn get_account_balances(
-    pool: &PgPool,
-    ledger_id: i64,
-    account_ids: Option<Vec<i64>>,
-) -> ApiResult<Vec<AccountBalance>> {
-    let balances = if let Some(ids) = account_ids {
-        sqlx::query(
-            r#"
-            SELECT 
-                e.account_id,
-                e.currency,
-                SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
-            FROM entry e
-            INNER JOIN transaction t ON e.transaction_id = t.id
-            WHERE t.ledger_id = $1 AND e.account_id = ANY($2)
-            GROUP BY e.account_id, e.currency
-            "#,
-        )
-        .bind(ledger_id)
-        .bind(&ids)
-        .map(|row: sqlx::postgres::PgRow| AccountBalance {
-            account_id: row.get("account_id"),
-            currency: row.get("currency"),
-            balance: row.get("balance"),
-        })
-        .fetch_all(pool)
-        .await?
-    } else {
-        sqlx::query(
-            r#"
-            SELECT 
-                e.account_id,
-                e.currency,
-                SUM(COALESCE(e.dr, 0) - COALESCE(e.cr, 0)) as balance
-            FROM entry e
-            INNER JOIN transaction t ON e.transaction_id = t.id
-            WHERE t.ledger_id = $1
-            GROUP BY e.account_id, e.currency
-            "#,
-        )
-        .bind(ledger_id)
-        .map(|row: sqlx::postgres::PgRow| AccountBalance {
-            account_id: row.get("account_id"),
-            currency: row.get("currency"),
-            balance: row.get("balance"),
-        })
-        .fetch_all(pool)
-        .await?
-    };
-
-    Ok(balances)
 }
 
 /// Build the WHERE clause for account queries based on search parameters
@@ -397,4 +344,75 @@ pub async fn count_accounts(
     let count: i64 = row.try_get("count")?;
 
     Ok(count)
+}
+
+/// Get account balances grouped by account with multi-currency support
+///
+/// Returns AccountBalances structs with all currency balances grouped per account.
+/// This matches the Python implementation's AccountBalances model.
+pub async fn get_accounts_with_balances(
+    pool: &PgPool,
+    params: &crate::api::search::AccountSearchParams,
+) -> ApiResult<Vec<AccountBalances>> {
+    use std::collections::HashMap;
+
+    // Use the existing search_accounts function to get accounts
+    let accounts = search_accounts(pool, params).await?;
+
+    // Extract account IDs for balance query
+    let account_ids: Vec<i64> = accounts.iter().map(|a| a.id).collect();
+
+    if account_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Get balances for these accounts
+    let ledger_id = params
+        .ledger_id
+        .as_ref()
+        .and_then(|id_list| id_list.split(',').next())
+        .and_then(|s| s.trim().parse::<i64>().ok())
+        .ok_or_else(|| ApiError::Validation("ledger_id is required".to_string()))?;
+
+    // Query balances directly
+    let balances = sqlx::query(
+        r#"
+        SELECT 
+            e.account_id,
+            e.currency,
+            SUM(COALESCE(e.debit, 0) - COALESCE(e.credit, 0)) as balance
+        FROM entry e
+        INNER JOIN transaction t ON e.transaction_id = t.id
+        WHERE t.ledger_id = $1 AND e.account_id = ANY($2)
+        GROUP BY e.account_id, e.currency
+        "#,
+    )
+    .bind(ledger_id)
+    .bind(&account_ids)
+    .map(|row: sqlx::postgres::PgRow| {
+        let account_id: i64 = row.get("account_id");
+        let currency: String = row.get("currency");
+        let balance: rust_decimal::Decimal = row.get("balance");
+        (account_id, currency, balance)
+    })
+    .fetch_all(pool)
+    .await?;
+
+    // Group balances by account_id
+    let mut balance_map: HashMap<i64, HashMap<String, rust_decimal::Decimal>> = HashMap::new();
+    for (account_id, currency, balance) in balances {
+        balance_map
+            .entry(account_id)
+            .or_insert_with(HashMap::new)
+            .insert(currency, balance);
+    }
+
+    // Combine accounts with their balances
+    let mut result = Vec::new();
+    for account in accounts {
+        let balances = balance_map.remove(&account.id).unwrap_or_default();
+        result.push(AccountBalances { account, balances });
+    }
+
+    Ok(result)
 }

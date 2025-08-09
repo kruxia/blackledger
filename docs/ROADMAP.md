@@ -82,17 +82,34 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 - ✅ Test isolation with sequential execution to prevent conflicts
 - ✅ Total: 51 tests passing
 
-## 🚧 Remaining Work
+## 🚧 Remaining Work (port from Python)
+
+- [x] Batch transaction posting capabilities
+- [x] Parallel query execution where applicable
+- [x] Multi-currency transaction handling
+- [ ] Multi-currency account balances search
+- [ ] Dockerfile optimization for minimal image size
+
+### Enhanced Testing
+- [ ] Achieve full Python test suite parity
+- [ ] Increase test coverage to 95%+
+- [ ] Property-based testing with proptest
+- [ ] Load testing and benchmarks with criterion
+- [ ] End-to-end test scenarios
+
+### Developer Experience (1 week)
+- [ ] OpenAPI/Swagger documentation generation
+
+## ✨ Feature Enhancement (beyond the port from Python)
 
 ### High Priority
 
-#### 1. Final Integration & Polish (3-5 days)
+#### Final Integration & Polish (3-5 days)
 - [ ] Integrate auth extractors into all handlers for complete audit trails
 - [ ] Add date range filtering on created/effective timestamps
 - [ ] Add amount range filters for transactions
 
-#### 3. Production Deployment (1-2 weeks)
-- [ ] Dockerfile optimization for minimal image size
+#### Production Deployment (1-2 weeks)
 - [ ] Kubernetes manifests / Helm charts
 - [ ] Graceful shutdown handling
 - [ ] Connection pool tuning for production loads
@@ -100,28 +117,19 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 
 ### Medium Priority
 
-#### 4. Observability (1 week)
+#### Observability (1 week)
 - [ ] OpenTelemetry integration
 - [ ] Distributed tracing
 - [ ] Metrics collection (Prometheus)
 - [ ] Performance profiling
 - [ ] Audit log implementation
 
-#### 5. Performance Optimization (1 week)
+#### Performance Optimization (1 week)
 - [ ] Database query optimization and index tuning
-- [x] Batch transaction posting capabilities
-- [x] Parallel query execution where applicable
-
-#### 6. Enhanced Testing (1 week)
-- [ ] Achieve full Python test suite parity
-- [ ] Increase test coverage to 95%+
-- [ ] Property-based testing with proptest
-- [ ] Load testing and benchmarks with criterion
-- [ ] End-to-end test scenarios
 
 ### Low Priority
 
-#### 7. Additional Features (2-3 weeks)
+#### Additional Features (2-3 weeks)
 - [ ] Bulk import/export (CSV, JSON)
 - [ ] Scheduled/recurring transactions
 - [ ] Budget tracking
@@ -129,8 +137,7 @@ The Rust port of Blackledger is **~90% complete** with all core accounting funct
 - [ ] Account reconciliation
 - [ ] Webhook notifications
 
-#### 8. Developer Experience (1 week)
-- [ ] OpenAPI/Swagger documentation generation
+#### Developer Experience (1 week)
 - [ ] SDK generation for multiple languages
 - [ ] CLI tool for administration
 - [ ] Database seeding utilities

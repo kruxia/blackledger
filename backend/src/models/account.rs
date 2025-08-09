@@ -56,14 +56,12 @@ pub struct UpdateAccount {
     pub name: Option<String>,
 }
 
-/// Balance information for an account in a specific currency
+/// Account with balances in multiple currencies
 ///
-/// Since accounts can have entries in multiple currencies,
-/// balances are calculated per currency.
+/// Groups all currency balances for a single account,
+/// matching the Python model's structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccountBalance {
-    pub account_id: i64,
-    pub currency: String,
-    #[serde(with = "rust_decimal::serde::str")]
-    pub balance: Decimal,
+pub struct AccountBalances {
+    pub account: Account,
+    pub balances: std::collections::HashMap<String, Decimal>,
 }

@@ -10,9 +10,10 @@
 
 use anyhow::Result;
 use blackledger::{
+    api::search::{AccountSearchParams, SearchParams},
     db,
     db::queries::{
-        account::{create_account, get_account_balances},
+        account::{create_account, get_accounts_with_balances},
         currency::create_currency,
         ledger::create_ledger,
     },
@@ -279,24 +280,36 @@ async fn main() -> Result<()> {
     println!("5️⃣ Account Balances:");
     println!("   {}", "─".repeat(50));
 
-    let balances = get_account_balances(&pool, ledger.id, None).await?;
+    // Create search parameters to get all accounts with their balances
+    let params = AccountSearchParams {
+        ledger_id: Some(ledger.id.to_string()),
+        id: None,
+        parent_id: None,
+        version: None,
+        number: None,
+        name: None,
+        normal: None,
+        base: SearchParams::default(),
+    };
 
-    for balance in balances {
-        let account_name = match balance.account_id {
-            id if id == cash_account.id => "Cash",
-            id if id == ar_account.id => "Accounts Receivable",
-            id if id == ap_account.id => "Accounts Payable",
-            id if id == revenue_account.id => "Sales Revenue",
-            id if id == expense_account.id => "Operating Expenses",
-            _ => "Unknown",
-        };
+    let accounts_with_balances = get_accounts_with_balances(&pool, &params).await?;
 
-        println!(
-            "   {:<25} {:>10} {}",
-            account_name,
-            format!("{:.2}", balance.balance),
-            balance.currency
-        );
+    for account_balance in accounts_with_balances {
+        let account_name = &account_balance.account.name;
+
+        // Print each currency balance for this account
+        if account_balance.balances.is_empty() {
+            println!("   {:<25} {:>10} -", account_name, "0.00");
+        } else {
+            for (currency, balance) in &account_balance.balances {
+                println!(
+                    "   {:<25} {:>10} {}",
+                    account_name,
+                    format!("{:.2}", balance),
+                    currency
+                );
+            }
+        }
     }
 
     println!("\n✨ Example completed successfully!");
